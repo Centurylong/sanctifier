@@ -1,50 +1,57 @@
 # Sanctifier 🛡️
 
-**Sanctifier** is a comprehensive security and formal verification suite built specifically for [Stellar Soroban](https://soroban.stellar.org/) smart contracts. In the high-stakes environment of DeFi and decentralized applications, "code is law" only holds true if the code is secure. Sanctifier ensures your contracts are not just compiled, but *sanctified*—rigorously tested, formally verified, and runtime-guarded against vulnerabilities.
+**The Definitive Security & Formal Verification Suite for Stellar Soroban**
 
-## 📂 Project Structure
+Sanctifier is an institutional-grade security framework built to ensure that "Code is Law" remains a reality on the Stellar network. By combining **Static Analysis**, **Formal Verification (Kani)**, and **Runtime Guardians**, Sanctifier provides a multi-layered defense system for the next generation of DeFi and Fintech applications on Soroban.
 
-```text
-Sanctifier/
-├── contracts/          # Soroban smart contracts (examples & templates)
-├── frontend/           # Next.js Web Interface for the suite
-├── tooling/            # The core Rust analysis tools
-│   ├── sanctifier-cli  # CLI tool for developers
-│   └── sanctifier-core # Static analysis logic
-├── scripts/            # Deployment and CI scripts
-└── docs/               # Documentation
-```
+## 🚀 Vision
 
-## 🚀 Key Features
+In an ecosystem where security is non-negotiable, Sanctifier serves as the "Proof-of-Trust" layer. Our mission is to eliminate common vulnerabilities and provide developers with the formal certainty required to manage billions in on-chain assets safely.
 
-### 1. Static Sanctification (Static Analysis)
-Sanctifier scans your Rust/Soroban code before deployment to detect:
-*   **Authorization Gaps**: ensuring `require_auth` is present in all privileged functions.
-*   **Storage Collisions**: analyzing `Instance`, `Persistent`, and `Temporary` storage keys.
-*   **Resource Exhaustion**: estimating instruction counts to prevent OOG.
+## 📁 Project Architecture
 
-### 2. Runtime Guardians
-A library of hook-based guards that you can integrate into your contracts:
-*   `Sanctifier::guard_invariant(|ctx| ...)`: Enforce state invariants.
-*   `Sanctifier::monitor_events()`: Ensure critical events are emitted.
+Sanctifier is designed with a modular, tool-chain approach:
 
-## 📦 Installation (CLI)
+- **`tooling/`**: The Rust-based engine for static analysis and formal verification bridges.
+- **`contracts/`**: A library of reusable, security-hardened contract templates and guards.
+- **`frontend/`**: A sleek, real-time dashboard for visualizing "Sanctity Scores" and security logs.
+- **`docs/`**: Deep technical guides on formal methods and Soroban security best practices.
+
+## 🛠 Targeted Security Layers
+
+### 1. Static Analysis (The Sentinel)
+Scans your Soroban code at compile-time to detect:
+- **Authorization Gaps**: Missing `require_auth` or weak access controls.
+- **Storage Collisions**: Improper usage of Instance vs. Persistent storage.
+- **Arithmetic Safety**: Proactive detection of potential overflows and underflows.
+
+### 2. Formal Verification (The Absolute)
+Integrates with **Kani** and SMT solvers to provide mathematical certainty:
+- **State Invariants**: Proving that a contract's state can never enter an invalid or "hacked" mode.
+- **Initialization Gards**: Mathematically ensuring `initialize` functions are truly idempotent.
+
+### 3. Runtime Guardians (The Shield)
+A library of opt-in hooks to monitor contract health live:
+- **`guard_invariant()`**: Reverts transactions if high-level business logic is violated.
+- **`monitor_events()`**: Automates the verification of critical event emissions.
+
+## 🚦 Getting Started
+
+### Installation
 
 ```bash
 cargo install --path tooling/sanctifier-cli
 ```
 
-## 🛠 Usage
-
-### Analyze a Project
-Run the analysis suite on your Soroban project:
-
+### Quick Scan
+Run an initial security audit on your project:
 ```bash
-sanctifier analyze ./contracts/my-token
+sanctifier analyze ./contracts/my-project
 ```
 
-## 🤝 Contributing
-We welcome contributions from the Stellar community! Please see our [Contributing Guide](CONTRIBUTING.md) for details.
+## 🗺 Roadmap
 
-## 📄 License
-MIT
+Sanctifier is **Open-Source and Ecosystem-First**. Our 30+ issue roadmap covers everything from enhanced formal verification bridges to real-time security dashboards. See [Issues](https://github.com/Hypersecured/sanctifier/issues) for 'Good First Issues'.
+
+---
+Built with 🛡️ for the Stellar Ecosystem.
