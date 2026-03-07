@@ -38,9 +38,13 @@ fn test_analyze_vulnerable_contract() {
         .arg(fixture_path)
         .assert()
         .success()
-        .stdout(predicate::str::contains("Found potential Authentication Gaps!"))
+        .stdout(predicate::str::contains(
+            "Found potential Authentication Gaps!",
+        ))
         .stdout(predicate::str::contains("Found explicit Panics/Unwraps!"))
-        .stdout(predicate::str::contains("Found unchecked Arithmetic Operations!"));
+        .stdout(predicate::str::contains(
+            "Found unchecked Arithmetic Operations!",
+        ));
 }
 
 #[test]
@@ -50,13 +54,14 @@ fn test_analyze_json_output() {
         .unwrap()
         .join("tests/fixtures/valid_contract.rs");
 
-    let assert = cmd.arg("analyze")
+    let assert = cmd
+        .arg("analyze")
         .arg(fixture_path)
         .arg("--format")
         .arg("json")
         .assert()
         .success();
-    
+
     // JSON starts with {
     assert.stdout(predicate::str::starts_with("{"));
 }

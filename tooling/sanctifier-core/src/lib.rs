@@ -1,3 +1,5 @@
+pub mod gas_estimator;
+pub mod kani_bridge;
 
 use serde::{Deserialize, Serialize};
 use std::collections::HashSet;
@@ -23,7 +25,6 @@ where
 }
 
 // ── Existing types ────────────────────────────────────────────────────────────
-
 
 /// Severity of a ledger size warning.
 #[derive(Debug, Serialize, Clone, PartialEq)]
@@ -267,18 +268,6 @@ fn classify_size(
         None
     }
 }
-
-fn with_panic_guard<F, R>(f: F) -> R
-where
-    F: FnOnce() -> R + std::panic::UnwindSafe,
-    R: Default,
-{
-    match std::panic::catch_unwind(f) {
-        Ok(r) => r,
-        Err(_) => R::default(),
-    }
-}
-
 // ── Analyzer ──────────────────────────────────────────────────────────────────
 
 pub struct Analyzer {
@@ -445,7 +434,9 @@ impl Analyzer {
                     }
                 }
                 syn::Stmt::Macro(m) => {
-                    if m.mac.path.is_ident("require_auth") || m.mac.path.is_ident("require_auth_for_args") {
+                    if m.mac.path.is_ident("require_auth")
+                        || m.mac.path.is_ident("require_auth_for_args")
+                    {
                         *has_auth = true;
                     }
                 }
@@ -474,7 +465,11 @@ impl Analyzer {
                 if method_name == "set" || method_name == "update" || method_name == "remove" {
                     // Heuristic: check if receiver chain contains "storage"
                     let receiver_str = quote::quote!(#m.receiver).to_string();
-                    if receiver_str.contains("storage") || receiver_str.contains("persistent") || receiver_str.contains("temporary") || receiver_str.contains("instance") {
+                    if receiver_str.contains("storage")
+                        || receiver_str.contains("persistent")
+                        || receiver_str.contains("temporary")
+                        || receiver_str.contains("instance")
+                    {
                         *has_mutation = true;
                     }
                 }
@@ -542,7 +537,13 @@ impl Analyzer {
                 Item::Struct(s) => {
                     if has_contracttype(&s.attrs) {
                         let size = self.estimate_struct_size(s);
-                        if let Some(level) = classify_size(size, limit, approaching_count as f64, strict, strict_threshold) {
+                        if let Some(level) = classify_size(
+                            size,
+                            limit,
+                            approaching_count as f64,
+                            strict,
+                            strict_threshold,
+                        ) {
                             warnings.push(SizeWarning {
                                 struct_name: s.ident.to_string(),
                                 estimated_size: size,
@@ -555,7 +556,13 @@ impl Analyzer {
                 Item::Enum(e) => {
                     if has_contracttype(&e.attrs) {
                         let size = self.estimate_enum_size(e);
-                        if let Some(level) = classify_size(size, limit, approaching_count as f64, strict, strict_threshold) {
+                        if let Some(level) = classify_size(
+                            size,
+                            limit,
+                            approaching_count as f64,
+                            strict,
+                            strict_threshold,
+                        ) {
                             warnings.push(SizeWarning {
                                 struct_name: e.ident.to_string(),
                                 estimated_size: size,
@@ -642,7 +649,6 @@ impl Analyzer {
         visitor.visit_file(&file);
         visitor.issues
     } */
-
     // ── Unsafe-pattern visitor ────────────────────────────────────────────────
 
     /// Visitor-based scan for `panic!`, `.unwrap()`, `.expect()` with line
@@ -779,13 +785,17 @@ impl Analyzer {
                         }
                         "Map" => {
                             if let syn::PathArguments::AngleBracketed(args) = &seg.arguments {
-                                let inner: usize = args.args.iter().filter_map(|a| {
-                                    if let syn::GenericArgument::Type(t) = a {
-                                        Some(self.estimate_type_size(t))
-                                    } else {
-                                        None
-                                    }
-                                }).sum();
+                                let inner: usize = args
+                                    .args
+                                    .iter()
+                                    .filter_map(|a| {
+                                        if let syn::GenericArgument::Type(t) = a {
+                                            Some(self.estimate_type_size(t))
+                                        } else {
+                                            None
+                                        }
+                                    })
+                                    .sum();
                                 if inner > 0 {
                                     return 16 + inner * 2;
                                 }
@@ -1028,33 +1038,33 @@ mod tests {
         assert_eq!(warnings[0].level, SizeWarningLevel::ExceedsLimit);
     }
 
-/*
-    #[test]
-    fn test_ledger_size_enum_and_approaching() {
-        let mut config = SanctifyConfig::default();
-        config.ledger_limit = 100;
-        config.approaching_threshold = 0.5;
-        let analyzer = Analyzer::new(config);
-        let source = r#"
-            #[contracttype]
-            pub enum DataKey {
-                Balance(Address),
-                Admin,
-            }
+    /*
+        #[test]
+        fn test_ledger_size_enum_and_approaching() {
+            let mut config = SanctifyConfig::default();
+            config.ledger_limit = 100;
+            config.approaching_threshold = 0.5;
+            let analyzer = Analyzer::new(config);
+            let source = r#"
+                #[contracttype]
+                pub enum DataKey {
+                    Balance(Address),
+                    Admin,
+                }
 
-            #[contracttype]
-            pub struct NearLimit {
-                pub a: u128,
-                pub b: u128,
-                pub c: u128,
-                pub d: u128,
-            }
-        "#;
-        let warnings = analyzer.analyze_ledger_size(source);
-        assert!(warnings.iter().any(|w| w.struct_name == "NearLimit"), "NearLimit (64 bytes) should exceed 50% of 100");
-        assert!(warnings.iter().any(|w| w.level == SizeWarningLevel::ApproachingLimit));
-    }
-*/
+                #[contracttype]
+                pub struct NearLimit {
+                    pub a: u128,
+                    pub b: u128,
+                    pub c: u128,
+                    pub d: u128,
+                }
+            "#;
+            let warnings = analyzer.analyze_ledger_size(source);
+            assert!(warnings.iter().any(|w| w.struct_name == "NearLimit"), "NearLimit (64 bytes) should exceed 50% of 100");
+            assert!(warnings.iter().any(|w| w.level == SizeWarningLevel::ApproachingLimit));
+        }
+    */
 
     #[test]
     fn test_complex_macro_no_panic() {
@@ -1285,34 +1295,34 @@ mod tests {
         assert_eq!(issues[0].operation, "+");
     }
 
-/*
-    #[test]
-    fn test_analyze_upgrade_patterns() {
-        let analyzer = Analyzer::new(SanctifyConfig::default());
-        let source = r#"
-            #[contracttype]
-            pub enum DataKey { Admin, Balance }
+    /*
+        #[test]
+        fn test_analyze_upgrade_patterns() {
+            let analyzer = Analyzer::new(SanctifyConfig::default());
+            let source = r#"
+                #[contracttype]
+                pub enum DataKey { Admin, Balance }
 
-            #[contractimpl]
-            impl Token {
-                pub fn initialize(env: Env, admin: Address) {
-                    env.storage().instance().set(&DataKey::Admin, &admin);
+                #[contractimpl]
+                impl Token {
+                    pub fn initialize(env: Env, admin: Address) {
+                        env.storage().instance().set(&DataKey::Admin, &admin);
+                    }
+                    pub fn set_admin(env: Env, new_admin: Address) {
+                        env.storage().instance().set(&DataKey::Admin, &new_admin);
+                    }
                 }
-                pub fn set_admin(env: Env, new_admin: Address) {
-                    env.storage().instance().set(&DataKey::Admin, &new_admin);
-                }
-            }
-        "#;
-        let report = analyzer.analyze_upgrade_patterns(source);
-        assert_eq!(report.init_functions, vec!["initialize"]);
-        assert_eq!(report.upgrade_mechanisms, vec!["set_admin"]);
-        assert!(report.storage_types.contains(&"DataKey".to_string()));
-        assert!(report
-            .findings
-            .iter()
-            .any(|f| matches!(f.category, UpgradeCategory::Governance)));
-    }
-*/
+            "#;
+            let report = analyzer.analyze_upgrade_patterns(source);
+            assert_eq!(report.init_functions, vec!["initialize"]);
+            assert_eq!(report.upgrade_mechanisms, vec!["set_admin"]);
+            assert!(report.storage_types.contains(&"DataKey".to_string()));
+            assert!(report
+                .findings
+                .iter()
+                .any(|f| matches!(f.category, UpgradeCategory::Governance)));
+        }
+    */
 
     #[test]
     fn test_scan_arithmetic_overflow_suggestion_content() {
@@ -1333,36 +1343,35 @@ mod tests {
         assert!(issues[0].location.starts_with("risky:"));
     }
 
-/*
-    #[test]
-    fn test_scan_events_consistency_and_optimization() {
-        let analyzer = Analyzer::new(SanctifyConfig::default());
-        let source = r#"
-            #[contractimpl]
-            impl MyContract {
-                pub fn emit_events(env: Env) {
-                    // Consistent
-                    env.events().publish(("event1", 1), 100);
-                    env.events().publish(("event1", 2), 200); 
+    /*
+        #[test]
+        fn test_scan_events_consistency_and_optimization() {
+            let analyzer = Analyzer::new(SanctifyConfig::default());
+            let source = r#"
+                #[contractimpl]
+                impl MyContract {
+                    pub fn emit_events(env: Env) {
+                        // Consistent
+                        env.events().publish(("event1", 1), 100);
+                        env.events().publish(("event1", 2), 200);
 
-                    // Inconsistent
-                    env.events().publish(("event2", 1), 100);
-                    env.events().publish(("event2", 1, 2), 200); 
+                        // Inconsistent
+                        env.events().publish(("event2", 1), 100);
+                        env.events().publish(("event2", 1, 2), 200);
 
-                    // Optimization opportunity
-                    env.events().publish(("long_event_name", "short"), 300); 
+                        // Optimization opportunity
+                        env.events().publish(("long_event_name", "short"), 300);
+                    }
                 }
-            }
-        "#;
-        let issues = analyzer.scan_events(source);
-        
-        // One inconsistency for event2
-        assert!(issues.iter().any(|i| i.issue_type == EventIssueType::InconsistentSchema && i.event_name == "event2"));
-        // Optimization for "short"
-        assert!(issues.iter().any(|i| i.issue_type == EventIssueType::OptimizableTopic && i.message.contains("\"short\"")));
-        // Optimization for "event1"
-        assert!(issues.iter().any(|i| i.issue_type == EventIssueType::OptimizableTopic && i.message.contains("\"event1\"")));
-    }
-*/
-}
+            "#;
+            let issues = analyzer.scan_events(source);
 
+            // One inconsistency for event2
+            assert!(issues.iter().any(|i| i.issue_type == EventIssueType::InconsistentSchema && i.event_name == "event2"));
+            // Optimization for "short"
+            assert!(issues.iter().any(|i| i.issue_type == EventIssueType::OptimizableTopic && i.message.contains("\"short\"")));
+            // Optimization for "event1"
+            assert!(issues.iter().any(|i| i.issue_type == EventIssueType::OptimizableTopic && i.message.contains("\"event1\"")));
+        }
+    */
+}
