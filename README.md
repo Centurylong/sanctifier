@@ -28,7 +28,7 @@ Scans your Soroban code at compile-time to detect:
 ### 2. Formal Verification (The Absolute)
 Integrates with **Kani** and SMT solvers to provide mathematical certainty:
 - **State Invariants**: Proving that a contract's state can never enter an invalid or "hacked" mode.
-- **Initialization Gards**: Mathematically ensuring `initialize` functions are truly idempotent.
+- **Initialization Guards**: Mathematically ensuring `initialize` functions are truly idempotent.
 
 ### 3. Runtime Guardians (The Shield)
 A library of opt-in hooks to monitor contract health live:
