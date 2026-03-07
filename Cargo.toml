@@ -2,6 +2,7 @@
 members = [
     "tooling/sanctifier-cli",
     "tooling/sanctifier-core",
+    "tooling/sanctifier-wasm",
     "contracts/vulnerable-contract",
     "contracts/kani-poc",
 ]
