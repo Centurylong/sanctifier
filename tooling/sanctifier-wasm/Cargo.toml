@@ -1,0 +1,16 @@
+[package]
+name = "sanctifier-wasm"
+version = "0.1.0"
+edition = "2021"
+description = "WASM wrapper for Sanctifier analysis engine"
+license = "MIT"
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+wasm-bindgen = "0.2"
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+serde-wasm-bindgen = "0.6"
+sanctifier-core = { path = "../sanctifier-core" }

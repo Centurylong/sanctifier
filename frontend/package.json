@@ -6,7 +6,8 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "test": "echo \"No frontend tests yet\" && exit 0"
   },
   "dependencies": {
     "jspdf": "^4.2.0",

@@ -10,6 +10,7 @@ import { SummaryChart } from "../components/SummaryChart";
 import { KaniMetricsWidget } from "../components/KaniMetricsWidget";
 import { ThemeToggle } from "../components/ThemeToggle";
 import Link from "next/link";
+import { analyzeSourceInBrowser } from "../lib/wasm";
 
 const SAMPLE_JSON = `{
   "size_warnings": [],
@@ -25,6 +26,8 @@ export default function DashboardPage() {
   const [error, setError] = useState<string | null>(null);
   const [jsonInput, setJsonInput] = useState("");
   const [reportData, setReportData] = useState<AnalysisReport | null>(null);
+  const [rustSource, setRustSource] = useState<string>("");
+  const [wasmBusy, setWasmBusy] = useState(false);
 
   const loadReport = useCallback(() => {
     setError(null);
@@ -59,6 +62,23 @@ export default function DashboardPage() {
     reader.readAsText(file);
     e.target.value = "";
   }, []);
+
+  const runWasmAnalysis = useCallback(async () => {
+    setError(null);
+    setWasmBusy(true);
+    try {
+      const report = await analyzeSourceInBrowser(rustSource);
+      setReportData(report);
+      setFindings(transformReport(report));
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      setError(
+        `WASM module not found or failed to load. Build it with: wasm-pack build tooling/sanctifier-wasm --release --target web --out-dir frontend/public/wasm. Details: ${msg}`
+      );
+    } finally {
+      setWasmBusy(false);
+    }
+  }, [rustSource]);
 
   return (
     <div className="min-h-screen bg-zinc-50 dark:bg-zinc-950 text-zinc-900 dark:text-zinc-100">
@@ -113,6 +133,28 @@ export default function DashboardPage() {
             placeholder={SAMPLE_JSON}
             className="mt-4 w-full h-32 rounded-lg border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-950 p-3 font-mono text-sm focus:ring-2 focus:ring-zinc-400 dark:focus:ring-zinc-600 outline-none"
           />
+        </section>
+
+        <section className="rounded-lg border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 p-6">
+          <h2 className="text-lg font-semibold mb-4">Analyze Rust Source (Runs in Your Browser)</h2>
+          <p className="text-sm text-zinc-600 dark:text-zinc-400 mb-4">
+            Paste Soroban contract Rust code and run the Sanctifier engine compiled to WebAssembly locally.
+          </p>
+          <textarea
+            value={rustSource}
+            onChange={(e) => setRustSource(e.target.value)}
+            placeholder={"// Paste your Soroban contract here"}
+            className="mt-2 w-full h-40 rounded-lg border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-950 p-3 font-mono text-sm focus:ring-2 focus:ring-zinc-400 dark:focus:ring-zinc-600 outline-none"
+          />
+          <div className="mt-3">
+            <button
+              onClick={runWasmAnalysis}
+              disabled={wasmBusy || rustSource.trim().length === 0}
+              className="rounded-lg bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900 px-4 py-2 text-sm font-medium disabled:opacity-50 hover:bg-zinc-800 dark:hover:bg-zinc-200"
+            >
+              {wasmBusy ? "Analyzing…" : "Run in Browser (WASM)"}
+            </button>
+          </div>
         </section>
 
         {(findings.length > 0 || reportData?.kani_metrics) && (

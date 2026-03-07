@@ -456,7 +456,8 @@ dependencies = [
 [[package]]
 name = "derive_arbitrary"
 version = "1.4.2"
-source = "git+https://github.com/rust-fuzz/arbitrary?branch=main#dbcdce423b4e0e0145f994d33ac7360a6e7ff93e"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "1e567bd82dcff979e4b03460c307b3cdc9e96fde3d73bed1496d2bc75d9dd62a"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -1230,6 +1231,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "sanctifier-wasm"
+version = "0.1.0"
+dependencies = [
+ "sanctifier-core",
+ "serde",
+ "serde-wasm-bindgen",
+ "serde_json",
+ "wasm-bindgen",
+]
+
+[[package]]
 name = "scopeguard"
 version = "1.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1262,6 +1274,17 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "bca2a08484b285dcb282d0f67b26cadc0df8b19f8c12502c13d966bf9482f001"
 dependencies = [
  "serde_derive",
+]
+
+[[package]]
+name = "serde-wasm-bindgen"
+version = "0.6.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "17ba92964781421b6cef36bf0d7da26d201e96d84e1b10e7ae6ed416e516906d"
+dependencies = [
+ "js-sys",
+ "serde",
+ "wasm-bindgen",
 ]
 
 [[package]]
@@ -2066,8 +2089,3 @@ name = "zeroize"
 version = "1.8.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b97154e67e32c85465826e8bcc1c59429aaaf107c1e4a9e53c8d8ccd5eff88d0"
-
-[[patch.unused]]
-name = "arbitrary"
-version = "1.4.2"
-source = "git+https://github.com/rust-fuzz/arbitrary?branch=main#dbcdce423b4e0e0145f994d33ac7360a6e7ff93e"

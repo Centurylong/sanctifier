@@ -2,6 +2,7 @@
 members = [
     "tooling/sanctifier-cli",
     "tooling/sanctifier-core",
+    "tooling/sanctifier-wasm",
     "contracts/vulnerable-contract",
     "contracts/kani-poc",
 ]
@@ -12,7 +13,5 @@ opt-level = "z"
 lto = true
 codegen-units = 1
 
-[patch.crates-io]
-arbitrary = { git = "https://github.com/rust-fuzz/arbitrary", branch = "main" }
-derive_arbitrary = { git = "https://github.com/rust-fuzz/arbitrary", branch = "main" }
+
 

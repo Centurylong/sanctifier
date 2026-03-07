@@ -8,6 +8,7 @@ use syn::spanned::Spanned;
 use syn::visit::{self, Visit};
 use syn::{parse_str, Fields, File, Item, Meta, Type};
 
+#[cfg(not(target_arch = "wasm32"))]
 use soroban_sdk::Env;
 use thiserror::Error;
 
@@ -872,7 +873,7 @@ impl<'ast> Visit<'ast> for UnsafeVisitor {
 }
 
 // ── SanctifiedGuard (runtime monitoring) ───────────────────────────────────────
-
+#[cfg(not(target_arch = "wasm32"))]
 /// Error type for SanctifiedGuard runtime invariant violations.
 #[derive(Debug, Error)]
 pub enum Error {
@@ -880,6 +881,7 @@ pub enum Error {
     InvariantViolation(String),
 }
 
+#[cfg(not(target_arch = "wasm32"))]
 /// Trait for runtime monitoring. Implement this to enforce invariants
 /// on your contract state. The foundation for runtime monitoring.
 pub trait SanctifiedGuard {
