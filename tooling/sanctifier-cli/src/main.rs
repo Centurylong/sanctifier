@@ -475,7 +475,7 @@ fn is_soroban_project(path: &Path) -> bool {
         let cargo = p.join("Cargo.toml");
         if cargo.exists() {
             if let Ok(content) = std::fs::read_to_string(&cargo) {
-                if content.contains("soroban-sdk") {
+                if content.contains("soroban-sdk") || content.contains("[workspace]") {
                     return true;
                 }
             }
