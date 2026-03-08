@@ -615,14 +615,6 @@ fn run_analysis(path: &Path, content: &str, analyzer: &Analyzer, config: &Sancti
     for mut m in custom_matches {
         m.snippet = format!("{}: {}", path.display(), m.snippet);
         analysis.custom_rule_matches.push(m);
-                    let gas_reports = analyzer.scan_gas_estimation(&content);
-                    all_gas_estimations.extend(gas_reports);
-
-                    let sym_paths = analyzer.analyze_symbolic_paths(&content);
-                    all_symbolic_paths.extend(sym_paths);
-                }
-            }
-        }
     }
 
     let gas_reports = analyzer.scan_gas_estimation(content);

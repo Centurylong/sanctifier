@@ -1,0 +1,51 @@
+{
+  "files": {
+    "../../contracts/vulnerable-contract/src/lib.rs": {
+      "hash": "7c7e29306ea75ebcb689a9ded60330ec9935fed26ecab3b5f50bb10e21ec631a",
+      "size_warnings": [],
+      "unsafe_patterns": [
+        {
+          "pattern_type": "Expect",
+          "line": 0,
+          "snippet": "../../contracts/vulnerable-contract/src/lib.rs: env . storage () . instance () . get (& symbol_short ! (\"admin\")) . expect (\"Admin not set\")"
+        }
+      ],
+      "auth_gaps": [
+        "../../contracts/vulnerable-contract/src/lib.rs: set_admin",
+        "../../contracts/vulnerable-contract/src/lib.rs: set_admin_secure"
+      ],
+      "panic_issues": [
+        {
+          "function_name": "set_admin_secure",
+          "issue_type": "expect",
+          "location": "../../contracts/vulnerable-contract/src/lib.rs: set_admin_secure"
+        },
+        {
+          "function_name": "fail_explicitly",
+          "issue_type": "panic!",
+          "location": "../../contracts/vulnerable-contract/src/lib.rs: fail_explicitly"
+        }
+      ],
+      "arithmetic_issues": [],
+      "deprecated_api_issues": [],
+      "custom_rule_matches": [],
+      "gas_estimations": [
+        {
+          "function_name": "set_admin",
+          "estimated_instructions": 1110,
+          "estimated_memory_bytes": 64
+        },
+        {
+          "function_name": "set_admin_secure",
+          "estimated_instructions": 2197,
+          "estimated_memory_bytes": 160
+        },
+        {
+          "function_name": "fail_explicitly",
+          "estimated_instructions": 50,
+          "estimated_memory_bytes": 32
+        }
+      ]
+    }
+  }
+}
