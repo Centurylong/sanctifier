@@ -55,18 +55,25 @@ fn compute_hash(content: &str) -> String {
     format!("{:x}", hasher.finalize())
 }
 
+/// Metrics for Kani formal verification results
 #[derive(Serialize)]
 pub struct KaniVerificationMetrics {
+    /// Total number of safety assertions checked
     pub total_assertions: usize,
+    /// Number of assertions successfully proven
     pub proven: usize,
+    /// Number of assertions that failed verification
     pub failed: usize,
+    /// Number of assertions that are unreachable in the code
     pub unreachable: usize,
 }
 
+/// Main CLI structure for the Sanctifier tool
 #[derive(Parser)]
 #[command(name = "sanctifier")]
 #[command(about = "Stellar Soroban Security & Formal Verification Suite", long_about = None)]
 struct Cli {
+    /// The subcommand to execute
     #[command(subcommand)]
     command: Commands,
 }
@@ -75,14 +82,18 @@ struct Cli {
 pub enum Commands {
     /// Analyze a Soroban contract for vulnerabilities
     Analyze {
+        /// Path to the Soroban contract or project directory
         path: PathBuf,
+        /// Output format (text, json)
         #[arg(short, long, default_value = "text")]
         format: String,
+        /// Maximum ledger entry size limit in bytes
         #[arg(short, long, default_value_t = 64000)]
         limit: usize,
     },
     /// Generate a summary report
     Report {
+        /// Optional path to save the generated report
         #[arg(short, long, value_name = "OUTPUT")]
         output: Option<PathBuf>,
     },
@@ -90,7 +101,9 @@ pub enum Commands {
     Init,
     /// Translate Soroban contract into a Kani-verifiable harness
     Kani {
+        /// Path to the .rs file to translate
         path: PathBuf,
+        /// Optional path to save the generated harness
         #[arg(short, long)]
         output: Option<PathBuf>,
     },
@@ -477,7 +490,7 @@ fn is_soroban_project(path: &Path) -> bool {
         let cargo = p.join("Cargo.toml");
         if cargo.exists() {
             if let Ok(content) = std::fs::read_to_string(&cargo) {
-                if content.contains("soroban-sdk") {
+                if content.contains("soroban-sdk") || content.contains("[workspace]") {
                     return true;
                 }
             }
