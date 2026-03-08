@@ -203,3 +203,57 @@ impl SymbolicAnalyzer {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use syn::parse_str;
+
+    #[test]
+    fn test_linear_path() {
+        let code = r#"
+            pub fn simple_fn() {
+                let x = 1;
+                let y = 2;
+                let z = x + y;
+            }
+        "#;
+        let fn_item: syn::ImplItemFn = parse_str(code).unwrap();
+        let graph = SymbolicAnalyzer::analyze_function(&fn_item);
+        
+        assert_eq!(graph.function_name, "simple_fn");
+        assert_eq!(graph.paths.len(), 1);
+        assert_eq!(graph.paths[0].is_panic, false);
+    }
+
+    #[test]
+    fn test_branching_path() {
+        let code = r#"
+            pub fn branch_fn(flag: bool) {
+                if flag {
+                    let a = 1;
+                } else {
+                    let b = 2;
+                }
+            }
+        "#;
+        let fn_item: syn::ImplItemFn = parse_str(code).unwrap();
+        let graph = SymbolicAnalyzer::analyze_function(&fn_item);
+        
+        assert_eq!(graph.paths.len(), 2);
+    }
+
+    #[test]
+    fn test_panic_path() {
+        let code = r#"
+            pub fn panic_fn() {
+                let x = Some(1).unwrap();
+            }
+        "#;
+        let fn_item: syn::ImplItemFn = parse_str(code).unwrap();
+        let graph = SymbolicAnalyzer::analyze_function(&fn_item);
+        
+        assert_eq!(graph.paths.len(), 1);
+        assert_eq!(graph.paths[0].is_panic, true);
+    }
+}
