@@ -188,6 +188,18 @@ pub struct DeprecatedApiIssue {
     pub location: String,
 }
 
+// ── Storage Collision Issue (NEW) ──────────────────────────────────────────
+
+/// Represents a potential collision between storage types (e.g. Instance and Persistent)
+/// using the same keys, which can lead to unpredictable behavior.
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct StorageCollisionIssue {
+    pub function_name: String,
+    pub key: String,
+    pub storage_types: Vec<String>, // ["Instance", "Persistent"]
+    pub location: String,
+}
+
 // ── Configuration ─────────────────────────────────────────────────────────────
 
 /// User-defined regex-based rule. Defined in .sanctify.toml under [[custom_rules]].
@@ -234,6 +246,7 @@ fn default_enabled_rules() -> Vec<String> {
         "arithmetic".to_string(),
         "ledger_size".to_string(),
         "events".to_string(),
+        "storage_collisions".to_string(),
     ]
 }
 
@@ -327,6 +340,44 @@ impl Analyzer {
         }
         
         graphs
+    }
+
+    pub fn scan_storage_collisions(&self, source: &str) -> Vec<StorageCollisionIssue> {
+        with_panic_guard(|| self.scan_storage_collisions_impl(source))
+    }
+
+    fn scan_storage_collisions_impl(&self, source: &str) -> Vec<StorageCollisionIssue> {
+        let file = match parse_str::<File>(source) {
+            Ok(f) => f,
+            Err(_) => return vec![],
+        };
+
+        let mut visitor = StorageVisitor {
+            issues: Vec::new(),
+            current_fn: None,
+            instance_keys: HashSet::new(),
+            persistent_keys: HashSet::new(),
+            temporary_keys: HashSet::new(),
+            key_locations: std::collections::HashMap::new(),
+        };
+        visitor.visit_file(&file);
+        
+        // Find overlaps
+        let mut final_issues = Vec::new();
+        
+        // Instance vs Persistent
+        for key in &visitor.instance_keys {
+            if visitor.persistent_keys.contains(key) {
+                final_issues.push(StorageCollisionIssue {
+                    function_name: "Workspace".to_string(), // Or specific fn if we track it better
+                    key: key.clone(),
+                    storage_types: vec!["Instance".to_string(), "Persistent".to_string()],
+                    location: visitor.key_locations.get(&(key.clone(), "Instance".to_string())).cloned().unwrap_or_default(),
+                });
+            }
+        }
+        
+        final_issues
     }
 
     pub fn scan_gas_estimation(&self, source: &str) -> Vec<gas_estimator::GasEstimationReport> {
@@ -1219,9 +1270,7 @@ fn is_string_literal(expr: &syn::Expr) -> bool {
 
 // ── Tests ─────────────────────────────────────────────────────────────────────
 
-#[cfg(test)]
-mod tests {
-    use super::*;
+    }
 
     #[test]
     fn test_analyze_with_macros() {
@@ -1442,6 +1491,73 @@ mod tests {
         assert!(ops.contains(&"+"));
         assert!(ops.contains(&"-"));
         assert!(ops.contains(&"*"));
+    }
+}
+
+// ── StorageVisitor ──────────────────────────────────────────────────────────
+
+struct StorageVisitor {
+    issues: Vec<StorageCollisionIssue>,
+    current_fn: Option<String>,
+    instance_keys: HashSet<String>,
+    persistent_keys: HashSet<String>,
+    temporary_keys: HashSet<String>,
+    // Mapping of (key, storage_type) -> location string
+    key_locations: std::collections::HashMap<(String, String), String>,
+}
+
+impl<'ast> Visit<'ast> for StorageVisitor {
+    fn visit_impl_item_fn(&mut self, node: &'ast syn::ImplItemFn) {
+        let prev = self.current_fn.take();
+        self.current_fn = Some(node.sig.ident.to_string());
+        visit::visit_impl_item_fn(self, node);
+        self.current_fn = prev;
+    }
+
+    fn visit_expr_method_call(&mut self, node: &'ast syn::ExprMethodCall) {
+        let method_name = node.method.to_string();
+        if method_name == "set" || method_name == "get" || method_name == "has" {
+            let receiver_str = quote::quote!(#node.receiver).to_string();
+            let storage_type = if receiver_str.contains("instance") {
+                Some("Instance")
+            } else if receiver_str.contains("persistent") {
+                Some("Persistent")
+            } else if receiver_str.contains("temporary") {
+                Some("Temporary")
+            } else {
+                None
+            };
+
+            if let Some(st) = storage_type {
+                if let Some(first_arg) = node.args.first() {
+                    let key_str = quote::quote!(#first_arg).to_string();
+                    let loc = self.current_fn.as_ref().map(|f| format!("{}:{}", f, first_arg.span().start().line)).unwrap_or_default();
+                    
+                    match st {
+                        "Instance" => {
+                            self.instance_keys.insert(key_str.clone());
+                            self.key_locations.insert((key_str, st.to_string()), loc);
+                        }
+                        "Persistent" => {
+                            self.persistent_keys.insert(key_str.clone());
+                            self.key_locations.insert((key_str, st.to_string()), loc);
+                        }
+                        "Temporary" => {
+                            self.temporary_keys.insert(key_str.clone());
+                            self.key_locations.insert((key_str, st.to_string()), loc);
+                        }
+                        _ => {}
+                    }
+                }
+            }
+        }
+        visit::visit_expr_method_call(self, node);
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
 
         // safe_add uses checked_add — no bare + operator, so not flagged
         assert!(issues.iter().all(|i| i.function_name != "safe_add"));
@@ -1681,5 +1797,30 @@ mod tests {
         assert!(!gaps.contains(&"safe_indirect".to_string()));
         assert!(!gaps.contains(&"deep_safe".to_string()));
         assert_eq!(gaps.len(), 1);
+    }
+
+    #[test]
+    fn test_scan_storage_collisions() {
+        let analyzer = Analyzer::new(SanctifyConfig::default());
+        let src = r#"
+            #![no_std]
+            use soroban_sdk::{contract, contractimpl, Env, Symbol};
+            #[contract]
+            pub struct TestContract;
+            #[contractimpl]
+            impl TestContract {
+                pub fn collision(env: Env) {
+                    let key = Symbol::new(&env, "admin");
+                    env.storage().instance().set(&key, &123);
+                    env.storage().persistent().set(&key, &456);
+                }
+            }
+        "#;
+        let issues = analyzer.scan_storage_collisions(src);
+        assert!(!issues.is_empty());
+        // In the quote-generated string, "& key" results in "key"
+        assert!(issues[0].key.contains("key")); 
+        assert!(issues[0].storage_types.contains(&"Instance".to_string()));
+        assert!(issues[0].storage_types.contains(&"Persistent".to_string()));
     }
 }
