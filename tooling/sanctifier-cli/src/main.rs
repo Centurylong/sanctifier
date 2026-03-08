@@ -437,6 +437,12 @@ fn analyze_directory(
         for entry in entries.flatten() {
             let path = entry.path();
             let name = path.file_name().and_then(|n| n.to_str()).unwrap_or("");
+            
+            // Skip paths matches in config.exclude
+            if config.exclude.iter().any(|p| name.contains(p) || path.to_string_lossy().contains(p)) {
+                continue;
+            }
+
             if path.is_dir() {
                 if config.ignore_paths.iter().any(|p| name.contains(p)) {
                     continue;
