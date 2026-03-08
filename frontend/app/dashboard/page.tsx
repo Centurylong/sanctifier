@@ -8,6 +8,7 @@ import { SeverityFilter } from "../components/SeverityFilter";
 import { FindingsList } from "../components/FindingsList";
 import { SummaryChart } from "../components/SummaryChart";
 import { KaniMetricsWidget } from "../components/KaniMetricsWidget";
+import { SymbolicGraphWidget } from "../components/SymbolicGraphWidget";
 import { ThemeToggle } from "../components/ThemeToggle";
 import Link from "next/link";
 import { analyzeSourceInBrowser } from "../lib/wasm";
@@ -157,11 +158,17 @@ export default function DashboardPage() {
           </div>
         </section>
 
-        {(findings.length > 0 || reportData?.kani_metrics) && (
+        {(findings.length > 0 || reportData?.kani_metrics || (reportData?.symbolic_paths && reportData.symbolic_paths.length > 0)) && (
           <>
             {reportData?.kani_metrics && (
               <section>
                 <KaniMetricsWidget metrics={reportData.kani_metrics} />
+              </section>
+            )}
+
+            {reportData?.symbolic_paths && reportData.symbolic_paths.length > 0 && (
+              <section>
+                <SymbolicGraphWidget graphs={reportData.symbolic_paths} />
               </section>
             )}
 
@@ -183,7 +190,7 @@ export default function DashboardPage() {
           </>
         )}
 
-        {findings.length === 0 && !reportData?.kani_metrics && !error && (
+        {findings.length === 0 && !reportData?.kani_metrics && (!reportData?.symbolic_paths || reportData.symbolic_paths.length === 0) && !error && (
           <p className="text-center text-zinc-500 dark:text-zinc-400 py-12">
             Load a report to view findings.
           </p>

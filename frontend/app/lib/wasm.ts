@@ -8,6 +8,7 @@ type WasmModule = {
 
 export async function analyzeSourceInBrowser(source: string): Promise<AnalysisReport> {
   const mod = (await import(
+    // @ts-ignore
     /* webpackIgnore: true */ "/wasm/sanctifier_wasm.js"
   )) as unknown as WasmModule;
   if (typeof mod?.default === "function") {
@@ -22,6 +23,7 @@ export async function analyzeSourceWithConfigInBrowser(
   source: string
 ): Promise<AnalysisReport> {
   const mod = (await import(
+    // @ts-ignore
     /* webpackIgnore: true */ "/wasm/sanctifier_wasm.js"
   )) as unknown as WasmModule;
   if (typeof mod?.default === "function") {

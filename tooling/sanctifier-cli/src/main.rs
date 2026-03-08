@@ -144,6 +144,7 @@ fn main() {
             let mut all_deprecated_api_issues: Vec<DeprecatedApiIssue> = Vec::new();
             let mut all_custom_rule_matches: Vec<CustomRuleMatch> = Vec::new();
             let mut all_gas_estimations: Vec<GasEstimationReport> = Vec::new();
+            let mut all_symbolic_paths: Vec<sanctifier_core::symbolic::SymbolicGraph> = Vec::new();
             let mut upgrade_report = UpgradeReport::empty();
 
             if path.is_dir() {
@@ -160,6 +161,7 @@ fn main() {
                     &mut all_deprecated_api_issues,
                     &mut all_custom_rule_matches,
                     &mut all_gas_estimations,
+                    &mut all_symbolic_paths,
                     &mut upgrade_report,
                 );
             } else if path.extension().and_then(|s| s.to_str()) == Some("rs") {
@@ -197,6 +199,11 @@ fn main() {
                     all_deprecated_api_issues.extend(analysis.deprecated_api_issues);
                     all_custom_rule_matches.extend(analysis.custom_rule_matches);
                     all_gas_estimations.extend(analysis.gas_estimations);
+                    let gas_reports = analyzer.scan_gas_estimation(&content);
+                    all_gas_estimations.extend(gas_reports);
+
+                    let sym_paths = analyzer.analyze_symbolic_paths(&content);
+                    all_symbolic_paths.extend(sym_paths);
                 }
             }
 
@@ -218,6 +225,7 @@ fn main() {
                     "deprecated_api_issues": all_deprecated_api_issues,
                     "custom_rule_matches": all_custom_rule_matches,
                     "gas_estimations": all_gas_estimations,
+                    "symbolic_paths": all_symbolic_paths,
                     "upgrade_report": upgrade_report,
                     "kani_metrics": KaniVerificationMetrics {
                         total_assertions: 12,
@@ -490,6 +498,7 @@ fn analyze_directory(
     all_deprecated_api_issues: &mut Vec<DeprecatedApiIssue>,
     all_custom_rule_matches: &mut Vec<CustomRuleMatch>,
     all_gas_estimations: &mut Vec<GasEstimationReport>,
+    all_symbolic_paths: &mut Vec<sanctifier_core::symbolic::SymbolicGraph>,
     upgrade_report: &mut UpgradeReport,
 ) {
     if let Ok(entries) = fs::read_dir(dir) {
@@ -519,6 +528,7 @@ fn analyze_directory(
                     all_deprecated_api_issues,
                     all_custom_rule_matches,
                     all_gas_estimations,
+                    all_symbolic_paths,
                     upgrade_report,
                 );
             } else if path.extension().and_then(|s| s.to_str()) == Some("rs") {
@@ -605,6 +615,14 @@ fn run_analysis(path: &Path, content: &str, analyzer: &Analyzer, config: &Sancti
     for mut m in custom_matches {
         m.snippet = format!("{}: {}", path.display(), m.snippet);
         analysis.custom_rule_matches.push(m);
+                    let gas_reports = analyzer.scan_gas_estimation(&content);
+                    all_gas_estimations.extend(gas_reports);
+
+                    let sym_paths = analyzer.analyze_symbolic_paths(&content);
+                    all_symbolic_paths.extend(sym_paths);
+                }
+            }
+        }
     }
 
     let gas_reports = analyzer.scan_gas_estimation(content);

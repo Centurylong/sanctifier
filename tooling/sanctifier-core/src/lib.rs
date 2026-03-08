@@ -1,6 +1,7 @@
 pub mod gas_estimator;
 pub mod kani_bridge;
 pub mod zk_proof;
+pub mod symbolic;
 
 use serde::{Deserialize, Serialize};
 use std::collections::HashSet;
@@ -299,6 +300,33 @@ impl Analyzer {
 
     pub fn scan_auth_gaps(&self, source: &str) -> Vec<String> {
         with_panic_guard(|| self.scan_auth_gaps_impl(source))
+    }
+
+    pub fn analyze_symbolic_paths(&self, source: &str) -> Vec<symbolic::SymbolicGraph> {
+        with_panic_guard(|| self.analyze_symbolic_paths_impl(source))
+    }
+
+    fn analyze_symbolic_paths_impl(&self, source: &str) -> Vec<symbolic::SymbolicGraph> {
+        let file = match parse_str::<File>(source) {
+            Ok(f) => f,
+            Err(_) => return vec![],
+        };
+
+        let mut graphs = Vec::new();
+        for item in &file.items {
+            if let Item::Impl(i) = item {
+                for impl_item in &i.items {
+                    if let syn::ImplItem::Fn(f) = impl_item {
+                        if let syn::Visibility::Public(_) = f.vis {
+                            // Only generate graphs for public functions
+                            graphs.push(symbolic::SymbolicAnalyzer::analyze_function(f));
+                        }
+                    }
+                }
+            }
+        }
+        
+        graphs
     }
 
     pub fn scan_gas_estimation(&self, source: &str) -> Vec<gas_estimator::GasEstimationReport> {

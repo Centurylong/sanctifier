@@ -39,6 +39,22 @@ export interface KaniVerificationMetrics {
   unreachable: number;
 }
 
+export interface PathNode {
+  node_type: string;
+  description: string;
+  line: number;
+}
+
+export interface ExecutionPath {
+  nodes: PathNode[];
+  is_panic: boolean;
+}
+
+export interface SymbolicGraph {
+  function_name: string;
+  paths: ExecutionPath[];
+}
+
 export interface AnalysisReport {
   size_warnings?: SizeWarning[];
   unsafe_patterns?: UnsafePattern[];
@@ -47,6 +63,7 @@ export interface AnalysisReport {
   arithmetic_issues?: ArithmeticIssue[];
   custom_rule_matches?: CustomRuleMatch[];
   kani_metrics?: KaniVerificationMetrics;
+  symbolic_paths?: SymbolicGraph[];
 }
 
 export interface Finding {

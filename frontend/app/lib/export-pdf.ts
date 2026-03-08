@@ -5,7 +5,6 @@ export async function exportToPdf(
   title = "Sanctifier Security Report"
 ): Promise<void> {
   try {
-// @ts-ignore
 const { jsPDF } = await import("jspdf");
     const doc = new jsPDF();
 
