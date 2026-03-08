@@ -11,3 +11,5 @@ pattern = "unsafe\\s*\\{"
 [[custom_rules]]
 name = "no_mem_forget"
 pattern = "std::mem::forget"
+
+exclude = ["tooling", "frontend", "target", ".git"]

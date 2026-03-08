@@ -475,7 +475,7 @@ fn is_soroban_project(path: &Path) -> bool {
         let cargo = p.join("Cargo.toml");
         if cargo.exists() {
             if let Ok(content) = std::fs::read_to_string(&cargo) {
-                if content.contains("soroban-sdk") {
+                if content.contains("soroban-sdk") || content.contains("[workspace]") {
                     return true;
                 }
             }
@@ -623,29 +623,6 @@ fn run_analysis(path: &Path, content: &str, analyzer: &Analyzer, config: &Sancti
     analysis
 }
 
-fn collect_rs_files(path: &std::path::PathBuf) -> Vec<std::path::PathBuf> {
-    let mut files = Vec::new();
-    if path.is_file() && path.extension().map_or(false, |e| e == "rs") {
-        files.push(path.clone());
-    } else if path.is_dir() {
-        if let Ok(entries) = std::fs::read_dir(path) {
-            for entry in entries.flatten() {
-                let p = entry.path();
-                let name = p
-                    .file_name()
-                    .unwrap_or_default()
-                    .to_string_lossy()
-                    .to_string();
-                if p.is_dir() && name != "target" && name != ".git" {
-                    files.extend(collect_rs_files(&p));
-                } else if p.extension().map_or(false, |e| e == "rs") {
-                    files.push(p);
-                }
-            }
-        }
-    }
-    files
-}
 
 fn load_config(path: &Path) -> SanctifyConfig {
     if let Some(p) = find_config_path(path) {
