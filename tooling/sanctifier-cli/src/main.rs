@@ -64,34 +64,43 @@ pub struct KaniVerificationMetrics {
     pub unreachable: usize,
 }
 
+/// Sanctifier command-line interface.
 #[derive(Parser)]
 #[command(name = "sanctifier")]
 #[command(about = "Stellar Soroban Security & Formal Verification Suite", long_about = None)]
 struct Cli {
+    /// The subcommand to run.
     #[command(subcommand)]
     command: Commands,
 }
 
+/// Supported Sanctifier CLI subcommands.
 #[derive(Subcommand)]
 pub enum Commands {
-    /// Analyze a Soroban contract for vulnerabilities
+    /// Analyze a Soroban contract or project for vulnerabilities.
     Analyze {
+        /// Path to a Soroban project directory or a single Rust source file.
         path: PathBuf,
+        /// Output format for the analysis report (`text` or `json`).
         #[arg(short, long, default_value = "text")]
         format: String,
+        /// Ledger entry size limit used during size analysis.
         #[arg(short, long, default_value_t = 64000)]
         limit: usize,
     },
-    /// Generate a summary report
+    /// Generate a summary report.
     Report {
+        /// Optional output file path. If omitted, the report is written to stdout.
         #[arg(short, long, value_name = "OUTPUT")]
         output: Option<PathBuf>,
     },
-    /// Initialize a new Sanctifier project
+    /// Initialize a new Sanctifier project.
     Init,
-    /// Translate Soroban contract into a Kani-verifiable harness
+    /// Translate a Soroban Rust contract file into a Kani-verifiable harness.
     Kani {
+        /// Path to a single Rust source file to translate.
         path: PathBuf,
+        /// Optional output path for the generated harness.
         #[arg(short, long)]
         output: Option<PathBuf>,
     },
