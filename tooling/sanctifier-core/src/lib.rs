@@ -348,13 +348,23 @@ impl Analyzer {
 
         for item in &file.items {
             if let Item::Impl(i) = item {
+                // 1. Identify all functions in this impl that perform auth (directly or indirectly)
+                let auth_fns = self.identify_auth_functions(i);
+
                 for impl_item in &i.items {
                     if let syn::ImplItem::Fn(f) = impl_item {
                         if let syn::Visibility::Public(_) = f.vis {
                             let fn_name = f.sig.ident.to_string();
                             let mut has_mutation = false;
                             let mut has_auth = false;
-                            self.check_fn_body(&f.block, &mut has_mutation, &mut has_auth);
+                            
+                            self.check_fn_auth_and_mutation(
+                                &f.block, 
+                                &auth_fns, 
+                                &mut has_mutation, 
+                                &mut has_auth
+                            );
+
                             if has_mutation && !has_auth {
                                 gaps.push(fn_name);
                             }
@@ -552,15 +562,108 @@ impl Analyzer {
         }
     }
 
-    // ── Mutation / auth helpers ───────────────────────────────────────────────
+    /// Identifies all functions within an impl block that call require_auth,
+    /// either directly or by calling another function that does.
+    fn identify_auth_functions(&self, i: &syn::ItemImpl) -> HashSet<String> {
+        let mut auth_fns = HashSet::new();
+        let mut changed = true;
 
-    fn check_fn_body(&self, block: &syn::Block, has_mutation: &mut bool, has_auth: &mut bool) {
+        // Fixed-point iteration to handle nested calls
+        while changed {
+            changed = false;
+            for impl_item in &i.items {
+                if let syn::ImplItem::Fn(f) = impl_item {
+                    let fn_name = f.sig.ident.to_string();
+                    if auth_fns.contains(&fn_name) {
+                        continue;
+                    }
+
+                    if self.check_if_fn_calls_auth(&f.block, &auth_fns) {
+                        auth_fns.insert(fn_name);
+                        changed = true;
+                    }
+                }
+            }
+        }
+        auth_fns
+    }
+
+    fn check_if_fn_calls_auth(&self, block: &syn::Block, known_auth_fns: &HashSet<String>) -> bool {
+        for stmt in &block.stmts {
+            if self.check_expr_for_auth(stmt, known_auth_fns) {
+                return true;
+            }
+        }
+        false
+    }
+
+    fn check_expr_for_auth(&self, stmt: &syn::Stmt, known_auth_fns: &HashSet<String>) -> bool {
+        match stmt {
+            syn::Stmt::Expr(expr, _) => self.check_expr_inner_for_auth(expr, known_auth_fns),
+            syn::Stmt::Local(local) => {
+                if let Some(init) = &local.init {
+                    self.check_expr_inner_for_auth(&init.expr, known_auth_fns)
+                } else {
+                    false
+                }
+            }
+            syn::Stmt::Macro(m) => {
+                m.mac.path.is_ident("require_auth") || m.mac.path.is_ident("require_auth_for_args")
+            }
+            _ => false,
+        }
+    }
+
+    fn check_expr_inner_for_auth(&self, expr: &syn::Expr, known_auth_fns: &HashSet<String>) -> bool {
+        match expr {
+            syn::Expr::Call(c) => {
+                if let syn::Expr::Path(p) = &*c.func {
+                    if let Some(segment) = p.path.segments.last() {
+                        let ident = segment.ident.to_string();
+                        if ident == "require_auth" || ident == "require_auth_for_args" || known_auth_fns.contains(&ident) {
+                            return true;
+                        }
+                    }
+                }
+                c.args.iter().any(|arg| self.check_expr_inner_for_auth(arg, known_auth_fns))
+            }
+            syn::Expr::MethodCall(m) => {
+                let method_name = m.method.to_string();
+                if method_name == "require_auth" || method_name == "require_auth_for_args" || known_auth_fns.contains(&method_name) {
+                    return true;
+                }
+                if self.check_expr_inner_for_auth(&m.receiver, known_auth_fns) {
+                    return true;
+                }
+                m.args.iter().any(|arg| self.check_expr_inner_for_auth(arg, known_auth_fns))
+            }
+            syn::Expr::Block(b) => b.block.stmts.iter().any(|s| self.check_expr_for_auth(s, known_auth_fns)),
+            syn::Expr::If(i) => {
+                self.check_expr_inner_for_auth(&i.cond, known_auth_fns) ||
+                i.then_branch.stmts.iter().any(|s| self.check_expr_for_auth(s, known_auth_fns)) ||
+                i.else_branch.as_ref().map_or(false, |(_, e)| self.check_expr_inner_for_auth(e, known_auth_fns))
+            }
+            syn::Expr::Match(m) => {
+                self.check_expr_inner_for_auth(&m.expr, known_auth_fns) ||
+                m.arms.iter().any(|arm| self.check_expr_inner_for_auth(&arm.body, known_auth_fns))
+            }
+            _ => false,
+        }
+    }
+
+    fn check_fn_auth_and_mutation(
+        &self, 
+        block: &syn::Block, 
+        auth_fns: &HashSet<String>,
+        has_mutation: &mut bool, 
+        has_auth: &mut bool
+    ) {
         for stmt in &block.stmts {
             match stmt {
-                syn::Stmt::Expr(expr, _) => self.check_expr(expr, has_mutation, has_auth),
+                syn::Stmt::Expr(expr, _) => self.check_expr_v2(expr, auth_fns, has_mutation, has_auth),
                 syn::Stmt::Local(local) => {
                     if let Some(init) = &local.init {
-                        self.check_expr(&init.expr, has_mutation, has_auth);
+                        self.check_expr_v2(&init.expr, auth_fns, has_mutation, has_auth);
                     }
                 }
                 syn::Stmt::Macro(m) => {
@@ -575,25 +678,24 @@ impl Analyzer {
         }
     }
 
-    fn check_expr(&self, expr: &syn::Expr, has_mutation: &mut bool, has_auth: &mut bool) {
+    fn check_expr_v2(&self, expr: &syn::Expr, auth_fns: &HashSet<String>, has_mutation: &mut bool, has_auth: &mut bool) {
         match expr {
             syn::Expr::Call(c) => {
                 if let syn::Expr::Path(p) = &*c.func {
                     if let Some(segment) = p.path.segments.last() {
                         let ident = segment.ident.to_string();
-                        if ident == "require_auth" || ident == "require_auth_for_args" {
+                        if ident == "require_auth" || ident == "require_auth_for_args" || auth_fns.contains(&ident) {
                             *has_auth = true;
                         }
                     }
                 }
                 for arg in &c.args {
-                    self.check_expr(arg, has_mutation, has_auth);
+                    self.check_expr_v2(arg, auth_fns, has_mutation, has_auth);
                 }
             }
             syn::Expr::MethodCall(m) => {
                 let method_name = m.method.to_string();
                 if method_name == "set" || method_name == "update" || method_name == "remove" {
-                    // Heuristic: check if receiver chain contains "storage"
                     let receiver_str = quote::quote!(#m.receiver).to_string();
                     if receiver_str.contains("storage")
                         || receiver_str.contains("persistent")
@@ -603,26 +705,26 @@ impl Analyzer {
                         *has_mutation = true;
                     }
                 }
-                if method_name == "require_auth" || method_name == "require_auth_for_args" {
+                if method_name == "require_auth" || method_name == "require_auth_for_args" || auth_fns.contains(&method_name) {
                     *has_auth = true;
                 }
-                self.check_expr(&m.receiver, has_mutation, has_auth);
+                self.check_expr_v2(&m.receiver, auth_fns, has_mutation, has_auth);
                 for arg in &m.args {
-                    self.check_expr(arg, has_mutation, has_auth);
+                    self.check_expr_v2(arg, auth_fns, has_mutation, has_auth);
                 }
             }
-            syn::Expr::Block(b) => self.check_fn_body(&b.block, has_mutation, has_auth),
+            syn::Expr::Block(b) => self.check_fn_auth_and_mutation(&b.block, auth_fns, has_mutation, has_auth),
             syn::Expr::If(i) => {
-                self.check_expr(&i.cond, has_mutation, has_auth);
-                self.check_fn_body(&i.then_branch, has_mutation, has_auth);
+                self.check_expr_v2(&i.cond, auth_fns, has_mutation, has_auth);
+                self.check_fn_auth_and_mutation(&i.then_branch, auth_fns, has_mutation, has_auth);
                 if let Some((_, else_expr)) = &i.else_branch {
-                    self.check_expr(else_expr, has_mutation, has_auth);
+                    self.check_expr_v2(else_expr, auth_fns, has_mutation, has_auth);
                 }
             }
             syn::Expr::Match(m) => {
-                self.check_expr(&m.expr, has_mutation, has_auth);
+                self.check_expr_v2(&m.expr, auth_fns, has_mutation, has_auth);
                 for arm in &m.arms {
-                    self.check_expr(&arm.body, has_mutation, has_auth);
+                    self.check_expr_v2(&arm.body, auth_fns, has_mutation, has_auth);
                 }
             }
             _ => {}
@@ -1536,5 +1638,48 @@ mod tests {
         assert!(funcs.contains(&"get_contract_id".to_string()));
 
         assert!(issues.iter().all(|i| i.function_name == "legacy_storage"));
+    }
+
+    #[test]
+    fn test_scan_auth_gaps_indirect() {
+        let analyzer = Analyzer::new(SanctifyConfig::default());
+        let source = r#"
+            #[contractimpl]
+            impl MyContract {
+                fn helper_auth(env: Env) {
+                    env.require_auth();
+                }
+
+                fn helper_no_auth(env: Env) {
+                    // No auth here
+                }
+
+                pub fn safe_indirect(env: Env, val: u32) {
+                    Self::helper_auth(env.clone());
+                    env.storage().instance().set(&DataKey::Val, &val);
+                }
+
+                pub fn unsafe_indirect(env: Env, val: u32) {
+                    Self::helper_no_auth(env.clone());
+                    env.storage().instance().set(&DataKey::Val, &val);
+                }
+
+                pub fn deep_safe(env: Env, val: u32) {
+                    Self::deep_helper(env.clone());
+                    env.storage().instance().set(&DataKey::Val, &val);
+                }
+
+                fn deep_helper(env: Env) {
+                    Self::helper_auth(env);
+                }
+            }
+        "#;
+        let gaps = analyzer.scan_auth_gaps(source);
+        // Only unsafe_indirect should be flagged.
+        // deep_safe and safe_indirect should be fine.
+        assert!(gaps.contains(&"unsafe_indirect".to_string()));
+        assert!(!gaps.contains(&"safe_indirect".to_string()));
+        assert!(!gaps.contains(&"deep_safe".to_string()));
+        assert_eq!(gaps.len(), 1);
     }
 }
