@@ -1,5 +1,7 @@
 pub mod gas_estimator;
 pub mod kani_bridge;
+pub mod reentrancy;
+pub mod scoring;
 pub mod symbolic;
 pub mod zk_proof;
 
@@ -1196,6 +1198,31 @@ impl Analyzer {
             current_fn: None,
             seen: HashSet::new(),
         };
+        visitor.visit_file(&file);
+        visitor.issues
+    }
+
+    // ── Reentrancy risk detection ──────────────────────────────────────────────
+
+    /// Scans contract impl functions for potential state-based reentrancy risks.
+    ///
+    /// Soroban's host blocks classical cross-contract reentrancy, but complex
+    /// multi-step workflows can still be vulnerable if:
+    /// - A function mutates state AND performs external calls
+    /// - No `ReentrancyGuardian` nonce check is present
+    ///
+    /// Returns a list of [`reentrancy::ReentrancyIssue`] for further reporting.
+    pub fn scan_reentrancy_risks(&self, source: &str) -> Vec<reentrancy::ReentrancyIssue> {
+        with_panic_guard(|| self.scan_reentrancy_risks_impl(source))
+    }
+
+    fn scan_reentrancy_risks_impl(&self, source: &str) -> Vec<reentrancy::ReentrancyIssue> {
+        use syn::visit::Visit;
+        let file = match parse_str::<File>(source) {
+            Ok(f) => f,
+            Err(_) => return vec![],
+        };
+        let mut visitor = reentrancy::ReentrancyVisitor::new();
         visitor.visit_file(&file);
         visitor.issues
     }
