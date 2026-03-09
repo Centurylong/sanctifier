@@ -75,7 +75,11 @@ impl ReentrancyGuardian {
     /// - On success: sets the lock and increments the nonce atomically.
     pub fn enter(env: Env, nonce: u64) {
         // Layer 1 — lock-based guard
-        let locked: bool = env.storage().instance().get(&DataKey::Lock).unwrap_or(false);
+        let locked: bool = env
+            .storage()
+            .instance()
+            .get(&DataKey::Lock)
+            .unwrap_or(false);
         if locked {
             panic_with_error!(&env, Error::Locked);
         }
@@ -90,7 +94,9 @@ impl ReentrancyGuardian {
         }
 
         // Advance the nonce so this slot cannot be re-used.
-        env.storage().instance().set(&DataKey::Nonce, &(current + 1));
+        env.storage()
+            .instance()
+            .set(&DataKey::Nonce, &(current + 1));
     }
 
     /// **Exit** a guarded section. Releases the lock so future calls may enter.
@@ -142,17 +148,28 @@ mod test {
 
         // The current nonce is 0. We inspect storage directly to verify
         // that it hasn't advanced when we don't call enter at all.
-        assert_eq!(client.get_nonce(), 0u64, "nonce must still be 0 before any entry");
+        assert_eq!(
+            client.get_nonce(),
+            0u64,
+            "nonce must still be 0 before any entry"
+        );
 
         // A successful enter must advance the nonce.
         client.enter(&0u64);
-        assert_eq!(client.get_nonce(), 1u64, "nonce must advance after successful enter");
+        assert_eq!(
+            client.get_nonce(),
+            1u64,
+            "nonce must advance after successful enter"
+        );
         client.exit();
 
         // Trying to enter a second time with a stale nonce (0 again) would fail.
         // We verify that the nonce remains at 1 after a correct guard cycle.
         let nonce_after = client.get_nonce();
-        assert_eq!(nonce_after, 1u64, "nonce must remain 1; stale nonce 0 is no longer valid");
+        assert_eq!(
+            nonce_after, 1u64,
+            "nonce must remain 1; stale nonce 0 is no longer valid"
+        );
     }
 
     /// Lock is set to true when enter is active; exit resets it to false.
@@ -165,21 +182,30 @@ mod test {
         client.init();
         // After init: lock=false, nonce=0
         let lock_before: bool = env.as_contract(&id, || {
-            env.storage().instance().get(&DataKey::Lock).unwrap_or(false)
+            env.storage()
+                .instance()
+                .get(&DataKey::Lock)
+                .unwrap_or(false)
         });
         assert!(!lock_before, "lock must be false after init");
 
         client.enter(&0u64);
         // After enter: lock=true, nonce=1
         let lock_during: bool = env.as_contract(&id, || {
-            env.storage().instance().get(&DataKey::Lock).unwrap_or(false)
+            env.storage()
+                .instance()
+                .get(&DataKey::Lock)
+                .unwrap_or(false)
         });
         assert!(lock_during, "lock must be true after enter");
 
         client.exit();
         // After exit: lock=false
         let lock_after: bool = env.as_contract(&id, || {
-            env.storage().instance().get(&DataKey::Lock).unwrap_or(false)
+            env.storage()
+                .instance()
+                .get(&DataKey::Lock)
+                .unwrap_or(false)
         });
         assert!(!lock_after, "lock must be false after exit");
     }

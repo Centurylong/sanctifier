@@ -67,7 +67,8 @@ impl<'ast> Visit<'ast> for ReentrancyVisitor {
                 recommendation: concat!(
                     "Use `ReentrancyGuardian.enter(nonce)` / `.exit()` to protect ",
                     "state-mutating functions that perform external calls."
-                ).to_string(),
+                )
+                .to_string(),
             });
         }
 
@@ -89,7 +90,8 @@ impl<'ast> Visit<'ast> for ReentrancyVisitor {
                 recommendation: concat!(
                     "Use `ReentrancyGuardian.enter(nonce)` / `.exit()` to protect ",
                     "state-mutating functions that perform external calls."
-                ).to_string(),
+                )
+                .to_string(),
             });
         }
 
@@ -118,11 +120,27 @@ impl<'ast> Visit<'ast> for ReentrancyVisitor {
         // Pattern: client.some_fn(...) where receiver contains "client" or "Client"
         if !matches!(
             method.as_str(),
-            "set" | "get" | "has" | "remove" | "update"
-                | "require_auth" | "require_auth_for_args"
-                | "events" | "storage" | "instance" | "persistent" | "temporary"
-                | "publish" | "ledger" | "deployer" | "call_as" | "try_call"
-                | "enter" | "exit" | "get_nonce" | "init"
+            "set"
+                | "get"
+                | "has"
+                | "remove"
+                | "update"
+                | "require_auth"
+                | "require_auth_for_args"
+                | "events"
+                | "storage"
+                | "instance"
+                | "persistent"
+                | "temporary"
+                | "publish"
+                | "ledger"
+                | "deployer"
+                | "call_as"
+                | "try_call"
+                | "enter"
+                | "exit"
+                | "get_nonce"
+                | "init"
         ) {
             if receiver_contains_client(&i.receiver) {
                 self.has_external_call = true;
@@ -161,7 +179,11 @@ fn expr_to_string(expr: &Expr) -> String {
             .collect::<Vec<_>>()
             .join("::"),
         Expr::Field(f) => {
-            format!("{}.{}", expr_to_string(&f.base), quote::quote!(#(&f.member)).to_string())
+            format!(
+                "{}.{}",
+                expr_to_string(&f.base),
+                quote::quote!(#(&f.member)).to_string()
+            )
         }
         _ => String::new(),
     }
@@ -169,7 +191,10 @@ fn expr_to_string(expr: &Expr) -> String {
 
 fn receiver_contains_storage(expr: &Expr) -> bool {
     let s = expr_to_string(expr).to_lowercase();
-    s.contains("storage") || s.contains("instance") || s.contains("persistent") || s.contains("temporary")
+    s.contains("storage")
+        || s.contains("instance")
+        || s.contains("persistent")
+        || s.contains("temporary")
 }
 
 fn receiver_contains_guard(expr: &Expr) -> bool {
@@ -212,7 +237,8 @@ mod tests {
         let issues = scan(src);
         assert!(
             issues.is_empty(),
-            "Expected no issues for guarded function, got: {:?}", issues
+            "Expected no issues for guarded function, got: {:?}",
+            issues
         );
     }
 
