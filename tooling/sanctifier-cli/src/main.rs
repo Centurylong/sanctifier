@@ -168,7 +168,8 @@ fn main() {
             let mut all_deprecated_api_issues: Vec<DeprecatedApiIssue> = Vec::new();
             let mut all_custom_rule_matches: Vec<CustomRuleMatch> = Vec::new();
             let mut all_gas_estimations: Vec<GasEstimationReport> = Vec::new();
-            let mut all_reentrancy_issues: Vec<sanctifier_core::reentrancy::ReentrancyIssue> = Vec::new();
+            let mut all_reentrancy_issues: Vec<sanctifier_core::reentrancy::ReentrancyIssue> =
+                Vec::new();
             let mut all_symbolic_paths: Vec<sanctifier_core::symbolic::SymbolicGraph> = Vec::new();
             let mut upgrade_report = UpgradeReport::empty();
 

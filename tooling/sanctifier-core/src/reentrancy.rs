@@ -176,7 +176,11 @@ fn expr_to_string(expr: &Expr) -> String {
             .collect::<Vec<_>>()
             .join("::"),
         Expr::Field(f) => {
-            format!("{}.{}", expr_to_string(&f.base), quote::quote!(#(&f.member)))
+            format!(
+                "{}.{}",
+                expr_to_string(&f.base),
+                quote::quote!(#(&f.member))
+            )
         }
         _ => String::new(),
     }
