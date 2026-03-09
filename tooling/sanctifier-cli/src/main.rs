@@ -13,8 +13,12 @@ use std::collections::HashMap;
 use std::fs;
 use std::path::{Path, PathBuf};
 
+pub mod rules;
+
+
 #[derive(Serialize, Deserialize, Default, Clone)]
 pub struct CachedAnalysis {
+
     pub hash: String,
     pub size_warnings: Vec<SizeWarning>,
     pub unsafe_patterns: Vec<UnsafePattern>,
@@ -227,13 +231,12 @@ fn main() {
                     all_custom_rule_matches.extend(analysis.custom_rule_matches);
                     all_gas_estimations.extend(analysis.gas_estimations);
                     all_reentrancy_issues.extend(analysis.reentrancy_issues);
-                    let gas_reports = analyzer.scan_gas_estimation(&content);
-                    all_gas_estimations.extend(gas_reports);
 
                     let sym_paths = analyzer.analyze_symbolic_paths(&content);
                     all_symbolic_paths.extend(sym_paths);
                 }
             }
+
 
             cache.save(if path.is_dir() {
                 path
@@ -663,62 +666,7 @@ fn run_analysis(
     analyzer: &Analyzer,
     config: &SanctifyConfig,
 ) -> CachedAnalysis {
-    let mut analysis = CachedAnalysis::default();
-
-    let warnings = analyzer.analyze_ledger_size(content);
-    for mut w in warnings {
-        w.struct_name = format!("{}: {}", path.display(), w.struct_name);
-        analysis.size_warnings.push(w);
-    }
-
-    let patterns = analyzer.analyze_unsafe_patterns(content);
-    for mut p in patterns {
-        p.snippet = format!("{}: {}", path.display(), p.snippet);
-        analysis.unsafe_patterns.push(p);
-    }
-
-    let gaps = analyzer.scan_auth_gaps(content);
-    for g in gaps {
-        analysis
-            .auth_gaps
-            .push(format!("{}: {}", path.display(), g));
-    }
-
-    let panics = analyzer.scan_panics(content);
-    for p in panics {
-        let mut p_mod = p.clone();
-        p_mod.location = format!("{}: {}", path.display(), p.location);
-        analysis.panic_issues.push(p_mod);
-    }
-
-    let arith = analyzer.scan_arithmetic_overflow(content);
-    for mut a in arith {
-        a.location = format!("{}: {}", path.display(), a.location);
-        analysis.arithmetic_issues.push(a);
-    }
-
-    let deprecated = analyzer.scan_deprecated_apis(content);
-    for mut d in deprecated {
-        d.location = format!("{}: {}", path.display(), d.location);
-        analysis.deprecated_api_issues.push(d);
-    }
-
-    let custom_matches = analyzer.analyze_custom_rules(content, &config.custom_rules);
-    for mut m in custom_matches {
-        m.snippet = format!("{}: {}", path.display(), m.snippet);
-        analysis.custom_rule_matches.push(m);
-    }
-
-    let gas_reports = analyzer.scan_gas_estimation(content);
-    analysis.gas_estimations.extend(gas_reports);
-
-    let reentrancy = analyzer.scan_reentrancy_risks(content);
-    for mut r in reentrancy {
-        r.location = format!("{}: {}", path.display(), r.location);
-        analysis.reentrancy_issues.push(r);
-    }
-
-    analysis
+    crate::rules::RuleEngine::new(analyzer, config).run_all(content, Some(path))
 }
 
 fn fix_directory(
