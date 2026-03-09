@@ -184,6 +184,35 @@ pub struct DeprecatedApiIssue {
     pub location: String,
 }
 
+// ── Auto-Fix Types (NEW) ──────────────────────────────────────────────────────
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct CodeFix {
+    pub file: String,
+    pub line: usize,
+    pub column: usize,
+    pub end_line: usize,
+    pub end_column: usize,
+    pub replacement: String,
+    pub description: String,
+    pub fix_type: FixType,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
+pub enum FixType {
+    AddAuth,
+    PrefixUnused,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct UnusedVariableIssue {
+    pub name: String,
+    pub function_name: String,
+    pub location: String,
+    pub line: usize,
+    pub col: usize,
+}
+
 // ── Storage Collision Issue (NEW) ──────────────────────────────────────────
 
 /// Represents a potential collision between storage types (e.g. Instance and Persistent)
@@ -307,6 +336,14 @@ impl Analyzer {
 
     pub fn scan_auth_gaps(&self, source: &str) -> Vec<String> {
         with_panic_guard(|| self.scan_auth_gaps_impl(source))
+    }
+
+    pub fn scan_unused_variables(&self, source: &str) -> Vec<UnusedVariableIssue> {
+        with_panic_guard(|| self.scan_unused_variables_impl(source))
+    }
+
+    pub fn suggest_fixes(&self, source: &str) -> Vec<CodeFix> {
+        with_panic_guard(|| self.suggest_fixes_impl(source))
     }
 
     pub fn analyze_symbolic_paths(&self, source: &str) -> Vec<symbolic::SymbolicGraph> {
@@ -837,6 +874,134 @@ impl Analyzer {
         false
     }
 
+    fn scan_unused_variables_impl(&self, source: &str) -> Vec<UnusedVariableIssue> {
+        let file = match parse_str::<File>(source) {
+            Ok(f) => f,
+            Err(_) => return vec![],
+        };
+
+        let mut issues = Vec::new();
+        for item in &file.items {
+            if let Item::Impl(i) = item {
+                for impl_item in &i.items {
+                    if let syn::ImplItem::Fn(f) = impl_item {
+                        let mut visitor = UnusedVariableVisitor::new(f.sig.ident.to_string());
+                        visitor.visit_impl_item_fn(f);
+                        issues.extend(visitor.report_unused());
+                    }
+                }
+            }
+        }
+        issues
+    }
+
+    fn suggest_fixes_impl(&self, source: &str) -> Vec<CodeFix> {
+        let mut fixes = Vec::new();
+
+        // 1. Unused variables
+        let unused = self.scan_unused_variables(source);
+        for u in unused {
+            fixes.push(CodeFix {
+                file: "".to_string(), // Filled by CLI
+                line: u.line,
+                column: u.col,
+                end_line: u.line,
+                end_column: u.col + u.name.len(),
+                replacement: format!("_{}", u.name),
+                description: format!("Prefix unused variable `{}` with `_`", u.name),
+                fix_type: FixType::PrefixUnused,
+            });
+        }
+
+        // 2. Auth gaps
+        let file = match parse_str::<File>(source) {
+            Ok(f) => f,
+            Err(_) => return fixes,
+        };
+
+        for item in &file.items {
+            if let Item::Impl(i) = item {
+                let auth_fns = self.identify_auth_functions(i);
+                for impl_item in &i.items {
+                    if let syn::ImplItem::Fn(f) = impl_item {
+                        if let syn::Visibility::Public(_) = f.vis {
+                            let mut has_mutation = false;
+                            let mut has_auth = false;
+                            self.check_fn_auth_and_mutation(
+                                &f.block,
+                                &auth_fns,
+                                &mut has_mutation,
+                                &mut has_auth,
+                            );
+
+                            if has_mutation && !has_auth {
+                                // Find an Address parameter to call require_auth on
+                                let mut address_param = None;
+                                for arg in &f.sig.inputs {
+                                    if let syn::FnArg::Typed(pat_type) = arg {
+                                        if let Type::Path(tp) = &*pat_type.ty {
+                                            if tp.path.is_ident("Address") {
+                                                if let syn::Pat::Ident(id) = &*pat_type.pat {
+                                                    address_param = Some(id.ident.to_string());
+                                                    break;
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+
+                                if let Some(param) = address_param {
+                                    let span = f.block.brace_token.span.open();
+                                    let start = span.start();
+                                    fixes.push(CodeFix {
+                                        file: "".to_string(),
+                                        line: start.line,
+                                        column: start.column + 1,
+                                        end_line: start.line,
+                                        end_column: start.column + 1,
+                                        replacement: format!("\n        {}.require_auth();", param),
+                                        description: format!(
+                                            "Add missing `require_auth()` for `{}`",
+                                            param
+                                        ),
+                                        fix_type: FixType::AddAuth,
+                                    });
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        fixes.sort_by(|a, b| b.line.cmp(&a.line).then(b.column.cmp(&a.column)));
+
+        // Filter out PrefixUnused for variables where we also added AddAuth
+        let auth_params: HashSet<String> = fixes.iter()
+            .filter(|f| f.fix_type == FixType::AddAuth)
+            .map(|f| {
+                // Description is "Add missing `require_auth()` for `NAME`"
+                let parts: Vec<&str> = f.description.split('`').collect();
+                if parts.len() >= 4 {
+                    parts[3].to_string()
+                } else {
+                    "".to_string()
+                }
+            })
+            .collect();
+
+        fixes.retain(|f| {
+            if f.fix_type == FixType::PrefixUnused {
+                let name = f.description.split('`').nth(1).unwrap_or("");
+                !auth_params.contains(name)
+            } else {
+                true
+            }
+        });
+
+        fixes
+    }
+
     // ── Ledger size analysis ──────────────────────────────────────────────────
 
     /// Analyzes `#[contracttype]` structs and enums, estimates serialized size,
@@ -1307,6 +1472,68 @@ impl<'ast> Visit<'ast> for ArithVisitor {
 
 // ── StorageVisitor ──────────────────────────────────────────────────────────
 
+// ── UnusedVariableVisitor ──────────────────────────────────────────────────
+
+struct UnusedVariableVisitor {
+    fn_name: String,
+    defined: HashSet<(String, usize, usize)>, // (name, line, col)
+    used: HashSet<String>,
+}
+
+impl UnusedVariableVisitor {
+    fn new(fn_name: String) -> Self {
+        Self {
+            fn_name,
+            defined: HashSet::new(),
+            used: HashSet::new(),
+        }
+    }
+
+    fn report_unused(self) -> Vec<UnusedVariableIssue> {
+        let mut issues = Vec::new();
+        for (name, line, col) in self.defined {
+            if !self.used.contains(&name) && !name.starts_with('_') && name != "env" && name != "self" {
+                issues.push(UnusedVariableIssue {
+                    name: name.clone(),
+                    function_name: self.fn_name.clone(),
+                    location: format!("{}:{}", line, col),
+                    line,
+                    col,
+                });
+            }
+        }
+        issues
+    }
+}
+
+impl<'ast> Visit<'ast> for UnusedVariableVisitor {
+    fn visit_pat_ident(&mut self, i: &'ast syn::PatIdent) {
+        let name = i.ident.to_string();
+        let span = i.ident.span().start();
+        self.defined.insert((name, span.line, span.column));
+        visit::visit_pat_ident(self, i);
+    }
+
+    fn visit_expr_path(&mut self, i: &'ast syn::ExprPath) {
+        if let Some(ident) = i.path.get_ident() {
+            self.used.insert(ident.to_string());
+        }
+        visit::visit_expr_path(self, i);
+    }
+
+    fn visit_field_pat(&mut self, i: &'ast syn::FieldPat) {
+        // Handle field shorthand like { x }
+        if let syn::Pat::Ident(id) = &*i.pat {
+            if i.member == syn::Member::Named(id.ident.clone()) {
+                self.used.insert(id.ident.to_string());
+            }
+        }
+        visit::visit_field_pat(self, i);
+    }
+}
+
+// ── StorageVisitor ──────────────────────────────────────────────────────────
+
 struct StorageVisitor {
     issues: Vec<StorageCollisionIssue>,
     current_fn: Option<String>,
@@ -1366,13 +1593,6 @@ impl<'ast> Visit<'ast> for StorageVisitor {
     }
 }
 
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-/// Returns `true` if the expression is a string literal — used to avoid
-/// false-positives on `+` for string concatenation (rare in no_std Soroban
-/// but included for correctness).
 fn is_string_literal(expr: &syn::Expr) -> bool {
     matches!(
         expr,
@@ -1382,6 +1602,10 @@ fn is_string_literal(expr: &syn::Expr) -> bool {
         })
     )
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
 
 // ── Tests ─────────────────────────────────────────────────────────────────────
 
@@ -1872,5 +2096,54 @@ fn is_string_literal(expr: &syn::Expr) -> bool {
         assert!(issues[0].key.contains("key")); 
         assert!(issues[0].storage_types.contains(&"Instance".to_string()));
         assert!(issues[0].storage_types.contains(&"Persistent".to_string()));
+    }
+
+    #[test]
+    fn test_scan_unused_variables() {
+        let analyzer = Analyzer::new(SanctifyConfig::default());
+        let source = r#"
+            #[contractimpl]
+            impl MyContract {
+                pub fn unused_var(env: Env, used: u32, unused: u32) -> u32 {
+                    let local_used = used + 1;
+                    let local_unused = 10;
+                    local_used
+                }
+            }
+        "#;
+        let issues = analyzer.scan_unused_variables(source);
+        assert_eq!(issues.len(), 2);
+        let names: Vec<String> = issues.iter().map(|i| i.name.clone()).collect();
+        assert!(names.contains(&"unused".to_string()));
+        assert!(names.contains(&"local_unused".to_string()));
+        assert!(!names.contains(&"used".to_string()));
+        assert!(!names.contains(&"local_used".to_string()));
+    }
+
+    #[test]
+    fn test_suggest_fixes() {
+        let analyzer = Analyzer::new(SanctifyConfig::default());
+        let source = r#"
+            #[contractimpl]
+            impl MyContract {
+                pub fn missing_auth(env: Env, user: Address, val: u32) {
+                    env.storage().instance().set(&DataKey::Val, &val);
+                }
+
+                pub fn unused(env: Env, x: u32) -> u32 {
+                    let y = 10;
+                    5
+                }
+            }
+        "#;
+        let fixes = analyzer.suggest_fixes(source);
+        // 1 fix for missing_auth (AddAuth)
+        // 1 fix for unused 'user' in missing_auth (PrefixUnused)
+        // 2 fixes for unused (PrefixUnused for x and y)
+        assert_eq!(fixes.len(), 4);
+        
+        let types: Vec<FixType> = fixes.iter().map(|f| f.fix_type.clone()).collect();
+        assert!(types.contains(&FixType::AddAuth));
+        assert!(types.contains(&FixType::PrefixUnused));
     }
 }

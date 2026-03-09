@@ -3,8 +3,8 @@ use colored::*;
 use sanctifier_core::gas_estimator::GasEstimationReport;
 use sanctifier_core::zk_proof::ZkProofSummary;
 use sanctifier_core::{
-    Analyzer, ArithmeticIssue, CustomRuleMatch, DeprecatedApiIssue, SanctifyConfig, SizeWarning,
-    UnsafePattern, UpgradeReport,
+    Analyzer, ArithmeticIssue, CustomRuleMatch, DeprecatedApiIssue, FixType,
+    SanctifyConfig, SizeWarning, UnsafePattern, UpgradeReport,
 };
 use serde::{Deserialize, Serialize};
 
@@ -106,6 +106,17 @@ pub enum Commands {
         /// Optional path to save the generated harness
         #[arg(short, long)]
         output: Option<PathBuf>,
+    },
+    /// Automatically fix basic vulnerabilities and code issues
+    Fix {
+        /// Path to the Soroban contract or project directory
+        path: PathBuf,
+        /// Apply fixes without confirmation
+        #[arg(short, long)]
+        yes: bool,
+        /// Show what would be changed without modifying files
+        #[arg(short, long)]
+        dry_run: bool,
     },
 }
 
@@ -463,13 +474,32 @@ fn main() {
                         }
                     }
                     Err(e) => {
-                        eprintln!("{} Error generating Kani harness: {}", "❌".red(), e);
+                        eprintln!("{} Error generating Kani harness: {}", "❌".red(), e)
+                        ;
                         std::process::exit(1);
                     }
                 }
             } else {
                 eprintln!("{} Error reading file {:?}", "❌".red(), path);
                 std::process::exit(1);
+            }
+        }
+        Commands::Fix { path, yes, dry_run } => {
+            println!("{} Sanctifier Fix: Scanning for automatic patches...", "✨".green());
+            let config = load_config(path);
+            let analyzer = Analyzer::new(config.clone());
+            let mut total_fixes = 0;
+
+            if path.is_dir() {
+                fix_directory(path, &analyzer, &config, *yes, *dry_run, &mut total_fixes);
+            } else if path.extension().and_then(|s| s.to_str()) == Some("rs") {
+                fix_file(path, &analyzer, *yes, *dry_run, &mut total_fixes);
+            }
+
+            if *dry_run {
+                println!("\n{} Dry run complete. {} potential fixes identified.", "✅".green(), total_fixes);
+            } else {
+                println!("\n{} Fix complete. {} patches applied.", "✅".green(), total_fixes);
             }
         }
     }
@@ -648,6 +678,107 @@ fn run_analysis(
     analysis.gas_estimations.extend(gas_reports);
 
     analysis
+}
+
+fn fix_directory(
+    dir: &Path,
+    analyzer: &Analyzer,
+    config: &SanctifyConfig,
+    yes: bool,
+    dry_run: bool,
+    total_fixes: &mut usize,
+) {
+    if let Ok(entries) = fs::read_dir(dir) {
+        for entry in entries.flatten() {
+            let path = entry.path();
+            let name = path.file_name().and_then(|n| n.to_str()).unwrap_or("");
+
+            if config.exclude.iter().any(|p| name.contains(p) || path.to_string_lossy().contains(p)) {
+                continue;
+            }
+
+            if path.is_dir() {
+                if config.ignore_paths.iter().any(|p| name.contains(p)) {
+                    continue;
+                }
+                fix_directory(&path, analyzer, config, yes, dry_run, total_fixes);
+            } else if path.extension().and_then(|s| s.to_str()) == Some("rs") {
+                fix_file(&path, analyzer, yes, dry_run, total_fixes);
+            }
+        }
+    }
+}
+
+fn fix_file(
+    path: &Path,
+    analyzer: &Analyzer,
+    yes: bool,
+    dry_run: bool,
+    total_fixes: &mut usize,
+) {
+    if let Ok(content) = fs::read_to_string(path) {
+        let mut fixes = analyzer.suggest_fixes(&content);
+        if fixes.is_empty() {
+            return;
+        }
+
+        // Sort fixes by line and column in reverse order to apply them without breaking offsets
+        fixes.sort_by(|a, b| {
+            b.line.cmp(&a.line).then(b.column.cmp(&a.column))
+        });
+
+        println!("\n{} Found {} potential fixes for {:?}", "💡".blue(), fixes.len(), path);
+
+        let mut lines: Vec<String> = content.lines().map(|s| s.to_string()).collect();
+        let mut applied_in_file = 0;
+
+        for fix in fixes {
+            println!("   {} [{:?}] {}", "->".yellow(), fix.fix_type, fix.description);
+
+            let should_apply = if yes || dry_run {
+                true
+            } else {
+                println!("      Apply this fix? (y/n) ");
+                let mut input = String::new();
+                std::io::stdin().read_line(&mut input).is_ok() && input.trim().to_lowercase() == "y"
+            };
+
+            if should_apply {
+                if !dry_run {
+                    // Simple line-based replacement for now (since our fixes are mostly additive or prefix)
+                    // For PrefixUnused:
+                    if fix.fix_type == FixType::PrefixUnused {
+                        if let Some(line) = lines.get_mut(fix.line - 1) {
+                            let (start, rest) = line.split_at(fix.column);
+                            let (_, end) = rest.split_at(fix.end_column - fix.column);
+                            *line = format!("{}{}{}", start, fix.replacement, end);
+                            applied_in_file += 1;
+                        }
+                    } else if fix.fix_type == FixType::AddAuth {
+                        // For AddAuth:
+                        if let Some(line) = lines.get_mut(fix.line - 1) {
+                            let (start, rest) = line.split_at(fix.column);
+                            *line = format!("{}{}{}", start, fix.replacement, rest);
+                            applied_in_file += 1;
+                        }
+                    }
+                } else {
+                    applied_in_file += 1;
+                }
+            }
+        }
+
+        if !dry_run && applied_in_file > 0 {
+            let new_content = lines.join("\n");
+            if let Err(e) = fs::write(path, new_content) {
+                eprintln!("{} Failed to write to {:?}: {}", "❌".red(), path, e);
+            } else {
+                println!("   {} Applied {} fixes to {:?}", "✅".green(), applied_in_file, path);
+            }
+        }
+        
+        *total_fixes += applied_in_file;
+    }
 }
 
 
