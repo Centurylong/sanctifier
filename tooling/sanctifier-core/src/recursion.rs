@@ -206,14 +206,12 @@ impl Default for RecursionAnalyzer {
 
 /// Visitor that collects all function calls within a function body.
 struct CallGraphVisitor {
-    current_function: String,
     called_functions: HashSet<String>,
 }
 
 impl CallGraphVisitor {
-    fn new(current_function: String) -> Self {
+    fn new(_current_function: String) -> Self {
         Self {
-            current_function,
             called_functions: HashSet::new(),
         }
     }
