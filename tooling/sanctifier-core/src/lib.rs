@@ -1468,6 +1468,38 @@ impl<'ast> Visit<'ast> for ArithVisitor {
         // Continue descending so nested binary ops are also checked
         visit::visit_expr_binary(self, node);
     }
+
+    fn visit_expr_method_call(&mut self, node: &'ast syn::ExprMethodCall) {
+        if let Some(fn_name) = self.current_fn.clone() {
+            let method_name = node.method.to_string();
+            let risky_methods = [
+                "fixed_mul",
+                "fixed_div",
+                "fixed_mul_floor",
+                "fixed_mul_ceil",
+                "fixed_div_floor",
+                "fixed_div_ceil",
+            ];
+
+            if risky_methods.contains(&method_name.as_str()) {
+                let key = (fn_name.clone(), method_name.clone());
+                if !self.seen.contains(&key) {
+                    self.seen.insert(key);
+                    let line = node.span().start().line;
+                    self.issues.push(ArithmeticIssue {
+                        function_name: fn_name,
+                        operation: method_name.clone(),
+                        suggestion: format!(
+                            "Ensure boundaries are checked before calling `{}` to avoid panics",
+                            method_name
+                        ),
+                        location: format!("{}:{}", method_name, line),
+                    });
+                }
+            }
+        }
+        visit::visit_expr_method_call(self, node);
+    }
 }
 
 // ── StorageVisitor ──────────────────────────────────────────────────────────
@@ -2138,12 +2170,34 @@ mod tests {
         "#;
         let fixes = analyzer.suggest_fixes(source);
         // 1 fix for missing_auth (AddAuth)
-        // 1 fix for unused 'user' in missing_auth (PrefixUnused)
+        // (Unused 'user' fix is filtered out because it's used in AddAuth)
         // 2 fixes for unused (PrefixUnused for x and y)
-        assert_eq!(fixes.len(), 4);
+        assert_eq!(fixes.len(), 3);
         
         let types: Vec<FixType> = fixes.iter().map(|f| f.fix_type.clone()).collect();
         assert!(types.contains(&FixType::AddAuth));
         assert!(types.contains(&FixType::PrefixUnused));
+    }
+
+    #[test]
+    fn test_scan_arithmetic_custom_library() {
+        let analyzer = Analyzer::new(SanctifyConfig::default());
+        let source = r#"
+            #[contractimpl]
+            impl Vault {
+                pub fn calc_shares(env: Env, amount: i128, rate: i128) -> i128 {
+                    amount.fixed_mul(rate)
+                }
+
+                pub fn calc_assets(env: Env, shares: i128, rate: i128) -> i128 {
+                    shares.fixed_div(rate)
+                }
+            }
+        "#;
+        let issues = analyzer.scan_arithmetic_overflow(source);
+        assert_eq!(issues.len(), 2);
+        let ops: Vec<String> = issues.iter().map(|i| i.operation.clone()).collect();
+        assert!(ops.contains(&"fixed_mul".to_string()));
+        assert!(ops.contains(&"fixed_div".to_string()));
     }
 }
