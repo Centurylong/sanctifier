@@ -260,7 +260,10 @@ pub struct SanctifyConfig {
     pub custom_rules: Vec<CustomRule>,
     #[serde(default)]
     pub exclude: Vec<String>,
+    #[serde(default)]
+    pub kani_unwind: Option<u32>,
 }
+
 
 fn default_ignore_paths() -> Vec<String> {
     vec!["target".to_string(), ".git".to_string()]
@@ -295,9 +298,11 @@ impl Default for SanctifyConfig {
             strict_mode: false,
             custom_rules: vec![],
             exclude: vec![],
+            kani_unwind: None,
         }
     }
 }
+
 
 fn has_contracttype(attrs: &[syn::Attribute]) -> bool {
     attrs.iter().any(|attr| {

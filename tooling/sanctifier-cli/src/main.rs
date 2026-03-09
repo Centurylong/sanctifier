@@ -553,7 +553,11 @@ fn main() {
                 std::process::exit(1);
             }
             if let Ok(content) = fs::read_to_string(path) {
-                match sanctifier_core::kani_bridge::KaniBridge::translate_for_kani(&content) {
+                let config = load_config(path);
+                match sanctifier_core::kani_bridge::KaniBridge::translate_for_kani(
+                    &content,
+                    config.kani_unwind,
+                ) {
                     Ok(harness) => {
                         if let Some(out_path) = output {
                             if let Err(e) = std::fs::write(out_path, harness) {
@@ -579,6 +583,7 @@ fn main() {
                 std::process::exit(1);
             }
         }
+
         Commands::Fix { path, yes, dry_run } => {
             println!(
                 "{} Sanctifier Fix: Scanning for automatic patches...",
