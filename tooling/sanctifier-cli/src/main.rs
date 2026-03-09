@@ -419,7 +419,11 @@ fn main() {
                         if let Some(rt) = &rt {
                             if let Ok(resp) = rt.block_on(llm::get_llm_explanation("auth_gap", gap))
                             {
-                                println!("      {} {}", "LLM Explanation:".cyan(), resp.explanation);
+                                println!(
+                                    "      {} {}",
+                                    "LLM Explanation:".cyan(),
+                                    resp.explanation
+                                );
                                 println!("      {} {}", "Mitigation:".cyan(), resp.mitigation);
                             }
                         }
@@ -446,7 +450,11 @@ fn main() {
                             if let Ok(resp) =
                                 rt.block_on(llm::get_llm_explanation("panic_issue", &detail))
                             {
-                                println!("      {} {}", "LLM Explanation:".cyan(), resp.explanation);
+                                println!(
+                                    "      {} {}",
+                                    "LLM Explanation:".cyan(),
+                                    resp.explanation
+                                );
                                 println!("      {} {}", "Mitigation:".cyan(), resp.mitigation);
                             }
                         }
