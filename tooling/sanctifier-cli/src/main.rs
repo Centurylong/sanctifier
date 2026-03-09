@@ -8,6 +8,7 @@ use sanctifier_core::{
     SizeWarning, UnsafePattern, UpgradeReport,
 };
 use serde::{Deserialize, Serialize};
+use tokio::runtime::Runtime;
 
 use sha2::{Digest, Sha256};
 use std::collections::HashMap;
@@ -166,7 +167,11 @@ fn main() {
 
             let mut cache = AnalysisCache::load(path);
             let analyzer = Analyzer::new(config.clone());
-            // Pass llm_explain to AnalyzeArgs if using exec()
+            let rt = if *llm_explain && !is_json {
+                Some(Runtime::new().unwrap())
+            } else {
+                None
+            };
 
             let mut all_size_warnings: Vec<SizeWarning> = Vec::new();
             let mut all_unsafe_patterns: Vec<UnsafePattern> = Vec::new();
@@ -411,6 +416,13 @@ fn main() {
                             "->".red(),
                             gap.bold()
                         );
+                        if let Some(rt) = &rt {
+                            if let Ok(resp) = rt.block_on(llm::get_llm_explanation("auth_gap", gap))
+                            {
+                                println!("      {} {}", "LLM Explanation:".cyan(), resp.explanation);
+                                println!("      {} {}", "Mitigation:".cyan(), resp.mitigation);
+                            }
+                        }
                     }
                 } else {
                     println!("\nNo authentication gaps found.");
@@ -426,6 +438,18 @@ fn main() {
                             issue.issue_type.yellow().bold(),
                             issue.location
                         );
+                        if let Some(rt) = &rt {
+                            let detail = format!(
+                                "Function {}: {} at {}",
+                                issue.function_name, issue.issue_type, issue.location
+                            );
+                            if let Ok(resp) =
+                                rt.block_on(llm::get_llm_explanation("panic_issue", &detail))
+                            {
+                                println!("      {} {}", "LLM Explanation:".cyan(), resp.explanation);
+                                println!("      {} {}", "Mitigation:".cyan(), resp.mitigation);
+                            }
+                        }
                     }
                     println!("   {} Tip: Prefer returning Result or Error types for better contract safety.", "💡".blue());
                 } else {

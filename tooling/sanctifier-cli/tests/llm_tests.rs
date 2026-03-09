@@ -4,7 +4,7 @@ use std::env;
 
 #[test]
 fn test_analyze_llm_explain_flag() {
-    let mut cmd = Command::cargo_bin("sanctifier").unwrap();
+    let mut cmd = Command::new(assert_cmd::cargo::cargo_bin!("sanctifier"));
     let fixture_path = env::current_dir()
         .unwrap()
         .join("tests/fixtures/vulnerable_contract.rs");
