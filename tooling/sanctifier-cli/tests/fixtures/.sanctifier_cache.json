@@ -1,16 +1,19 @@
 {
   "files": {
+    "/home/rampop/sanctifier2/tooling/sanctifier-cli/tests/fixtures/vulnerable_contract.rs": {
     "tooling/sanctifier-cli/tests/fixtures/vulnerable_contract.rs": {
       "hash": "cb6255244ca3f6a707a6f2455a6e840a42a83d73192b85f9e643c6c6473aaef5",
       "size_warnings": [],
       "unsafe_patterns": [],
       "auth_gaps": [
+        "/home/rampop/sanctifier2/tooling/sanctifier-cli/tests/fixtures/vulnerable_contract.rs: do_bad_stuff"
         "tooling/sanctifier-cli/tests/fixtures/vulnerable_contract.rs: do_bad_stuff"
       ],
       "panic_issues": [
         {
           "function_name": "panic_calc",
           "issue_type": "panic!",
+          "location": "/home/rampop/sanctifier2/tooling/sanctifier-cli/tests/fixtures/vulnerable_contract.rs: panic_calc"
           "location": "tooling/sanctifier-cli/tests/fixtures/vulnerable_contract.rs: panic_calc"
         }
       ],
@@ -19,6 +22,7 @@
           "function_name": "panic_calc",
           "operation": "+",
           "suggestion": "Use `.checked_add(rhs)` or `.saturating_add(rhs)` to handle overflow",
+          "location": "/home/rampop/sanctifier2/tooling/sanctifier-cli/tests/fixtures/vulnerable_contract.rs: panic_calc:17"
           "location": "tooling/sanctifier-cli/tests/fixtures/vulnerable_contract.rs: panic_calc:17"
         }
       ],
