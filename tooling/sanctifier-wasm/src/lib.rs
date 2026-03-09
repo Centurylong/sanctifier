@@ -1,4 +1,4 @@
-use sanctifier_core::{Analyzer, SanctifyConfig};
+use sanctifier_core::{scoring, Analyzer, SanctifyConfig, UpgradeReport};
 use serde::Serialize;
 use wasm_bindgen::prelude::*;
 
@@ -9,6 +9,8 @@ struct AnalysisReport<'a> {
     auth_gaps: Vec<String>,
     panic_issues: Vec<sanctifier_core::PanicIssue>,
     arithmetic_issues: Vec<sanctifier_core::ArithmeticIssue>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    sanctity_score: Option<scoring::SanctityScore>,
     #[serde(skip_serializing_if = "Option::is_none")]
     custom_rule_matches: Option<Vec<sanctifier_core::CustomRuleMatch>>,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -35,12 +37,30 @@ pub fn analyze(source: &str) -> JsValue {
     let panic_issues = analyzer.scan_panics(source);
     let arithmetic_issues = analyzer.scan_arithmetic_overflow(source);
 
+    let reentrancy_issues = analyzer.scan_reentrancy_risks(source);
+
+    let sanctity_score = scoring::calculate_sanctity_score(scoring::ScoringInput {
+        size_warnings: &size_warnings,
+        unsafe_patterns: &unsafe_patterns,
+        auth_gaps: &auth_gaps,
+        panic_issues: &panic_issues,
+        arithmetic_issues: &arithmetic_issues,
+        deprecated_api_issues: &[],
+        custom_rule_matches: &[],
+        reentrancy_issues: &reentrancy_issues,
+        upgrade_report: &UpgradeReport::empty(),
+        proven_assertions: 0,
+        total_assertions: 0,
+        test_coverage: 0.0,
+    });
+
     let report = AnalysisReport {
         size_warnings,
         unsafe_patterns,
         auth_gaps,
         panic_issues,
         arithmetic_issues,
+        sanctity_score: Some(sanctity_score),
         custom_rule_matches: None,
         kani_metrics: None,
     };
@@ -59,12 +79,30 @@ pub fn analyze_with_config(config_json: &str, source: &str) -> JsValue {
     let panic_issues = analyzer.scan_panics(source);
     let arithmetic_issues = analyzer.scan_arithmetic_overflow(source);
 
+    let reentrancy_issues = analyzer.scan_reentrancy_risks(source);
+
+    let sanctity_score = scoring::calculate_sanctity_score(scoring::ScoringInput {
+        size_warnings: &size_warnings,
+        unsafe_patterns: &unsafe_patterns,
+        auth_gaps: &auth_gaps,
+        panic_issues: &panic_issues,
+        arithmetic_issues: &arithmetic_issues,
+        deprecated_api_issues: &[],
+        custom_rule_matches: &[],
+        reentrancy_issues: &reentrancy_issues,
+        upgrade_report: &UpgradeReport::empty(),
+        proven_assertions: 0,
+        total_assertions: 0,
+        test_coverage: 0.0,
+    });
+
     let report = AnalysisReport {
         size_warnings,
         unsafe_patterns,
         auth_gaps,
         panic_issues,
         arithmetic_issues,
+        sanctity_score: Some(sanctity_score),
         custom_rule_matches: None,
         kani_metrics: None,
     };
