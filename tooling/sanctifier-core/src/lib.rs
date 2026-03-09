@@ -393,10 +393,10 @@ impl Analyzer {
             key_locations: std::collections::HashMap::new(),
         };
         visitor.visit_file(&file);
-        
+
         // Find overlaps
         let mut final_issues = Vec::new();
-        
+
         // Instance vs Persistent
         for key in &visitor.instance_keys {
             if visitor.persistent_keys.contains(key) {
@@ -404,11 +404,15 @@ impl Analyzer {
                     function_name: "Workspace".to_string(), // Or specific fn if we track it better
                     key: key.clone(),
                     storage_types: vec!["Instance".to_string(), "Persistent".to_string()],
-                    location: visitor.key_locations.get(&(key.clone(), "Instance".to_string())).cloned().unwrap_or_default(),
+                    location: visitor
+                        .key_locations
+                        .get(&(key.clone(), "Instance".to_string()))
+                        .cloned()
+                        .unwrap_or_default(),
                 });
             }
         }
-        
+
         final_issues
     }
 
@@ -759,9 +763,9 @@ impl Analyzer {
                         .stmts
                         .iter()
                         .any(|s| self.check_expr_for_auth(s, known_auth_fns))
-                    || i.else_branch.as_ref().is_some_and(|(_, e)| {
-                        self.check_expr_inner_for_auth(e, known_auth_fns)
-                    })
+                    || i.else_branch
+                        .as_ref()
+                        .is_some_and(|(_, e)| self.check_expr_inner_for_auth(e, known_auth_fns))
             }
             syn::Expr::Match(m) => {
                 self.check_expr_inner_for_auth(&m.expr, known_auth_fns)
@@ -978,7 +982,8 @@ impl Analyzer {
         fixes.sort_by(|a, b| b.line.cmp(&a.line).then(b.column.cmp(&a.column)));
 
         // Filter out PrefixUnused for variables where we also added AddAuth
-        let auth_params: HashSet<String> = fixes.iter()
+        let auth_params: HashSet<String> = fixes
+            .iter()
             .filter(|f| f.fix_type == FixType::AddAuth)
             .map(|f| {
                 // Description is "Add missing `require_auth()` for `NAME`"
@@ -1550,7 +1555,11 @@ impl UnusedVariableVisitor {
     fn report_unused(self) -> Vec<UnusedVariableIssue> {
         let mut issues = Vec::new();
         for (name, line, col) in self.defined {
-            if !self.used.contains(&name) && !name.starts_with('_') && name != "env" && name != "self" {
+            if !self.used.contains(&name)
+                && !name.starts_with('_')
+                && name != "env"
+                && name != "self"
+            {
                 issues.push(UnusedVariableIssue {
                     name: name.clone(),
                     function_name: self.fn_name.clone(),
@@ -1627,8 +1636,12 @@ impl<'ast> Visit<'ast> for StorageVisitor {
             if let Some(st) = storage_type {
                 if let Some(first_arg) = node.args.first() {
                     let key_str = quote::quote!(#first_arg).to_string();
-                    let loc = self.current_fn.as_ref().map(|f| format!("{}:{}", f, first_arg.span().start().line)).unwrap_or_default();
-                    
+                    let loc = self
+                        .current_fn
+                        .as_ref()
+                        .map(|f| format!("{}:{}", f, first_arg.span().start().line))
+                        .unwrap_or_default();
+
                     match st {
                         "Instance" => {
                             self.instance_keys.insert(key_str.clone());
@@ -1665,7 +1678,7 @@ fn is_string_literal(expr: &syn::Expr) -> bool {
 mod tests {
     use super::*;
 
-// ── Tests ─────────────────────────────────────────────────────────────────────
+    // ── Tests ─────────────────────────────────────────────────────────────────────
 
     #[test]
     fn test_analyze_with_macros() {
@@ -1890,7 +1903,7 @@ mod tests {
         assert!(ops.contains(&"+"));
         assert!(ops.contains(&"-"));
         assert!(ops.contains(&"*"));
-        
+
         // safe_add uses checked_add — no bare + operator, so not flagged
         assert!(issues.iter().all(|i| i.function_name != "safe_add"));
     }
@@ -2151,7 +2164,7 @@ mod tests {
         let issues = analyzer.scan_storage_collisions(src);
         assert!(!issues.is_empty());
         // In the quote-generated string, "& key" results in "key"
-        assert!(issues[0].key.contains("key")); 
+        assert!(issues[0].key.contains("key"));
         assert!(issues[0].storage_types.contains(&"Instance".to_string()));
         assert!(issues[0].storage_types.contains(&"Persistent".to_string()));
     }
@@ -2199,7 +2212,7 @@ mod tests {
         // (Unused 'user' fix is filtered out because it's used in AddAuth)
         // 2 fixes for unused (PrefixUnused for x and y)
         assert_eq!(fixes.len(), 3);
-        
+
         let types: Vec<FixType> = fixes.iter().map(|f| f.fix_type.clone()).collect();
         assert!(types.contains(&FixType::AddAuth));
         assert!(types.contains(&FixType::PrefixUnused));

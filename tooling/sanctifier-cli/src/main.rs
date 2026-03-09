@@ -3,8 +3,8 @@ use colored::*;
 use sanctifier_core::gas_estimator::GasEstimationReport;
 use sanctifier_core::zk_proof::ZkProofSummary;
 use sanctifier_core::{
-    Analyzer, ArithmeticIssue, CustomRuleMatch, DeprecatedApiIssue, FixType,
-    SanctifyConfig, SizeWarning, UnsafePattern, UpgradeReport,
+    Analyzer, ArithmeticIssue, CustomRuleMatch, DeprecatedApiIssue, FixType, SanctifyConfig,
+    SizeWarning, UnsafePattern, UpgradeReport,
 };
 use serde::{Deserialize, Serialize};
 
@@ -474,8 +474,7 @@ fn main() {
                         }
                     }
                     Err(e) => {
-                        eprintln!("{} Error generating Kani harness: {}", "❌".red(), e)
-                        ;
+                        eprintln!("{} Error generating Kani harness: {}", "❌".red(), e);
                         std::process::exit(1);
                     }
                 }
@@ -485,7 +484,10 @@ fn main() {
             }
         }
         Commands::Fix { path, yes, dry_run } => {
-            println!("{} Sanctifier Fix: Scanning for automatic patches...", "✨".green());
+            println!(
+                "{} Sanctifier Fix: Scanning for automatic patches...",
+                "✨".green()
+            );
             let config = load_config(path);
             let analyzer = Analyzer::new(config.clone());
             let mut total_fixes = 0;
@@ -497,9 +499,17 @@ fn main() {
             }
 
             if *dry_run {
-                println!("\n{} Dry run complete. {} potential fixes identified.", "✅".green(), total_fixes);
+                println!(
+                    "\n{} Dry run complete. {} potential fixes identified.",
+                    "✅".green(),
+                    total_fixes
+                );
             } else {
-                println!("\n{} Fix complete. {} patches applied.", "✅".green(), total_fixes);
+                println!(
+                    "\n{} Fix complete. {} patches applied.",
+                    "✅".green(),
+                    total_fixes
+                );
             }
         }
     }
@@ -693,7 +703,11 @@ fn fix_directory(
             let path = entry.path();
             let name = path.file_name().and_then(|n| n.to_str()).unwrap_or("");
 
-            if config.exclude.iter().any(|p| name.contains(p) || path.to_string_lossy().contains(p)) {
+            if config
+                .exclude
+                .iter()
+                .any(|p| name.contains(p) || path.to_string_lossy().contains(p))
+            {
                 continue;
             }
 
@@ -709,13 +723,7 @@ fn fix_directory(
     }
 }
 
-fn fix_file(
-    path: &Path,
-    analyzer: &Analyzer,
-    yes: bool,
-    dry_run: bool,
-    total_fixes: &mut usize,
-) {
+fn fix_file(path: &Path, analyzer: &Analyzer, yes: bool, dry_run: bool, total_fixes: &mut usize) {
     if let Ok(content) = fs::read_to_string(path) {
         let mut fixes = analyzer.suggest_fixes(&content);
         if fixes.is_empty() {
@@ -723,17 +731,25 @@ fn fix_file(
         }
 
         // Sort fixes by line and column in reverse order to apply them without breaking offsets
-        fixes.sort_by(|a, b| {
-            b.line.cmp(&a.line).then(b.column.cmp(&a.column))
-        });
+        fixes.sort_by(|a, b| b.line.cmp(&a.line).then(b.column.cmp(&a.column)));
 
-        println!("\n{} Found {} potential fixes for {:?}", "💡".blue(), fixes.len(), path);
+        println!(
+            "\n{} Found {} potential fixes for {:?}",
+            "💡".blue(),
+            fixes.len(),
+            path
+        );
 
         let mut lines: Vec<String> = content.lines().map(|s| s.to_string()).collect();
         let mut applied_in_file = 0;
 
         for fix in fixes {
-            println!("   {} [{:?}] {}", "->".yellow(), fix.fix_type, fix.description);
+            println!(
+                "   {} [{:?}] {}",
+                "->".yellow(),
+                fix.fix_type,
+                fix.description
+            );
 
             let should_apply = if yes || dry_run {
                 true
@@ -773,15 +789,18 @@ fn fix_file(
             if let Err(e) = fs::write(path, new_content) {
                 eprintln!("{} Failed to write to {:?}: {}", "❌".red(), path, e);
             } else {
-                println!("   {} Applied {} fixes to {:?}", "✅".green(), applied_in_file, path);
+                println!(
+                    "   {} Applied {} fixes to {:?}",
+                    "✅".green(),
+                    applied_in_file,
+                    path
+                );
             }
         }
-        
+
         *total_fixes += applied_in_file;
     }
 }
-
-
 
 fn load_config(path: &Path) -> SanctifyConfig {
     if let Some(p) = find_config_path(path) {
