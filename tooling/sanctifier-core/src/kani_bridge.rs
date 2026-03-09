@@ -45,7 +45,8 @@ impl VisitMut for KaniBridgeVisitor {
 
             // Very naive check for `env.storage()`
             let receiver_str = quote!(#mc).to_string();
-            if (receiver_str.contains("env . storage ( )") || receiver_str.contains("env.storage()"))
+            if (receiver_str.contains("env . storage ( )")
+                || receiver_str.contains("env.storage()"))
                 && (method_name == "set" || method_name == "get" || method_name == "has")
             {
                 // Replace the whole expression with a Kani mock
