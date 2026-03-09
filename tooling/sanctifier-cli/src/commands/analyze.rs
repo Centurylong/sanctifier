@@ -2,7 +2,7 @@ use std::fs;
 use std::path::{Path, PathBuf};
 use clap::Args;
 use colored::*;
-use sanctifier_core::{Analyzer, ArithmeticIssue, SizeWarning, UnsafePattern};
+use sanctifier_core::{Analyzer, ArithmeticIssue, SizeWarning, UnsafePattern, recursion::RecursionIssue};
 use crate::llm;
 use tokio::runtime::Runtime;
 
@@ -55,6 +55,7 @@ pub fn exec(args: AnalyzeArgs) -> anyhow::Result<()> {
     let mut all_auth_gaps: Vec<String> = Vec::new();
     let mut all_panic_issues = Vec::new();
     let mut all_arithmetic_issues: Vec<ArithmeticIssue> = Vec::new();
+    let mut all_recursion_issues: Vec<RecursionIssue> = Vec::new();
 
     if path.is_dir() {
         analyze_directory(
@@ -65,6 +66,7 @@ pub fn exec(args: AnalyzeArgs) -> anyhow::Result<()> {
             &mut all_auth_gaps,
             &mut all_panic_issues,
             &mut all_arithmetic_issues,
+            &mut all_recursion_issues,
         );
     } else if path.extension().and_then(|s| s.to_str()) == Some("rs") {
         if let Ok(content) = fs::read_to_string(path) {
@@ -93,6 +95,12 @@ pub fn exec(args: AnalyzeArgs) -> anyhow::Result<()> {
                 a.location = format!("{}: {}", path.display(), a.location);
                 all_arithmetic_issues.push(a);
             }
+
+            let recursion = analyzer.scan_recursion(&content);
+            for mut r in recursion {
+                r.location = format!("{}: {}", path.display(), r.location);
+                all_recursion_issues.push(r);
+            }
         }
     }
 
@@ -104,6 +112,7 @@ pub fn exec(args: AnalyzeArgs) -> anyhow::Result<()> {
             "auth_gaps": all_auth_gaps,
             "panic_issues": all_panic_issues,
             "arithmetic_issues": all_arithmetic_issues,
+            "recursion_issues": all_recursion_issues,
         });
         println!("{}", serde_json::to_string_pretty(&output).unwrap_or_else(|_| "{}".to_string()));
     } else {
@@ -189,6 +198,22 @@ pub fn exec(args: AnalyzeArgs) -> anyhow::Result<()> {
         } else {
             println!("\nNo arithmetic overflow risks found.");
         }
+
+        if !all_recursion_issues.is_empty() {
+            println!("\n{} Found Recursive Call Patterns!", "🔄".red());
+            for issue in all_recursion_issues {
+                println!(
+                    "   {} {}: {} (Chain: {})",
+                    "->".red(),
+                    format!("{:?}", issue.recursion_type).yellow().bold(),
+                    issue.message,
+                    issue.call_chain.join(" -> ").cyan()
+                );
+            }
+            println!("   {} Tip: Soroban has limited stack depth. Consider iterative approaches or bounded recursion.", "💡".blue());
+        } else {
+            println!("\nNo recursion issues found.");
+        }
         
         println!("\nNo upgrade pattern issues found.");
     }
@@ -217,6 +242,7 @@ fn analyze_directory(
     all_auth_gaps: &mut Vec<String>,
     all_panic_issues: &mut Vec<sanctifier_core::PanicIssue>,
     all_arithmetic_issues: &mut Vec<ArithmeticIssue>,
+    all_recursion_issues: &mut Vec<RecursionIssue>,
 ) {
     if let Ok(entries) = fs::read_dir(dir) {
         for entry in entries.flatten() {
@@ -224,7 +250,7 @@ fn analyze_directory(
             if path.is_dir() {
                 analyze_directory(
                     &path, analyzer, all_size_warnings, all_unsafe_patterns, all_auth_gaps,
-                    all_panic_issues, all_arithmetic_issues,
+                    all_panic_issues, all_arithmetic_issues, all_recursion_issues,
                 );
             } else if path.extension().and_then(|s| s.to_str()) == Some("rs") {
                 if let Ok(content) = fs::read_to_string(&path) {
@@ -252,6 +278,12 @@ fn analyze_directory(
                     for mut a in arith {
                         a.location = format!("{}: {}", path.display(), a.location);
                         all_arithmetic_issues.push(a);
+                    }
+
+                    let recursion = analyzer.scan_recursion(&content);
+                    for mut r in recursion {
+                        r.location = format!("{}: {}", path.display(), r.location);
+                        all_recursion_issues.push(r);
                     }
                 }
             }

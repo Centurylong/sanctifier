@@ -1,6 +1,7 @@
 pub mod gas_estimator;
 pub mod kani_bridge;
 pub mod reentrancy;
+pub mod recursion;
 pub mod scoring;
 pub mod symbolic;
 pub mod zk_proof;
@@ -423,6 +424,15 @@ impl Analyzer {
     fn scan_gas_estimation_impl(&self, source: &str) -> Vec<gas_estimator::GasEstimationReport> {
         let estimator = gas_estimator::GasEstimator::new();
         estimator.estimate_contract(source)
+    }
+
+    pub fn scan_recursion(&self, source: &str) -> Vec<recursion::RecursionIssue> {
+        with_panic_guard(|| self.scan_recursion_impl(source))
+    }
+
+    fn scan_recursion_impl(&self, source: &str) -> Vec<recursion::RecursionIssue> {
+        let mut analyzer = recursion::RecursionAnalyzer::new();
+        analyzer.analyze(source)
     }
 
     fn scan_auth_gaps_impl(&self, source: &str) -> Vec<String> {
