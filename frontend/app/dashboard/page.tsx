@@ -10,7 +10,9 @@ import { SummaryChart } from "../components/SummaryChart";
 import { KaniMetricsWidget } from "../components/KaniMetricsWidget";
 import { SymbolicGraphWidget } from "../components/SymbolicGraphWidget";
 import { ThemeToggle } from "../components/ThemeToggle";
+import { SanctityScoreWidget } from "../components/SanctityScoreWidget";
 import Link from "next/link";
+
 import { analyzeSourceInBrowser } from "../lib/wasm";
 
 const SAMPLE_JSON = `{
@@ -158,13 +160,20 @@ export default function DashboardPage() {
           </div>
         </section>
 
-        {(findings.length > 0 || reportData?.kani_metrics || (reportData?.symbolic_paths && reportData.symbolic_paths.length > 0)) && (
+        {(findings.length > 0 || reportData?.kani_metrics || (reportData?.symbolic_paths && reportData.symbolic_paths.length > 0) || reportData?.sanctity_score) && (
           <>
+            {reportData?.sanctity_score && (
+              <section>
+                <SanctityScoreWidget score={reportData.sanctity_score} />
+              </section>
+            )}
+
             {reportData?.kani_metrics && (
               <section>
                 <KaniMetricsWidget metrics={reportData.kani_metrics} />
               </section>
             )}
+
 
             {reportData?.symbolic_paths && reportData.symbolic_paths.length > 0 && (
               <section>
