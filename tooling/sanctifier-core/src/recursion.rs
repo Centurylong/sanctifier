@@ -76,7 +76,7 @@ impl RecursionAnalyzer {
                 for impl_fn in &impl_item.items {
                     if let syn::ImplItem::Fn(func) = impl_fn {
                         let fn_name = func.sig.ident.to_string();
-                        
+
                         // Track public functions
                         if matches!(func.vis, syn::Visibility::Public(_)) && is_contract_impl {
                             self.public_functions.insert(fn_name.clone());
@@ -85,7 +85,7 @@ impl RecursionAnalyzer {
                         // Build call graph for this function
                         let mut visitor = CallGraphVisitor::new(fn_name.clone());
                         visitor.visit_impl_item_fn(func);
-                        
+
                         self.call_graph.insert(fn_name, visitor.called_functions);
                     }
                 }
@@ -94,7 +94,7 @@ impl RecursionAnalyzer {
                 let fn_name = func.sig.ident.to_string();
                 let mut visitor = CallGraphVisitor::new(fn_name.clone());
                 visitor.visit_item_fn(func);
-                
+
                 self.call_graph.insert(fn_name, visitor.called_functions);
             }
         }
@@ -132,7 +132,7 @@ impl RecursionAnalyzer {
             // Check for indirect recursion using DFS
             let mut path = vec![fn_name.clone()];
             let mut stack_visited = HashSet::new();
-            
+
             if let Some(cycle) = self.find_cycle(fn_name, &mut path, &mut stack_visited) {
                 let recursion_type = if cycle.len() == 2 {
                     RecursionType::Direct
@@ -228,7 +228,7 @@ impl<'ast> Visit<'ast> for CallGraphVisitor {
                 self.called_functions.insert(fn_name);
             }
         }
-        
+
         visit::visit_expr_call(self, node);
     }
 
@@ -236,7 +236,7 @@ impl<'ast> Visit<'ast> for CallGraphVisitor {
         // Handle method calls: obj.method()
         let method_name = node.method.to_string();
         self.called_functions.insert(method_name);
-        
+
         visit::visit_expr_method_call(self, node);
     }
 }
@@ -261,7 +261,7 @@ mod tests {
 
         let mut analyzer = RecursionAnalyzer::new();
         let issues = analyzer.analyze(source);
-        
+
         assert!(!issues.is_empty());
         assert_eq!(issues[0].recursion_type, RecursionType::Direct);
         assert!(issues[0].message.contains("factorial"));
@@ -287,7 +287,7 @@ mod tests {
 
         let mut analyzer = RecursionAnalyzer::new();
         let issues = analyzer.analyze(source);
-        
+
         assert!(!issues.is_empty());
         assert_eq!(issues[0].recursion_type, RecursionType::Indirect);
     }
@@ -309,7 +309,7 @@ mod tests {
 
         let mut analyzer = RecursionAnalyzer::new();
         let issues = analyzer.analyze(source);
-        
+
         assert!(issues.is_empty());
     }
 }

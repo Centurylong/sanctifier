@@ -1,5 +1,5 @@
-use serde::Serialize;
 use anyhow::Result;
+use serde::Serialize;
 
 #[derive(Serialize)]
 pub struct LlmRequest<'a> {
@@ -21,12 +21,9 @@ pub async fn get_llm_explanation(finding_type: &str, finding_detail: &str) -> Re
         finding_detail,
     };
     // Replace this URL with the actual LLM API endpoint
-    let url = std::env::var("LLM_API_URL").unwrap_or_else(|_| "http://localhost:8000/explain".to_string());
-    let resp = client
-        .post(&url)
-        .json(&req)
-        .send()
-        .await?;
+    let url = std::env::var("LLM_API_URL")
+        .unwrap_or_else(|_| "http://localhost:8000/explain".to_string());
+    let resp = client.post(&url).json(&req).send().await?;
     let llm_resp: LlmResponse = resp.json().await?;
     Ok(llm_resp)
 }

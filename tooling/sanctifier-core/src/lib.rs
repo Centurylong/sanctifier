@@ -1,7 +1,7 @@
 pub mod gas_estimator;
 pub mod kani_bridge;
-pub mod reentrancy;
 pub mod recursion;
+pub mod reentrancy;
 pub mod scoring;
 pub mod symbolic;
 pub mod zk_proof;

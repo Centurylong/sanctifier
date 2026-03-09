@@ -79,6 +79,7 @@
           "estimated_memory_bytes": 40
         }
       ],
+      "reentrancy_issues": [],
       "recursion_issues": [
         {
           "function_name": "factorial",
@@ -92,17 +93,6 @@
           "location": "contracts/test-recursion/src/lib.rs: factorial"
         },
         {
-          "function_name": "fibonacci",
-          "recursion_type": "Direct",
-          "call_chain": [
-            "fibonacci",
-            "fibonacci"
-          ],
-          "estimated_depth": null,
-          "message": "Function 'fibonacci' calls itself directly, which may exceed Soroban stack limits",
-          "location": "contracts/test-recursion/src/lib.rs: fibonacci"
-        },
-        {
           "function_name": "process_a",
           "recursion_type": "Indirect",
           "call_chain": [
@@ -114,6 +104,17 @@
           "estimated_depth": null,
           "message": "Function 'process_a' is part of a recursive call chain: process_a -> process_b -> process_a -> process_a",
           "location": "contracts/test-recursion/src/lib.rs: process_a"
+        },
+        {
+          "function_name": "fibonacci",
+          "recursion_type": "Direct",
+          "call_chain": [
+            "fibonacci",
+            "fibonacci"
+          ],
+          "estimated_depth": null,
+          "message": "Function 'fibonacci' calls itself directly, which may exceed Soroban stack limits",
+          "location": "contracts/test-recursion/src/lib.rs: fibonacci"
         }
       ]
     }
