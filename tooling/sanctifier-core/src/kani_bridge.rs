@@ -154,7 +154,6 @@ impl KaniBridge {
     }
 }
 #[cfg(test)]
-
 mod tests {
     use super::*;
 
