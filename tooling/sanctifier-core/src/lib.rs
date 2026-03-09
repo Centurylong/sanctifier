@@ -264,7 +264,6 @@ pub struct SanctifyConfig {
     pub kani_unwind: Option<u32>,
 }
 
-
 fn default_ignore_paths() -> Vec<String> {
     vec!["target".to_string(), ".git".to_string()]
 }
@@ -302,7 +301,6 @@ impl Default for SanctifyConfig {
         }
     }
 }
-
 
 fn has_contracttype(attrs: &[syn::Attribute]) -> bool {
     attrs.iter().any(|attr| {

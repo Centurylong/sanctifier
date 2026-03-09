@@ -182,4 +182,3 @@ mod tests {
         assert!(!result_no_unwind.contains("kani :: unwind"));
     }
 }
-
