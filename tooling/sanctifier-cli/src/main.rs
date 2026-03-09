@@ -137,8 +137,6 @@ fn main() {
             limit,
             llm_explain: _,
         } => {
-
-
             let is_json = format == "json";
 
             if !is_soroban_project(path) {
