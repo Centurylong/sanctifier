@@ -3,6 +3,8 @@ use std::path::{Path, PathBuf};
 use clap::Args;
 use colored::*;
 use sanctifier_core::{Analyzer, ArithmeticIssue, SizeWarning, UnsafePattern};
+use crate::llm;
+use tokio::runtime::Runtime;
 
 #[derive(Args, Debug)]
 pub struct AnalyzeArgs {
@@ -17,6 +19,10 @@ pub struct AnalyzeArgs {
     /// Limit for ledger entry size in bytes
     #[arg(short, long, default_value = "64000")]
     pub limit: usize,
+
+    /// Enable LLM-assisted explanations for findings
+    #[arg(long, default_value_t = false)]
+    pub llm_explain: bool,
 }
 
 pub fn exec(args: AnalyzeArgs) -> anyhow::Result<()> {
@@ -102,7 +108,9 @@ pub fn exec(args: AnalyzeArgs) -> anyhow::Result<()> {
         println!("{}", serde_json::to_string_pretty(&output).unwrap_or_else(|_| "{}".to_string()));
     } else {
         println!("{} Static analysis complete.\n", "✅".green());
-        
+
+        let rt = Runtime::new().unwrap();
+
         if all_size_warnings.is_empty() {
             println!("No ledger size issues found.");
         } else {
@@ -112,6 +120,13 @@ pub fn exec(args: AnalyzeArgs) -> anyhow::Result<()> {
                     "⚠️".yellow(),
                     warning.struct_name.bold()
                 );
+                if args.llm_explain {
+                    let detail = format!("Struct {} estimated size {} bytes (limit {})", warning.struct_name, warning.estimated_size, warning.limit);
+                    if let Ok(resp) = rt.block_on(llm::get_llm_explanation("ledger_size", &detail)) {
+                        println!("      {} {}", "LLM Explanation:".cyan(), resp.explanation);
+                        println!("      {} {}", "Mitigation:".cyan(), resp.mitigation);
+                    }
+                }
             }
         }
 
@@ -119,6 +134,12 @@ pub fn exec(args: AnalyzeArgs) -> anyhow::Result<()> {
             println!("\n{} Found potential Authentication Gaps!", "🛑".red());
             for gap in all_auth_gaps {
                 println!("   {} Function {} is modifying state without require_auth()", "->".red(), gap.bold());
+                if args.llm_explain {
+                    if let Ok(resp) = rt.block_on(llm::get_llm_explanation("auth_gap", &gap)) {
+                        println!("      {} {}", "LLM Explanation:".cyan(), resp.explanation);
+                        println!("      {} {}", "Mitigation:".cyan(), resp.mitigation);
+                    }
+                }
             }
         } else {
             println!("\nNo authentication gaps found.");
@@ -131,9 +152,16 @@ pub fn exec(args: AnalyzeArgs) -> anyhow::Result<()> {
                     "   {} Function {}: Using {} (Location: {})",
                     "->".red(),
                     issue.function_name.bold(),
-                    format!("{:?}", issue.issue_type).yellow().bold(),
+                    issue.issue_type.yellow().bold(),
                     issue.location
                 );
+                if args.llm_explain {
+                    let detail = format!("Function {}: {} at {}", issue.function_name, issue.issue_type, issue.location);
+                    if let Ok(resp) = rt.block_on(llm::get_llm_explanation("panic_issue", &detail)) {
+                        println!("      {} {}", "LLM Explanation:".cyan(), resp.explanation);
+                        println!("      {} {}", "Mitigation:".cyan(), resp.mitigation);
+                    }
+                }
             }
             println!("   {} Tip: Prefer returning Result or Error types for better contract safety.", "💡".blue());
         } else {
@@ -150,6 +178,13 @@ pub fn exec(args: AnalyzeArgs) -> anyhow::Result<()> {
                     issue.operation.yellow().bold(),
                     issue.location
                 );
+                if args.llm_explain {
+                    let detail = format!("Function {}: {} at {}", issue.function_name, issue.operation, issue.location);
+                    if let Ok(resp) = rt.block_on(llm::get_llm_explanation("arithmetic_issue", &detail)) {
+                        println!("      {} {}", "LLM Explanation:".cyan(), resp.explanation);
+                        println!("      {} {}", "Mitigation:".cyan(), resp.mitigation);
+                    }
+                }
             }
         } else {
             println!("\nNo arithmetic overflow risks found.");

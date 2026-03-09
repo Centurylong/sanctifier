@@ -20,18 +20,24 @@ Sanctifier is designed with a modular, tool-chain approach:
 ## 🛠 Targeted Security Layers
 
 ### 1. Static Analysis (The Sentinel)
+
 Scans your Soroban code at compile-time to detect:
+
 - **Authorization Gaps**: Missing `require_auth` or weak access controls.
 - **Storage Collisions**: Improper usage of Instance vs. Persistent storage.
 - **Arithmetic Safety**: Proactive detection of potential overflows and underflows.
 
 ### 2. Formal Verification (The Absolute)
+
 Integrates with **Kani** and SMT solvers to provide mathematical certainty:
+
 - **State Invariants**: Proving that a contract's state can never enter an invalid or "hacked" mode.
-- **Initialization Gards**: Mathematically ensuring `initialize` functions are truly idempotent.
+- **Initialization Guards**: Mathematically ensuring `initialize` functions are truly idempotent.
 
 ### 3. Runtime Guardians (The Shield)
+
 A library of opt-in hooks to monitor contract health live:
+
 - **`guard_invariant()`**: Reverts transactions if high-level business logic is violated.
 - **`monitor_events()`**: Automates the verification of critical event emissions.
 
@@ -43,15 +49,26 @@ A library of opt-in hooks to monitor contract health live:
 cargo install --path tooling/sanctifier-cli
 ```
 
+
 ### Quick Scan
+
 Run an initial security audit on your project:
+
 ```bash
 sanctifier analyze ./contracts/my-project
 ```
+
+#### LLM-Assisted Explanations (Experimental)
+To get plain-English explanations and mitigation strategies for findings, use:
+```bash
+sanctifier analyze ./contracts/my-project --llm-explain
+```
+Set the `LLM_API_URL` environment variable to point to your LLM API endpoint (defaults to http://localhost:8000/explain).
 
 ## 🗺 Roadmap
 
 Sanctifier is **Open-Source and Ecosystem-First**. Our 30+ issue roadmap covers everything from enhanced formal verification bridges to real-time security dashboards. See [Issues](https://github.com/Hypersecured/sanctifier/issues) for 'Good First Issues'.
 
 ---
+
 Built with 🛡️ for the Stellar Ecosystem.

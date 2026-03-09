@@ -13,8 +13,10 @@
           "issue_type": "panic!",
           "location": "/home/idealz/Drips-Projects/sanctifier-Gf/tooling/sanctifier-cli/tests/fixtures/vulnerable_contract.rs: panic_calc"
         }
-      ],
-      "arithmetic_issues": [
+      ]
+    }
+  }
+}thmetic_issues": [
         {
           "function_name": "panic_calc",
           "operation": "+",
