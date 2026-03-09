@@ -55,7 +55,22 @@ export interface SymbolicGraph {
   paths: ExecutionPath[];
 }
 
+export interface ScoreDeduction {
+  category: string;
+  amount: number;
+  message: string;
+}
+
+export interface SanctityScore {
+  total_score: number;
+  security_score: number;
+  verification_score: number;
+  coverage_score: number;
+  deductions: ScoreDeduction[];
+}
+
 export interface AnalysisReport {
+  sanctity_score?: SanctityScore;
   size_warnings?: SizeWarning[];
   unsafe_patterns?: UnsafePattern[];
   auth_gaps?: string[];
@@ -65,6 +80,7 @@ export interface AnalysisReport {
   kani_metrics?: KaniVerificationMetrics;
   symbolic_paths?: SymbolicGraph[];
 }
+
 
 export interface Finding {
   id: string;

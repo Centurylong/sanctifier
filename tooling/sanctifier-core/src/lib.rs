@@ -1,5 +1,7 @@
 pub mod gas_estimator;
 pub mod kani_bridge;
+pub mod reentrancy;
+pub mod scoring;
 pub mod symbolic;
 pub mod zk_proof;
 
@@ -184,6 +186,35 @@ pub struct DeprecatedApiIssue {
     pub location: String,
 }
 
+// ── Auto-Fix Types (NEW) ──────────────────────────────────────────────────────
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct CodeFix {
+    pub file: String,
+    pub line: usize,
+    pub column: usize,
+    pub end_line: usize,
+    pub end_column: usize,
+    pub replacement: String,
+    pub description: String,
+    pub fix_type: FixType,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
+pub enum FixType {
+    AddAuth,
+    PrefixUnused,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct UnusedVariableIssue {
+    pub name: String,
+    pub function_name: String,
+    pub location: String,
+    pub line: usize,
+    pub col: usize,
+}
+
 // ── Storage Collision Issue (NEW) ──────────────────────────────────────────
 
 /// Represents a potential collision between storage types (e.g. Instance and Persistent)
@@ -309,6 +340,14 @@ impl Analyzer {
         with_panic_guard(|| self.scan_auth_gaps_impl(source))
     }
 
+    pub fn scan_unused_variables(&self, source: &str) -> Vec<UnusedVariableIssue> {
+        with_panic_guard(|| self.scan_unused_variables_impl(source))
+    }
+
+    pub fn suggest_fixes(&self, source: &str) -> Vec<CodeFix> {
+        with_panic_guard(|| self.suggest_fixes_impl(source))
+    }
+
     pub fn analyze_symbolic_paths(&self, source: &str) -> Vec<symbolic::SymbolicGraph> {
         with_panic_guard(|| self.analyze_symbolic_paths_impl(source))
     }
@@ -347,7 +386,6 @@ impl Analyzer {
         };
 
         let mut visitor = StorageVisitor {
-            issues: Vec::new(),
             current_fn: None,
             instance_keys: HashSet::new(),
             persistent_keys: HashSet::new(),
@@ -355,10 +393,10 @@ impl Analyzer {
             key_locations: std::collections::HashMap::new(),
         };
         visitor.visit_file(&file);
-        
+
         // Find overlaps
         let mut final_issues = Vec::new();
-        
+
         // Instance vs Persistent
         for key in &visitor.instance_keys {
             if visitor.persistent_keys.contains(key) {
@@ -366,11 +404,15 @@ impl Analyzer {
                     function_name: "Workspace".to_string(), // Or specific fn if we track it better
                     key: key.clone(),
                     storage_types: vec!["Instance".to_string(), "Persistent".to_string()],
-                    location: visitor.key_locations.get(&(key.clone(), "Instance".to_string())).cloned().unwrap_or_default(),
+                    location: visitor
+                        .key_locations
+                        .get(&(key.clone(), "Instance".to_string()))
+                        .cloned()
+                        .unwrap_or_default(),
                 });
             }
         }
-        
+
         final_issues
     }
 
@@ -721,9 +763,9 @@ impl Analyzer {
                         .stmts
                         .iter()
                         .any(|s| self.check_expr_for_auth(s, known_auth_fns))
-                    || i.else_branch.as_ref().is_some_and(|(_, e)| {
-                        self.check_expr_inner_for_auth(e, known_auth_fns)
-                    })
+                    || i.else_branch
+                        .as_ref()
+                        .is_some_and(|(_, e)| self.check_expr_inner_for_auth(e, known_auth_fns))
             }
             syn::Expr::Match(m) => {
                 self.check_expr_inner_for_auth(&m.expr, known_auth_fns)
@@ -835,6 +877,135 @@ impl Analyzer {
 
     pub fn check_storage_collisions(&self, _keys: Vec<String>) -> bool {
         false
+    }
+
+    fn scan_unused_variables_impl(&self, source: &str) -> Vec<UnusedVariableIssue> {
+        let file = match parse_str::<File>(source) {
+            Ok(f) => f,
+            Err(_) => return vec![],
+        };
+
+        let mut issues = Vec::new();
+        for item in &file.items {
+            if let Item::Impl(i) = item {
+                for impl_item in &i.items {
+                    if let syn::ImplItem::Fn(f) = impl_item {
+                        let mut visitor = UnusedVariableVisitor::new(f.sig.ident.to_string());
+                        visitor.visit_impl_item_fn(f);
+                        issues.extend(visitor.report_unused());
+                    }
+                }
+            }
+        }
+        issues
+    }
+
+    fn suggest_fixes_impl(&self, source: &str) -> Vec<CodeFix> {
+        let mut fixes = Vec::new();
+
+        // 1. Unused variables
+        let unused = self.scan_unused_variables(source);
+        for u in unused {
+            fixes.push(CodeFix {
+                file: "".to_string(), // Filled by CLI
+                line: u.line,
+                column: u.col,
+                end_line: u.line,
+                end_column: u.col + u.name.len(),
+                replacement: format!("_{}", u.name),
+                description: format!("Prefix unused variable `{}` with `_`", u.name),
+                fix_type: FixType::PrefixUnused,
+            });
+        }
+
+        // 2. Auth gaps
+        let file = match parse_str::<File>(source) {
+            Ok(f) => f,
+            Err(_) => return fixes,
+        };
+
+        for item in &file.items {
+            if let Item::Impl(i) = item {
+                let auth_fns = self.identify_auth_functions(i);
+                for impl_item in &i.items {
+                    if let syn::ImplItem::Fn(f) = impl_item {
+                        if let syn::Visibility::Public(_) = f.vis {
+                            let mut has_mutation = false;
+                            let mut has_auth = false;
+                            self.check_fn_auth_and_mutation(
+                                &f.block,
+                                &auth_fns,
+                                &mut has_mutation,
+                                &mut has_auth,
+                            );
+
+                            if has_mutation && !has_auth {
+                                // Find an Address parameter to call require_auth on
+                                let mut address_param = None;
+                                for arg in &f.sig.inputs {
+                                    if let syn::FnArg::Typed(pat_type) = arg {
+                                        if let Type::Path(tp) = &*pat_type.ty {
+                                            if tp.path.is_ident("Address") {
+                                                if let syn::Pat::Ident(id) = &*pat_type.pat {
+                                                    address_param = Some(id.ident.to_string());
+                                                    break;
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+
+                                if let Some(param) = address_param {
+                                    let span = f.block.brace_token.span.open();
+                                    let start = span.start();
+                                    fixes.push(CodeFix {
+                                        file: "".to_string(),
+                                        line: start.line,
+                                        column: start.column + 1,
+                                        end_line: start.line,
+                                        end_column: start.column + 1,
+                                        replacement: format!("\n        {}.require_auth();", param),
+                                        description: format!(
+                                            "Add missing `require_auth()` for `{}`",
+                                            param
+                                        ),
+                                        fix_type: FixType::AddAuth,
+                                    });
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        fixes.sort_by(|a, b| b.line.cmp(&a.line).then(b.column.cmp(&a.column)));
+
+        // Filter out PrefixUnused for variables where we also added AddAuth
+        let auth_params: HashSet<String> = fixes
+            .iter()
+            .filter(|f| f.fix_type == FixType::AddAuth)
+            .map(|f| {
+                // Description is "Add missing `require_auth()` for `NAME`"
+                let parts: Vec<&str> = f.description.split('`').collect();
+                if parts.len() >= 4 {
+                    parts[3].to_string()
+                } else {
+                    "".to_string()
+                }
+            })
+            .collect();
+
+        fixes.retain(|f| {
+            if f.fix_type == FixType::PrefixUnused {
+                let name = f.description.split('`').nth(1).unwrap_or("");
+                !auth_params.contains(name)
+            } else {
+                true
+            }
+        });
+
+        fixes
     }
 
     // ── Ledger size analysis ──────────────────────────────────────────────────
@@ -1027,6 +1198,31 @@ impl Analyzer {
             current_fn: None,
             seen: HashSet::new(),
         };
+        visitor.visit_file(&file);
+        visitor.issues
+    }
+
+    // ── Reentrancy risk detection ──────────────────────────────────────────────
+
+    /// Scans contract impl functions for potential state-based reentrancy risks.
+    ///
+    /// Soroban's host blocks classical cross-contract reentrancy, but complex
+    /// multi-step workflows can still be vulnerable if:
+    /// - A function mutates state AND performs external calls
+    /// - No `ReentrancyGuardian` nonce check is present
+    ///
+    /// Returns a list of [`reentrancy::ReentrancyIssue`] for further reporting.
+    pub fn scan_reentrancy_risks(&self, source: &str) -> Vec<reentrancy::ReentrancyIssue> {
+        with_panic_guard(|| self.scan_reentrancy_risks_impl(source))
+    }
+
+    fn scan_reentrancy_risks_impl(&self, source: &str) -> Vec<reentrancy::ReentrancyIssue> {
+        use syn::visit::Visit;
+        let file = match parse_str::<File>(source) {
+            Ok(f) => f,
+            Err(_) => return vec![],
+        };
+        let mut visitor = reentrancy::ReentrancyVisitor::new();
         visitor.visit_file(&file);
         visitor.issues
     }
@@ -1303,11 +1499,170 @@ impl<'ast> Visit<'ast> for ArithVisitor {
         // Continue descending so nested binary ops are also checked
         visit::visit_expr_binary(self, node);
     }
+
+    fn visit_expr_method_call(&mut self, node: &'ast syn::ExprMethodCall) {
+        if let Some(fn_name) = self.current_fn.clone() {
+            let method_name = node.method.to_string();
+            let risky_methods = [
+                "fixed_mul",
+                "fixed_div",
+                "fixed_mul_floor",
+                "fixed_mul_ceil",
+                "fixed_div_floor",
+                "fixed_div_ceil",
+            ];
+
+            if risky_methods.contains(&method_name.as_str()) {
+                let key = (fn_name.clone(), method_name.clone());
+                if !self.seen.contains(&key) {
+                    self.seen.insert(key);
+                    let line = node.span().start().line;
+                    self.issues.push(ArithmeticIssue {
+                        function_name: fn_name,
+                        operation: method_name.clone(),
+                        suggestion: format!(
+                            "Ensure boundaries are checked before calling `{}` to avoid panics",
+                            method_name
+                        ),
+                        location: format!("{}:{}", method_name, line),
+                    });
+                }
+            }
+        }
+        visit::visit_expr_method_call(self, node);
+    }
 }
 
-/// Returns `true` if the expression is a string literal — used to avoid
-/// false-positives on `+` for string concatenation (rare in no_std Soroban
-/// but included for correctness).
+// ── StorageVisitor ──────────────────────────────────────────────────────────
+
+// ── UnusedVariableVisitor ──────────────────────────────────────────────────
+
+struct UnusedVariableVisitor {
+    fn_name: String,
+    defined: HashSet<(String, usize, usize)>, // (name, line, col)
+    used: HashSet<String>,
+}
+
+impl UnusedVariableVisitor {
+    fn new(fn_name: String) -> Self {
+        Self {
+            fn_name,
+            defined: HashSet::new(),
+            used: HashSet::new(),
+        }
+    }
+
+    fn report_unused(self) -> Vec<UnusedVariableIssue> {
+        let mut issues = Vec::new();
+        for (name, line, col) in self.defined {
+            if !self.used.contains(&name)
+                && !name.starts_with('_')
+                && name != "env"
+                && name != "self"
+            {
+                issues.push(UnusedVariableIssue {
+                    name: name.clone(),
+                    function_name: self.fn_name.clone(),
+                    location: format!("{}:{}", line, col),
+                    line,
+                    col,
+                });
+            }
+        }
+        issues
+    }
+}
+
+impl<'ast> Visit<'ast> for UnusedVariableVisitor {
+    fn visit_pat_ident(&mut self, i: &'ast syn::PatIdent) {
+        let name = i.ident.to_string();
+        let span = i.ident.span().start();
+        self.defined.insert((name, span.line, span.column));
+        visit::visit_pat_ident(self, i);
+    }
+
+    fn visit_expr_path(&mut self, i: &'ast syn::ExprPath) {
+        if let Some(ident) = i.path.get_ident() {
+            self.used.insert(ident.to_string());
+        }
+        visit::visit_expr_path(self, i);
+    }
+
+    fn visit_field_pat(&mut self, i: &'ast syn::FieldPat) {
+        // Handle field shorthand like { x }
+        if let syn::Pat::Ident(id) = &*i.pat {
+            if i.member == syn::Member::Named(id.ident.clone()) {
+                self.used.insert(id.ident.to_string());
+            }
+        }
+        visit::visit_field_pat(self, i);
+    }
+}
+
+// ── StorageVisitor ──────────────────────────────────────────────────────────
+
+struct StorageVisitor {
+    current_fn: Option<String>,
+    instance_keys: HashSet<String>,
+    persistent_keys: HashSet<String>,
+    temporary_keys: HashSet<String>,
+    // Mapping of (key, storage_type) -> location string
+    key_locations: std::collections::HashMap<(String, String), String>,
+}
+
+impl<'ast> Visit<'ast> for StorageVisitor {
+    fn visit_impl_item_fn(&mut self, node: &'ast syn::ImplItemFn) {
+        let prev = self.current_fn.take();
+        self.current_fn = Some(node.sig.ident.to_string());
+        visit::visit_impl_item_fn(self, node);
+        self.current_fn = prev;
+    }
+
+    fn visit_expr_method_call(&mut self, node: &'ast syn::ExprMethodCall) {
+        let method_name = node.method.to_string();
+        if method_name == "set" || method_name == "get" || method_name == "has" {
+            let receiver_str = quote::quote!(#node.receiver).to_string();
+            let storage_type = if receiver_str.contains("instance") {
+                Some("Instance")
+            } else if receiver_str.contains("persistent") {
+                Some("Persistent")
+            } else if receiver_str.contains("temporary") {
+                Some("Temporary")
+            } else {
+                None
+            };
+
+            if let Some(st) = storage_type {
+                if let Some(first_arg) = node.args.first() {
+                    let key_str = quote::quote!(#first_arg).to_string();
+                    let loc = self
+                        .current_fn
+                        .as_ref()
+                        .map(|f| format!("{}:{}", f, first_arg.span().start().line))
+                        .unwrap_or_default();
+
+                    match st {
+                        "Instance" => {
+                            self.instance_keys.insert(key_str.clone());
+                            self.key_locations.insert((key_str, st.to_string()), loc);
+                        }
+                        "Persistent" => {
+                            self.persistent_keys.insert(key_str.clone());
+                            self.key_locations.insert((key_str, st.to_string()), loc);
+                        }
+                        "Temporary" => {
+                            self.temporary_keys.insert(key_str.clone());
+                            self.key_locations.insert((key_str, st.to_string()), loc);
+                        }
+                        _ => {}
+                    }
+                }
+            }
+        }
+        visit::visit_expr_method_call(self, node);
+    }
+}
+
 fn is_string_literal(expr: &syn::Expr) -> bool {
     matches!(
         expr,
@@ -1318,9 +1673,11 @@ fn is_string_literal(expr: &syn::Expr) -> bool {
     )
 }
 
-// ── Tests ─────────────────────────────────────────────────────────────────────
+#[cfg(test)]
+mod tests {
+    use super::*;
 
-    }
+    // ── Tests ─────────────────────────────────────────────────────────────────────
 
     #[test]
     fn test_analyze_with_macros() {
@@ -1545,73 +1902,6 @@ fn is_string_literal(expr: &syn::Expr) -> bool {
         assert!(ops.contains(&"+"));
         assert!(ops.contains(&"-"));
         assert!(ops.contains(&"*"));
-    }
-}
-
-// ── StorageVisitor ──────────────────────────────────────────────────────────
-
-struct StorageVisitor {
-    issues: Vec<StorageCollisionIssue>,
-    current_fn: Option<String>,
-    instance_keys: HashSet<String>,
-    persistent_keys: HashSet<String>,
-    temporary_keys: HashSet<String>,
-    // Mapping of (key, storage_type) -> location string
-    key_locations: std::collections::HashMap<(String, String), String>,
-}
-
-impl<'ast> Visit<'ast> for StorageVisitor {
-    fn visit_impl_item_fn(&mut self, node: &'ast syn::ImplItemFn) {
-        let prev = self.current_fn.take();
-        self.current_fn = Some(node.sig.ident.to_string());
-        visit::visit_impl_item_fn(self, node);
-        self.current_fn = prev;
-    }
-
-    fn visit_expr_method_call(&mut self, node: &'ast syn::ExprMethodCall) {
-        let method_name = node.method.to_string();
-        if method_name == "set" || method_name == "get" || method_name == "has" {
-            let receiver_str = quote::quote!(#node.receiver).to_string();
-            let storage_type = if receiver_str.contains("instance") {
-                Some("Instance")
-            } else if receiver_str.contains("persistent") {
-                Some("Persistent")
-            } else if receiver_str.contains("temporary") {
-                Some("Temporary")
-            } else {
-                None
-            };
-
-            if let Some(st) = storage_type {
-                if let Some(first_arg) = node.args.first() {
-                    let key_str = quote::quote!(#first_arg).to_string();
-                    let loc = self.current_fn.as_ref().map(|f| format!("{}:{}", f, first_arg.span().start().line)).unwrap_or_default();
-                    
-                    match st {
-                        "Instance" => {
-                            self.instance_keys.insert(key_str.clone());
-                            self.key_locations.insert((key_str, st.to_string()), loc);
-                        }
-                        "Persistent" => {
-                            self.persistent_keys.insert(key_str.clone());
-                            self.key_locations.insert((key_str, st.to_string()), loc);
-                        }
-                        "Temporary" => {
-                            self.temporary_keys.insert(key_str.clone());
-                            self.key_locations.insert((key_str, st.to_string()), loc);
-                        }
-                        _ => {}
-                    }
-                }
-            }
-        }
-        visit::visit_expr_method_call(self, node);
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
 
         // safe_add uses checked_add — no bare + operator, so not flagged
         assert!(issues.iter().all(|i| i.function_name != "safe_add"));
@@ -1873,8 +2163,79 @@ mod tests {
         let issues = analyzer.scan_storage_collisions(src);
         assert!(!issues.is_empty());
         // In the quote-generated string, "& key" results in "key"
-        assert!(issues[0].key.contains("key")); 
+        assert!(issues[0].key.contains("key"));
         assert!(issues[0].storage_types.contains(&"Instance".to_string()));
         assert!(issues[0].storage_types.contains(&"Persistent".to_string()));
+    }
+
+    #[test]
+    fn test_scan_unused_variables() {
+        let analyzer = Analyzer::new(SanctifyConfig::default());
+        let source = r#"
+            #[contractimpl]
+            impl MyContract {
+                pub fn unused_var(env: Env, used: u32, unused: u32) -> u32 {
+                    let local_used = used + 1;
+                    let local_unused = 10;
+                    local_used
+                }
+            }
+        "#;
+        let issues = analyzer.scan_unused_variables(source);
+        assert_eq!(issues.len(), 2);
+        let names: Vec<String> = issues.iter().map(|i| i.name.clone()).collect();
+        assert!(names.contains(&"unused".to_string()));
+        assert!(names.contains(&"local_unused".to_string()));
+        assert!(!names.contains(&"used".to_string()));
+        assert!(!names.contains(&"local_used".to_string()));
+    }
+
+    #[test]
+    fn test_suggest_fixes() {
+        let analyzer = Analyzer::new(SanctifyConfig::default());
+        let source = r#"
+            #[contractimpl]
+            impl MyContract {
+                pub fn missing_auth(env: Env, user: Address, val: u32) {
+                    env.storage().instance().set(&DataKey::Val, &val);
+                }
+
+                pub fn unused(env: Env, x: u32) -> u32 {
+                    let y = 10;
+                    5
+                }
+            }
+        "#;
+        let fixes = analyzer.suggest_fixes(source);
+        // 1 fix for missing_auth (AddAuth)
+        // (Unused 'user' fix is filtered out because it's used in AddAuth)
+        // 2 fixes for unused (PrefixUnused for x and y)
+        assert_eq!(fixes.len(), 3);
+
+        let types: Vec<FixType> = fixes.iter().map(|f| f.fix_type.clone()).collect();
+        assert!(types.contains(&FixType::AddAuth));
+        assert!(types.contains(&FixType::PrefixUnused));
+    }
+
+    #[test]
+    fn test_scan_arithmetic_custom_library() {
+        let analyzer = Analyzer::new(SanctifyConfig::default());
+        let source = r#"
+            #[contractimpl]
+            impl Vault {
+                pub fn calc_shares(env: Env, amount: i128, rate: i128) -> i128 {
+                    amount.fixed_mul(rate)
+                }
+
+                pub fn calc_assets(env: Env, shares: i128, rate: i128) -> i128 {
+                    shares.fixed_div(rate)
+                }
+            }
+        "#;
+        let issues = analyzer.scan_arithmetic_overflow(source);
+        assert_eq!(issues.len(), 2);
+        let ops: Vec<String> = issues.iter().map(|i| i.operation.clone()).collect();
+        assert!(ops.contains(&"fixed_mul".to_string()));
+        assert!(ops.contains(&"fixed_div".to_string()));
     }
 }
