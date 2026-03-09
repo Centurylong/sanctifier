@@ -24,6 +24,7 @@ pub struct CachedAnalysis {
     pub deprecated_api_issues: Vec<DeprecatedApiIssue>,
     pub custom_rule_matches: Vec<CustomRuleMatch>,
     pub gas_estimations: Vec<GasEstimationReport>,
+    pub reentrancy_issues: Vec<sanctifier_core::reentrancy::ReentrancyIssue>,
 }
 
 #[derive(Serialize, Deserialize, Default)]
@@ -167,6 +168,7 @@ fn main() {
             let mut all_deprecated_api_issues: Vec<DeprecatedApiIssue> = Vec::new();
             let mut all_custom_rule_matches: Vec<CustomRuleMatch> = Vec::new();
             let mut all_gas_estimations: Vec<GasEstimationReport> = Vec::new();
+            let mut all_reentrancy_issues: Vec<sanctifier_core::reentrancy::ReentrancyIssue> = Vec::new();
             let mut all_symbolic_paths: Vec<sanctifier_core::symbolic::SymbolicGraph> = Vec::new();
             let mut upgrade_report = UpgradeReport::empty();
 
@@ -184,6 +186,7 @@ fn main() {
                     &mut all_deprecated_api_issues,
                     &mut all_custom_rule_matches,
                     &mut all_gas_estimations,
+                    &mut all_reentrancy_issues,
                     &mut all_symbolic_paths,
                     &mut upgrade_report,
                 );
@@ -222,6 +225,7 @@ fn main() {
                     all_deprecated_api_issues.extend(analysis.deprecated_api_issues);
                     all_custom_rule_matches.extend(analysis.custom_rule_matches);
                     all_gas_estimations.extend(analysis.gas_estimations);
+                    all_reentrancy_issues.extend(analysis.reentrancy_issues);
                     let gas_reports = analyzer.scan_gas_estimation(&content);
                     all_gas_estimations.extend(gas_reports);
 
@@ -252,6 +256,7 @@ fn main() {
                     "deprecated_api_issues": all_deprecated_api_issues,
                     "custom_rule_matches": all_custom_rule_matches,
                     "gas_estimations": all_gas_estimations,
+                    "reentrancy_risks": all_reentrancy_issues,
                     "symbolic_paths": all_symbolic_paths,
                     "upgrade_report": upgrade_report,
                     "kani_metrics": KaniVerificationMetrics {
@@ -299,6 +304,22 @@ fn main() {
                             warning.limit
                         );
                     }
+                }
+
+                if !all_reentrancy_issues.is_empty() {
+                    println!("\n{} Found potential Reentrancy Risks!", "🔄".yellow());
+                    for issue in &all_reentrancy_issues {
+                        println!(
+                            "   {} Function {}: {}",
+                            "->".red(),
+                            issue.function_name.bold(),
+                            issue.issue_type.yellow().bold()
+                        );
+                        println!("      Location: {}", issue.location);
+                        println!("      {} {}", "💡".blue(), issue.recommendation);
+                    }
+                } else {
+                    println!("\nNo reentrancy risks found.");
                 }
 
                 if !all_auth_gaps.is_empty() {
@@ -554,6 +575,7 @@ fn analyze_directory(
     all_deprecated_api_issues: &mut Vec<DeprecatedApiIssue>,
     all_custom_rule_matches: &mut Vec<CustomRuleMatch>,
     all_gas_estimations: &mut Vec<GasEstimationReport>,
+    all_reentrancy_issues: &mut Vec<sanctifier_core::reentrancy::ReentrancyIssue>,
     _all_symbolic_paths: &mut Vec<sanctifier_core::symbolic::SymbolicGraph>,
     _upgrade_report: &mut UpgradeReport,
 ) {
@@ -588,6 +610,7 @@ fn analyze_directory(
                     all_deprecated_api_issues,
                     all_custom_rule_matches,
                     all_gas_estimations,
+                    all_reentrancy_issues,
                     _all_symbolic_paths,
                     _upgrade_report,
                 );
@@ -626,6 +649,7 @@ fn analyze_directory(
                     all_deprecated_api_issues.extend(analysis.deprecated_api_issues);
                     all_custom_rule_matches.extend(analysis.custom_rule_matches);
                     all_gas_estimations.extend(analysis.gas_estimations);
+                    all_reentrancy_issues.extend(analysis.reentrancy_issues);
                 }
             }
         }
@@ -686,6 +710,12 @@ fn run_analysis(
 
     let gas_reports = analyzer.scan_gas_estimation(content);
     analysis.gas_estimations.extend(gas_reports);
+
+    let reentrancy = analyzer.scan_reentrancy_risks(content);
+    for mut r in reentrancy {
+        r.location = format!("{}: {}", path.display(), r.location);
+        analysis.reentrancy_issues.push(r);
+    }
 
     analysis
 }

@@ -110,10 +110,8 @@ impl<'ast> Visit<'ast> for ReentrancyVisitor {
         }
 
         // Detect reentrancy guard calls: guardian.enter(...) patterns
-        if method == "enter" || method == "exit" {
-            if receiver_contains_guard(&i.receiver) {
-                self.has_reentrancy_guard = true;
-            }
+        if (method == "enter" || method == "exit") && receiver_contains_guard(&i.receiver) {
+            self.has_reentrancy_guard = true;
         }
 
         // Detect external cross-contract calls via a generated *Client struct
@@ -141,10 +139,9 @@ impl<'ast> Visit<'ast> for ReentrancyVisitor {
                 | "exit"
                 | "get_nonce"
                 | "init"
-        ) {
-            if receiver_contains_client(&i.receiver) {
-                self.has_external_call = true;
-            }
+        ) && receiver_contains_client(&i.receiver)
+        {
+            self.has_external_call = true;
         }
 
         visit::visit_expr_method_call(self, i);
@@ -179,11 +176,7 @@ fn expr_to_string(expr: &Expr) -> String {
             .collect::<Vec<_>>()
             .join("::"),
         Expr::Field(f) => {
-            format!(
-                "{}.{}",
-                expr_to_string(&f.base),
-                quote::quote!(#(&f.member)).to_string()
-            )
+            format!("{}.{}", expr_to_string(&f.base), quote::quote!(#(&f.member)))
         }
         _ => String::new(),
     }
