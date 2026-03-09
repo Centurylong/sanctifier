@@ -3,16 +3,17 @@
 import { useEffect, useState } from "react";
 
 export function ThemeToggle() {
-  const [dark, setDark] = useState(false);
+  const [dark, setDark] = useState<boolean>(() => {
+    if (typeof window === "undefined") return false;
+    return (
+      document.documentElement.classList.contains("dark") ||
+      window.matchMedia("(prefers-color-scheme: dark)").matches
+    );
+  });
 
   useEffect(() => {
-    const isDark =
-      typeof window !== "undefined" &&
-      (document.documentElement.classList.contains("dark") ||
-        window.matchMedia("(prefers-color-scheme: dark)").matches);
-    setDark(isDark);
-    if (isDark) document.documentElement.classList.add("dark");
-  }, []);
+    if (dark) document.documentElement.classList.add("dark");
+  }, [dark]);
 
   const toggle = () => {
     document.documentElement.classList.toggle("dark");

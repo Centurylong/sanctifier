@@ -1,8 +1,8 @@
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use syn::visit::{self, Visit};
 use syn::{parse_str, File, Item, Type};
 
-#[derive(Debug, Serialize, Clone, Default)]
+#[derive(Debug, Serialize, Deserialize, Clone, Default)]
 pub struct GasEstimationReport {
     pub function_name: String,
     pub estimated_instructions: usize,
@@ -10,6 +10,12 @@ pub struct GasEstimationReport {
 }
 
 pub struct GasEstimator {}
+
+impl Default for GasEstimator {
+    fn default() -> Self {
+        Self::new()
+    }
+}
 
 impl GasEstimator {
     pub fn new() -> Self {

@@ -1,17 +1,20 @@
 pub mod gas_estimator;
 pub mod kani_bridge;
+pub mod reentrancy;
+pub mod scoring;
+pub mod symbolic;
+pub mod zk_proof;
 
 use serde::{Deserialize, Serialize};
 use std::collections::HashSet;
-use std::panic::{catch_unwind, AssertUnwindSafe};
+use std::panic::catch_unwind;
 use syn::spanned::Spanned;
 use syn::visit::{self, Visit};
 use syn::{parse_str, Fields, File, Item, Meta, Type};
 
+#[cfg(not(target_arch = "wasm32"))]
 use soroban_sdk::Env;
 use thiserror::Error;
-
-
 
 const DEFAULT_APPROACHING_THRESHOLD: f64 = 0.8;
 
@@ -20,16 +23,13 @@ where
     F: FnOnce() -> R + std::panic::UnwindSafe,
     R: Default,
 {
-    match catch_unwind(f) {
-        Ok(res) => res,
-        Err(_) => R::default(),
-    }
+    catch_unwind(f).unwrap_or_default()
 }
 
 // ── Existing types ────────────────────────────────────────────────────────────
 
 /// Severity of a ledger size warning.
-#[derive(Debug, Serialize, Clone, PartialEq)]
+#[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
 pub enum SizeWarningLevel {
     /// Size exceeds the ledger entry limit (e.g. 64KB).
     ExceedsLimit,
@@ -37,7 +37,7 @@ pub enum SizeWarningLevel {
     ApproachingLimit,
 }
 
-#[derive(Debug, Serialize, Clone)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct SizeWarning {
     pub struct_name: String,
     pub estimated_size: usize,
@@ -45,7 +45,7 @@ pub struct SizeWarning {
     pub level: SizeWarningLevel,
 }
 
-#[derive(Debug, Serialize, Clone)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct PanicIssue {
     pub function_name: String,
     pub issue_type: String, // "panic!", "unwrap", "expect"
@@ -54,14 +54,14 @@ pub struct PanicIssue {
 
 // ── UnsafePattern types (visitor-based panic/unwrap scanning) ─────────────────
 
-#[derive(Debug, Serialize, Clone)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub enum PatternType {
     Panic,
     Unwrap,
     Expect,
 }
 
-#[derive(Debug, Serialize, Clone)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct UnsafePattern {
     pub pattern_type: PatternType,
     pub line: usize,
@@ -70,7 +70,7 @@ pub struct UnsafePattern {
 
 // ── Upgrade analysis types ────────────────────────────────────────────────────
 
-#[derive(Debug, Serialize, Clone)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct UpgradeFinding {
     pub category: UpgradeCategory,
     pub function_name: Option<String>,
@@ -79,7 +79,7 @@ pub struct UpgradeFinding {
     pub suggestion: String,
 }
 
-#[derive(Debug, Serialize, Clone)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 #[serde(rename_all = "snake_case")]
 pub enum UpgradeCategory {
     AdminControl,
@@ -90,7 +90,7 @@ pub enum UpgradeCategory {
 }
 
 /// Upgrade safety report.
-#[derive(Debug, Serialize, Clone, Default)]
+#[derive(Debug, Serialize, Deserialize, Clone, Default)]
 pub struct UpgradeReport {
     pub findings: Vec<UpgradeFinding>,
     pub upgrade_mechanisms: Vec<String>,
@@ -111,6 +111,7 @@ impl UpgradeReport {
     }
 }
 
+#[allow(dead_code)]
 fn has_attr(attrs: &[syn::Attribute], name: &str) -> bool {
     attrs.iter().any(|attr| {
         if let Meta::Path(path) = &attr.meta {
@@ -143,7 +144,7 @@ fn is_init_fn(name: &str) -> bool {
 // ── ArithmeticIssue (NEW) ─────────────────────────────────────────────────────
 
 /// Represents an unchecked arithmetic operation that could overflow or underflow.
-#[derive(Debug, Serialize, Clone)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct ArithmeticIssue {
     /// Contract function in which the operation was found.
     pub function_name: String,
@@ -158,7 +159,7 @@ pub struct ArithmeticIssue {
 // ── EventIssue (NEW) ──────────────────────────────────────────────────────────
 
 /// Severity of a event consistency issue.
-#[derive(Debug, Serialize, Clone, PartialEq)]
+#[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
 pub enum EventIssueType {
     /// Topics count varies for the same event name.
     InconsistentSchema,
@@ -166,12 +167,63 @@ pub enum EventIssueType {
     OptimizableTopic,
 }
 
-#[derive(Debug, Serialize, Clone)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct EventIssue {
     pub function_name: String,
     pub event_name: String,
     pub issue_type: EventIssueType,
     pub message: String,
+    pub location: String,
+}
+
+// ── Deprecated API Issue (NEW) ──────────────────────────────────────────────────
+
+/// Represents usage of a deprecated Soroban host function.
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct DeprecatedApiIssue {
+    pub function_name: String,
+    pub deprecated_api: String,
+    pub location: String,
+}
+
+// ── Auto-Fix Types (NEW) ──────────────────────────────────────────────────────
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct CodeFix {
+    pub file: String,
+    pub line: usize,
+    pub column: usize,
+    pub end_line: usize,
+    pub end_column: usize,
+    pub replacement: String,
+    pub description: String,
+    pub fix_type: FixType,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
+pub enum FixType {
+    AddAuth,
+    PrefixUnused,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct UnusedVariableIssue {
+    pub name: String,
+    pub function_name: String,
+    pub location: String,
+    pub line: usize,
+    pub col: usize,
+}
+
+// ── Storage Collision Issue (NEW) ──────────────────────────────────────────
+
+/// Represents a potential collision between storage types (e.g. Instance and Persistent)
+/// using the same keys, which can lead to unpredictable behavior.
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct StorageCollisionIssue {
+    pub function_name: String,
+    pub key: String,
+    pub storage_types: Vec<String>, // ["Instance", "Persistent"]
     pub location: String,
 }
 
@@ -185,7 +237,7 @@ pub struct CustomRule {
 }
 
 /// A match from a custom regex rule.
-#[derive(Debug, Serialize, Clone)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct CustomRuleMatch {
     pub rule_name: String,
     pub line: usize,
@@ -206,6 +258,8 @@ pub struct SanctifyConfig {
     pub strict_mode: bool,
     #[serde(default)]
     pub custom_rules: Vec<CustomRule>,
+    #[serde(default)]
+    pub exclude: Vec<String>,
 }
 
 fn default_ignore_paths() -> Vec<String> {
@@ -219,6 +273,7 @@ fn default_enabled_rules() -> Vec<String> {
         "arithmetic".to_string(),
         "ledger_size".to_string(),
         "events".to_string(),
+        "storage_collisions".to_string(),
     ]
 }
 
@@ -239,6 +294,7 @@ impl Default for SanctifyConfig {
             approaching_threshold: default_approaching_threshold(),
             strict_mode: false,
             custom_rules: vec![],
+            exclude: vec![],
         }
     }
 }
@@ -260,9 +316,7 @@ fn classify_size(
     strict: bool,
     strict_threshold: usize,
 ) -> Option<SizeWarningLevel> {
-    if size >= limit {
-        Some(SizeWarningLevel::ExceedsLimit)
-    } else if strict && size >= strict_threshold {
+    if size >= limit || (strict && size >= strict_threshold) {
         Some(SizeWarningLevel::ExceedsLimit)
     } else if size as f64 >= limit as f64 * approaching {
         Some(SizeWarningLevel::ApproachingLimit)
@@ -286,6 +340,82 @@ impl Analyzer {
         with_panic_guard(|| self.scan_auth_gaps_impl(source))
     }
 
+    pub fn scan_unused_variables(&self, source: &str) -> Vec<UnusedVariableIssue> {
+        with_panic_guard(|| self.scan_unused_variables_impl(source))
+    }
+
+    pub fn suggest_fixes(&self, source: &str) -> Vec<CodeFix> {
+        with_panic_guard(|| self.suggest_fixes_impl(source))
+    }
+
+    pub fn analyze_symbolic_paths(&self, source: &str) -> Vec<symbolic::SymbolicGraph> {
+        with_panic_guard(|| self.analyze_symbolic_paths_impl(source))
+    }
+
+    fn analyze_symbolic_paths_impl(&self, source: &str) -> Vec<symbolic::SymbolicGraph> {
+        let file = match parse_str::<File>(source) {
+            Ok(f) => f,
+            Err(_) => return vec![],
+        };
+
+        let mut graphs = Vec::new();
+        for item in &file.items {
+            if let Item::Impl(i) = item {
+                for impl_item in &i.items {
+                    if let syn::ImplItem::Fn(f) = impl_item {
+                        if let syn::Visibility::Public(_) = f.vis {
+                            // Only generate graphs for public functions
+                            graphs.push(symbolic::SymbolicAnalyzer::analyze_function(f));
+                        }
+                    }
+                }
+            }
+        }
+
+        graphs
+    }
+
+    pub fn scan_storage_collisions(&self, source: &str) -> Vec<StorageCollisionIssue> {
+        with_panic_guard(|| self.scan_storage_collisions_impl(source))
+    }
+
+    fn scan_storage_collisions_impl(&self, source: &str) -> Vec<StorageCollisionIssue> {
+        let file = match parse_str::<File>(source) {
+            Ok(f) => f,
+            Err(_) => return vec![],
+        };
+
+        let mut visitor = StorageVisitor {
+            current_fn: None,
+            instance_keys: HashSet::new(),
+            persistent_keys: HashSet::new(),
+            temporary_keys: HashSet::new(),
+            key_locations: std::collections::HashMap::new(),
+        };
+        visitor.visit_file(&file);
+
+        // Find overlaps
+        let mut final_issues = Vec::new();
+
+        // Instance vs Persistent
+        for key in &visitor.instance_keys {
+            if visitor.persistent_keys.contains(key) {
+                final_issues.push(StorageCollisionIssue {
+                    function_name: "Workspace".to_string(), // Or specific fn if we track it better
+                    key: key.clone(),
+                    storage_types: vec!["Instance".to_string(), "Persistent".to_string()],
+                    location: visitor
+                        .key_locations
+                        .get(&(key.clone(), "Instance".to_string()))
+                        .cloned()
+                        .unwrap_or_default(),
+                });
+            }
+        }
+
+        final_issues
+    }
+
     pub fn scan_gas_estimation(&self, source: &str) -> Vec<gas_estimator::GasEstimationReport> {
         with_panic_guard(|| self.scan_gas_estimation_impl(source))
     }
@@ -305,13 +435,23 @@ impl Analyzer {
 
         for item in &file.items {
             if let Item::Impl(i) = item {
+                // 1. Identify all functions in this impl that perform auth (directly or indirectly)
+                let auth_fns = self.identify_auth_functions(i);
+
                 for impl_item in &i.items {
                     if let syn::ImplItem::Fn(f) = impl_item {
                         if let syn::Visibility::Public(_) = f.vis {
                             let fn_name = f.sig.ident.to_string();
                             let mut has_mutation = false;
                             let mut has_auth = false;
-                            self.check_fn_body(&f.block, &mut has_mutation, &mut has_auth);
+
+                            self.check_fn_auth_and_mutation(
+                                &f.block,
+                                &auth_fns,
+                                &mut has_mutation,
+                                &mut has_auth,
+                            );
+
                             if has_mutation && !has_auth {
                                 gaps.push(fn_name);
                             }
@@ -321,6 +461,104 @@ impl Analyzer {
             }
         }
         gaps
+    }
+
+    // ── Deprecated API detection ──────────────────────────────────────────────
+
+    /// Returns all usages of deprecated Soroban host functions inside contract impl functions.
+    pub fn scan_deprecated_apis(&self, source: &str) -> Vec<DeprecatedApiIssue> {
+        with_panic_guard(|| self.scan_deprecated_apis_impl(source))
+    }
+
+    fn scan_deprecated_apis_impl(&self, source: &str) -> Vec<DeprecatedApiIssue> {
+        let file = match parse_str::<File>(source) {
+            Ok(f) => f,
+            Err(_) => return vec![],
+        };
+
+        let mut issues = Vec::new();
+        for item in &file.items {
+            if let Item::Impl(i) = item {
+                for impl_item in &i.items {
+                    if let syn::ImplItem::Fn(f) = impl_item {
+                        let fn_name = f.sig.ident.to_string();
+                        self.check_fn_deprecated_apis(&f.block, &fn_name, &mut issues);
+                    }
+                }
+            }
+        }
+
+        issues
+    }
+
+    fn check_fn_deprecated_apis(
+        &self,
+        block: &syn::Block,
+        fn_name: &str,
+        issues: &mut Vec<DeprecatedApiIssue>,
+    ) {
+        for stmt in &block.stmts {
+            match stmt {
+                syn::Stmt::Expr(expr, _) => self.check_expr_deprecated_apis(expr, fn_name, issues),
+                syn::Stmt::Local(local) => {
+                    if let Some(init) = &local.init {
+                        self.check_expr_deprecated_apis(&init.expr, fn_name, issues);
+                    }
+                }
+                _ => {}
+            }
+        }
+    }
+
+    fn check_expr_deprecated_apis(
+        &self,
+        expr: &syn::Expr,
+        fn_name: &str,
+        issues: &mut Vec<DeprecatedApiIssue>,
+    ) {
+        match expr {
+            syn::Expr::MethodCall(m) => {
+                let method_name = m.method.to_string();
+                if matches!(
+                    method_name.as_str(),
+                    "put_contract_data"
+                        | "get_contract_data"
+                        | "has_contract_data"
+                        | "remove_contract_data"
+                        | "get_contract_id"
+                ) {
+                    issues.push(DeprecatedApiIssue {
+                        function_name: fn_name.to_string(),
+                        deprecated_api: method_name.clone(),
+                        location: fn_name.to_string(),
+                    });
+                }
+                self.check_expr_deprecated_apis(&m.receiver, fn_name, issues);
+                for arg in &m.args {
+                    self.check_expr_deprecated_apis(arg, fn_name, issues);
+                }
+            }
+            syn::Expr::Call(c) => {
+                for arg in &c.args {
+                    self.check_expr_deprecated_apis(arg, fn_name, issues);
+                }
+            }
+            syn::Expr::Block(b) => self.check_fn_deprecated_apis(&b.block, fn_name, issues),
+            syn::Expr::If(i) => {
+                self.check_expr_deprecated_apis(&i.cond, fn_name, issues);
+                self.check_fn_deprecated_apis(&i.then_branch, fn_name, issues);
+                if let Some((_, else_expr)) = &i.else_branch {
+                    self.check_expr_deprecated_apis(else_expr, fn_name, issues);
+                }
+            }
+            syn::Expr::Match(m) => {
+                self.check_expr_deprecated_apis(&m.expr, fn_name, issues);
+                for arm in &m.arms {
+                    self.check_expr_deprecated_apis(&arm.body, fn_name, issues);
+                }
+            }
+            _ => {}
+        }
     }
 
     // ── Panic / unwrap / expect detection ────────────────────────────────────
@@ -425,15 +663,135 @@ impl Analyzer {
         }
     }
 
-    // ── Mutation / auth helpers ───────────────────────────────────────────────
+    /// Identifies all functions within an impl block that call require_auth,
+    /// either directly or by calling another function that does.
+    fn identify_auth_functions(&self, i: &syn::ItemImpl) -> HashSet<String> {
+        let mut auth_fns = HashSet::new();
+        let mut changed = true;
 
-    fn check_fn_body(&self, block: &syn::Block, has_mutation: &mut bool, has_auth: &mut bool) {
+        // Fixed-point iteration to handle nested calls
+        while changed {
+            changed = false;
+            for impl_item in &i.items {
+                if let syn::ImplItem::Fn(f) = impl_item {
+                    let fn_name = f.sig.ident.to_string();
+                    if auth_fns.contains(&fn_name) {
+                        continue;
+                    }
+
+                    if self.check_if_fn_calls_auth(&f.block, &auth_fns) {
+                        auth_fns.insert(fn_name);
+                        changed = true;
+                    }
+                }
+            }
+        }
+        auth_fns
+    }
+
+    fn check_if_fn_calls_auth(&self, block: &syn::Block, known_auth_fns: &HashSet<String>) -> bool {
+        for stmt in &block.stmts {
+            if self.check_expr_for_auth(stmt, known_auth_fns) {
+                return true;
+            }
+        }
+        false
+    }
+
+    fn check_expr_for_auth(&self, stmt: &syn::Stmt, known_auth_fns: &HashSet<String>) -> bool {
+        match stmt {
+            syn::Stmt::Expr(expr, _) => self.check_expr_inner_for_auth(expr, known_auth_fns),
+            syn::Stmt::Local(local) => {
+                if let Some(init) = &local.init {
+                    self.check_expr_inner_for_auth(&init.expr, known_auth_fns)
+                } else {
+                    false
+                }
+            }
+            syn::Stmt::Macro(m) => {
+                m.mac.path.is_ident("require_auth") || m.mac.path.is_ident("require_auth_for_args")
+            }
+            _ => false,
+        }
+    }
+
+    fn check_expr_inner_for_auth(
+        &self,
+        expr: &syn::Expr,
+        known_auth_fns: &HashSet<String>,
+    ) -> bool {
+        match expr {
+            syn::Expr::Call(c) => {
+                if let syn::Expr::Path(p) = &*c.func {
+                    if let Some(segment) = p.path.segments.last() {
+                        let ident = segment.ident.to_string();
+                        if ident == "require_auth"
+                            || ident == "require_auth_for_args"
+                            || known_auth_fns.contains(&ident)
+                        {
+                            return true;
+                        }
+                    }
+                }
+                c.args
+                    .iter()
+                    .any(|arg| self.check_expr_inner_for_auth(arg, known_auth_fns))
+            }
+            syn::Expr::MethodCall(m) => {
+                let method_name = m.method.to_string();
+                if method_name == "require_auth"
+                    || method_name == "require_auth_for_args"
+                    || known_auth_fns.contains(&method_name)
+                {
+                    return true;
+                }
+                if self.check_expr_inner_for_auth(&m.receiver, known_auth_fns) {
+                    return true;
+                }
+                m.args
+                    .iter()
+                    .any(|arg| self.check_expr_inner_for_auth(arg, known_auth_fns))
+            }
+            syn::Expr::Block(b) => b
+                .block
+                .stmts
+                .iter()
+                .any(|s| self.check_expr_for_auth(s, known_auth_fns)),
+            syn::Expr::If(i) => {
+                self.check_expr_inner_for_auth(&i.cond, known_auth_fns)
+                    || i.then_branch
+                        .stmts
+                        .iter()
+                        .any(|s| self.check_expr_for_auth(s, known_auth_fns))
+                    || i.else_branch
+                        .as_ref()
+                        .is_some_and(|(_, e)| self.check_expr_inner_for_auth(e, known_auth_fns))
+            }
+            syn::Expr::Match(m) => {
+                self.check_expr_inner_for_auth(&m.expr, known_auth_fns)
+                    || m.arms
+                        .iter()
+                        .any(|arm| self.check_expr_inner_for_auth(&arm.body, known_auth_fns))
+            }
+            _ => false,
+        }
+    }
+
+    fn check_fn_auth_and_mutation(
+        &self,
+        block: &syn::Block,
+        auth_fns: &HashSet<String>,
+        has_mutation: &mut bool,
+        has_auth: &mut bool,
+    ) {
         for stmt in &block.stmts {
             match stmt {
-                syn::Stmt::Expr(expr, _) => self.check_expr(expr, has_mutation, has_auth),
+                syn::Stmt::Expr(expr, _) => {
+                    self.check_expr_v2(expr, auth_fns, has_mutation, has_auth)
+                }
                 syn::Stmt::Local(local) => {
                     if let Some(init) = &local.init {
-                        self.check_expr(&init.expr, has_mutation, has_auth);
+                        self.check_expr_v2(&init.expr, auth_fns, has_mutation, has_auth);
                     }
                 }
                 syn::Stmt::Macro(m) => {
@@ -448,25 +806,33 @@ impl Analyzer {
         }
     }
 
-    fn check_expr(&self, expr: &syn::Expr, has_mutation: &mut bool, has_auth: &mut bool) {
+    fn check_expr_v2(
+        &self,
+        expr: &syn::Expr,
+        auth_fns: &HashSet<String>,
+        has_mutation: &mut bool,
+        has_auth: &mut bool,
+    ) {
         match expr {
             syn::Expr::Call(c) => {
                 if let syn::Expr::Path(p) = &*c.func {
                     if let Some(segment) = p.path.segments.last() {
                         let ident = segment.ident.to_string();
-                        if ident == "require_auth" || ident == "require_auth_for_args" {
+                        if ident == "require_auth"
+                            || ident == "require_auth_for_args"
+                            || auth_fns.contains(&ident)
+                        {
                             *has_auth = true;
                         }
                     }
                 }
                 for arg in &c.args {
-                    self.check_expr(arg, has_mutation, has_auth);
+                    self.check_expr_v2(arg, auth_fns, has_mutation, has_auth);
                 }
             }
             syn::Expr::MethodCall(m) => {
                 let method_name = m.method.to_string();
                 if method_name == "set" || method_name == "update" || method_name == "remove" {
-                    // Heuristic: check if receiver chain contains "storage"
                     let receiver_str = quote::quote!(#m.receiver).to_string();
                     if receiver_str.contains("storage")
                         || receiver_str.contains("persistent")
@@ -476,26 +842,31 @@ impl Analyzer {
                         *has_mutation = true;
                     }
                 }
-                if method_name == "require_auth" || method_name == "require_auth_for_args" {
+                if method_name == "require_auth"
+                    || method_name == "require_auth_for_args"
+                    || auth_fns.contains(&method_name)
+                {
                     *has_auth = true;
                 }
-                self.check_expr(&m.receiver, has_mutation, has_auth);
+                self.check_expr_v2(&m.receiver, auth_fns, has_mutation, has_auth);
                 for arg in &m.args {
-                    self.check_expr(arg, has_mutation, has_auth);
+                    self.check_expr_v2(arg, auth_fns, has_mutation, has_auth);
                 }
             }
-            syn::Expr::Block(b) => self.check_fn_body(&b.block, has_mutation, has_auth),
+            syn::Expr::Block(b) => {
+                self.check_fn_auth_and_mutation(&b.block, auth_fns, has_mutation, has_auth)
+            }
             syn::Expr::If(i) => {
-                self.check_expr(&i.cond, has_mutation, has_auth);
-                self.check_fn_body(&i.then_branch, has_mutation, has_auth);
+                self.check_expr_v2(&i.cond, auth_fns, has_mutation, has_auth);
+                self.check_fn_auth_and_mutation(&i.then_branch, auth_fns, has_mutation, has_auth);
                 if let Some((_, else_expr)) = &i.else_branch {
-                    self.check_expr(else_expr, has_mutation, has_auth);
+                    self.check_expr_v2(else_expr, auth_fns, has_mutation, has_auth);
                 }
             }
             syn::Expr::Match(m) => {
-                self.check_expr(&m.expr, has_mutation, has_auth);
+                self.check_expr_v2(&m.expr, auth_fns, has_mutation, has_auth);
                 for arm in &m.arms {
-                    self.check_expr(&arm.body, has_mutation, has_auth);
+                    self.check_expr_v2(&arm.body, auth_fns, has_mutation, has_auth);
                 }
             }
             _ => {}
@@ -508,6 +879,135 @@ impl Analyzer {
         false
     }
 
+    fn scan_unused_variables_impl(&self, source: &str) -> Vec<UnusedVariableIssue> {
+        let file = match parse_str::<File>(source) {
+            Ok(f) => f,
+            Err(_) => return vec![],
+        };
+
+        let mut issues = Vec::new();
+        for item in &file.items {
+            if let Item::Impl(i) = item {
+                for impl_item in &i.items {
+                    if let syn::ImplItem::Fn(f) = impl_item {
+                        let mut visitor = UnusedVariableVisitor::new(f.sig.ident.to_string());
+                        visitor.visit_impl_item_fn(f);
+                        issues.extend(visitor.report_unused());
+                    }
+                }
+            }
+        }
+        issues
+    }
+
+    fn suggest_fixes_impl(&self, source: &str) -> Vec<CodeFix> {
+        let mut fixes = Vec::new();
+
+        // 1. Unused variables
+        let unused = self.scan_unused_variables(source);
+        for u in unused {
+            fixes.push(CodeFix {
+                file: "".to_string(), // Filled by CLI
+                line: u.line,
+                column: u.col,
+                end_line: u.line,
+                end_column: u.col + u.name.len(),
+                replacement: format!("_{}", u.name),
+                description: format!("Prefix unused variable `{}` with `_`", u.name),
+                fix_type: FixType::PrefixUnused,
+            });
+        }
+
+        // 2. Auth gaps
+        let file = match parse_str::<File>(source) {
+            Ok(f) => f,
+            Err(_) => return fixes,
+        };
+
+        for item in &file.items {
+            if let Item::Impl(i) = item {
+                let auth_fns = self.identify_auth_functions(i);
+                for impl_item in &i.items {
+                    if let syn::ImplItem::Fn(f) = impl_item {
+                        if let syn::Visibility::Public(_) = f.vis {
+                            let mut has_mutation = false;
+                            let mut has_auth = false;
+                            self.check_fn_auth_and_mutation(
+                                &f.block,
+                                &auth_fns,
+                                &mut has_mutation,
+                                &mut has_auth,
+                            );
+
+                            if has_mutation && !has_auth {
+                                // Find an Address parameter to call require_auth on
+                                let mut address_param = None;
+                                for arg in &f.sig.inputs {
+                                    if let syn::FnArg::Typed(pat_type) = arg {
+                                        if let Type::Path(tp) = &*pat_type.ty {
+                                            if tp.path.is_ident("Address") {
+                                                if let syn::Pat::Ident(id) = &*pat_type.pat {
+                                                    address_param = Some(id.ident.to_string());
+                                                    break;
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+
+                                if let Some(param) = address_param {
+                                    let span = f.block.brace_token.span.open();
+                                    let start = span.start();
+                                    fixes.push(CodeFix {
+                                        file: "".to_string(),
+                                        line: start.line,
+                                        column: start.column + 1,
+                                        end_line: start.line,
+                                        end_column: start.column + 1,
+                                        replacement: format!("\n        {}.require_auth();", param),
+                                        description: format!(
+                                            "Add missing `require_auth()` for `{}`",
+                                            param
+                                        ),
+                                        fix_type: FixType::AddAuth,
+                                    });
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        fixes.sort_by(|a, b| b.line.cmp(&a.line).then(b.column.cmp(&a.column)));
+
+        // Filter out PrefixUnused for variables where we also added AddAuth
+        let auth_params: HashSet<String> = fixes
+            .iter()
+            .filter(|f| f.fix_type == FixType::AddAuth)
+            .map(|f| {
+                // Description is "Add missing `require_auth()` for `NAME`"
+                let parts: Vec<&str> = f.description.split('`').collect();
+                if parts.len() >= 4 {
+                    parts[3].to_string()
+                } else {
+                    "".to_string()
+                }
+            })
+            .collect();
+
+        fixes.retain(|f| {
+            if f.fix_type == FixType::PrefixUnused {
+                let name = f.description.split('`').nth(1).unwrap_or("");
+                !auth_params.contains(name)
+            } else {
+                true
+            }
+        });
+
+        fixes
+    }
+
     // ── Ledger size analysis ──────────────────────────────────────────────────
 
     /// Analyzes `#[contracttype]` structs and enums, estimates serialized size,
@@ -518,9 +1018,9 @@ impl Analyzer {
 
     fn analyze_ledger_size_impl(&self, source: &str) -> Vec<SizeWarning> {
         let limit = self.config.ledger_limit;
-        let approaching = (limit as f64 * DEFAULT_APPROACHING_THRESHOLD) as usize;
-        let strict = self.config.strict_mode;
-        let strict_threshold = limit / 2;
+        let _approaching = (limit as f64 * DEFAULT_APPROACHING_THRESHOLD) as usize;
+        let _strict = self.config.strict_mode;
+        let _strict_threshold = limit / 2;
 
         let file = match parse_str::<File>(source) {
             Ok(f) => f,
@@ -631,10 +1131,11 @@ impl Analyzer {
 
     // ── Event Consistency and Optimization (NEW) ─────────────────────────────
 
-    /// Scans for `env.events().publish(topics, data)` and checks:
-    /// 1. Consistency of topic counts for the same event name.
-    /// 2. Opportunities to use `symbol_short!` for gas savings.
-    /* pub fn scan_events(&self, source: &str) -> Vec<EventIssue> {
+    // Scans for `env.events().publish(topics, data)` and checks:
+    // 1. Consistency of topic counts for the same event name.
+    // 2. Opportunities to use `symbol_short!` for gas savings.
+    /*
+    pub fn scan_events(&self, source: &str) -> Vec<EventIssue> {
         with_panic_guard(|| self.scan_events_impl(source))
     }
 
@@ -654,8 +1155,8 @@ impl Analyzer {
     } */
     // ── Unsafe-pattern visitor ────────────────────────────────────────────────
 
-    /// Visitor-based scan for `panic!`, `.unwrap()`, `.expect()` with line
-    /// numbers derived from proc-macro2 span locations.
+    /// Visitor-based scan for `panic!`, `.unwrap()`, `.expect()` with line numbers
+    /// derived from proc-macro2 span locations.
     pub fn analyze_unsafe_patterns(&self, source: &str) -> Vec<UnsafePattern> {
         with_panic_guard(|| self.analyze_unsafe_patterns_impl(source))
     }
@@ -697,6 +1198,31 @@ impl Analyzer {
             current_fn: None,
             seen: HashSet::new(),
         };
+        visitor.visit_file(&file);
+        visitor.issues
+    }
+
+    // ── Reentrancy risk detection ──────────────────────────────────────────────
+
+    /// Scans contract impl functions for potential state-based reentrancy risks.
+    ///
+    /// Soroban's host blocks classical cross-contract reentrancy, but complex
+    /// multi-step workflows can still be vulnerable if:
+    /// - A function mutates state AND performs external calls
+    /// - No `ReentrancyGuardian` nonce check is present
+    ///
+    /// Returns a list of [`reentrancy::ReentrancyIssue`] for further reporting.
+    pub fn scan_reentrancy_risks(&self, source: &str) -> Vec<reentrancy::ReentrancyIssue> {
+        with_panic_guard(|| self.scan_reentrancy_risks_impl(source))
+    }
+
+    fn scan_reentrancy_risks_impl(&self, source: &str) -> Vec<reentrancy::ReentrancyIssue> {
+        use syn::visit::Visit;
+        let file = match parse_str::<File>(source) {
+            Ok(f) => f,
+            Err(_) => return vec![],
+        };
+        let mut visitor = reentrancy::ReentrancyVisitor::new();
         visitor.visit_file(&file);
         visitor.issues
     }
@@ -872,7 +1398,7 @@ impl<'ast> Visit<'ast> for UnsafeVisitor {
 }
 
 // ── SanctifiedGuard (runtime monitoring) ───────────────────────────────────────
-
+#[cfg(not(target_arch = "wasm32"))]
 /// Error type for SanctifiedGuard runtime invariant violations.
 #[derive(Debug, Error)]
 pub enum Error {
@@ -880,6 +1406,7 @@ pub enum Error {
     InvariantViolation(String),
 }
 
+#[cfg(not(target_arch = "wasm32"))]
 /// Trait for runtime monitoring. Implement this to enforce invariants
 /// on your contract state. The foundation for runtime monitoring.
 pub trait SanctifiedGuard {
@@ -972,11 +1499,170 @@ impl<'ast> Visit<'ast> for ArithVisitor {
         // Continue descending so nested binary ops are also checked
         visit::visit_expr_binary(self, node);
     }
+
+    fn visit_expr_method_call(&mut self, node: &'ast syn::ExprMethodCall) {
+        if let Some(fn_name) = self.current_fn.clone() {
+            let method_name = node.method.to_string();
+            let risky_methods = [
+                "fixed_mul",
+                "fixed_div",
+                "fixed_mul_floor",
+                "fixed_mul_ceil",
+                "fixed_div_floor",
+                "fixed_div_ceil",
+            ];
+
+            if risky_methods.contains(&method_name.as_str()) {
+                let key = (fn_name.clone(), method_name.clone());
+                if !self.seen.contains(&key) {
+                    self.seen.insert(key);
+                    let line = node.span().start().line;
+                    self.issues.push(ArithmeticIssue {
+                        function_name: fn_name,
+                        operation: method_name.clone(),
+                        suggestion: format!(
+                            "Ensure boundaries are checked before calling `{}` to avoid panics",
+                            method_name
+                        ),
+                        location: format!("{}:{}", method_name, line),
+                    });
+                }
+            }
+        }
+        visit::visit_expr_method_call(self, node);
+    }
 }
 
-/// Returns `true` if the expression is a string literal — used to avoid
-/// false-positives on `+` for string concatenation (rare in no_std Soroban
-/// but included for correctness).
+// ── StorageVisitor ──────────────────────────────────────────────────────────
+
+// ── UnusedVariableVisitor ──────────────────────────────────────────────────
+
+struct UnusedVariableVisitor {
+    fn_name: String,
+    defined: HashSet<(String, usize, usize)>, // (name, line, col)
+    used: HashSet<String>,
+}
+
+impl UnusedVariableVisitor {
+    fn new(fn_name: String) -> Self {
+        Self {
+            fn_name,
+            defined: HashSet::new(),
+            used: HashSet::new(),
+        }
+    }
+
+    fn report_unused(self) -> Vec<UnusedVariableIssue> {
+        let mut issues = Vec::new();
+        for (name, line, col) in self.defined {
+            if !self.used.contains(&name)
+                && !name.starts_with('_')
+                && name != "env"
+                && name != "self"
+            {
+                issues.push(UnusedVariableIssue {
+                    name: name.clone(),
+                    function_name: self.fn_name.clone(),
+                    location: format!("{}:{}", line, col),
+                    line,
+                    col,
+                });
+            }
+        }
+        issues
+    }
+}
+
+impl<'ast> Visit<'ast> for UnusedVariableVisitor {
+    fn visit_pat_ident(&mut self, i: &'ast syn::PatIdent) {
+        let name = i.ident.to_string();
+        let span = i.ident.span().start();
+        self.defined.insert((name, span.line, span.column));
+        visit::visit_pat_ident(self, i);
+    }
+
+    fn visit_expr_path(&mut self, i: &'ast syn::ExprPath) {
+        if let Some(ident) = i.path.get_ident() {
+            self.used.insert(ident.to_string());
+        }
+        visit::visit_expr_path(self, i);
+    }
+
+    fn visit_field_pat(&mut self, i: &'ast syn::FieldPat) {
+        // Handle field shorthand like { x }
+        if let syn::Pat::Ident(id) = &*i.pat {
+            if i.member == syn::Member::Named(id.ident.clone()) {
+                self.used.insert(id.ident.to_string());
+            }
+        }
+        visit::visit_field_pat(self, i);
+    }
+}
+
+// ── StorageVisitor ──────────────────────────────────────────────────────────
+
+struct StorageVisitor {
+    current_fn: Option<String>,
+    instance_keys: HashSet<String>,
+    persistent_keys: HashSet<String>,
+    temporary_keys: HashSet<String>,
+    // Mapping of (key, storage_type) -> location string
+    key_locations: std::collections::HashMap<(String, String), String>,
+}
+
+impl<'ast> Visit<'ast> for StorageVisitor {
+    fn visit_impl_item_fn(&mut self, node: &'ast syn::ImplItemFn) {
+        let prev = self.current_fn.take();
+        self.current_fn = Some(node.sig.ident.to_string());
+        visit::visit_impl_item_fn(self, node);
+        self.current_fn = prev;
+    }
+
+    fn visit_expr_method_call(&mut self, node: &'ast syn::ExprMethodCall) {
+        let method_name = node.method.to_string();
+        if method_name == "set" || method_name == "get" || method_name == "has" {
+            let receiver_str = quote::quote!(#node.receiver).to_string();
+            let storage_type = if receiver_str.contains("instance") {
+                Some("Instance")
+            } else if receiver_str.contains("persistent") {
+                Some("Persistent")
+            } else if receiver_str.contains("temporary") {
+                Some("Temporary")
+            } else {
+                None
+            };
+
+            if let Some(st) = storage_type {
+                if let Some(first_arg) = node.args.first() {
+                    let key_str = quote::quote!(#first_arg).to_string();
+                    let loc = self
+                        .current_fn
+                        .as_ref()
+                        .map(|f| format!("{}:{}", f, first_arg.span().start().line))
+                        .unwrap_or_default();
+
+                    match st {
+                        "Instance" => {
+                            self.instance_keys.insert(key_str.clone());
+                            self.key_locations.insert((key_str, st.to_string()), loc);
+                        }
+                        "Persistent" => {
+                            self.persistent_keys.insert(key_str.clone());
+                            self.key_locations.insert((key_str, st.to_string()), loc);
+                        }
+                        "Temporary" => {
+                            self.temporary_keys.insert(key_str.clone());
+                            self.key_locations.insert((key_str, st.to_string()), loc);
+                        }
+                        _ => {}
+                    }
+                }
+            }
+        }
+        visit::visit_expr_method_call(self, node);
+    }
+}
+
 fn is_string_literal(expr: &syn::Expr) -> bool {
     matches!(
         expr,
@@ -987,11 +1673,11 @@ fn is_string_literal(expr: &syn::Expr) -> bool {
     )
 }
 
-// ── Tests ─────────────────────────────────────────────────────────────────────
-
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    // ── Tests ─────────────────────────────────────────────────────────────────────
 
     #[test]
     fn test_analyze_with_macros() {
@@ -1025,8 +1711,10 @@ mod tests {
 
     #[test]
     fn test_analyze_with_limit() {
-        let mut config = SanctifyConfig::default();
-        config.ledger_limit = 50;
+        let config = SanctifyConfig {
+            ledger_limit: 50,
+            ..Default::default()
+        };
         let analyzer = Analyzer::new(config);
         let source = r#"
             #[contracttype]
@@ -1044,9 +1732,11 @@ mod tests {
     /*
         #[test]
         fn test_ledger_size_enum_and_approaching() {
-            let mut config = SanctifyConfig::default();
-            config.ledger_limit = 100;
-            config.approaching_threshold = 0.5;
+            let config = SanctifyConfig {
+                ledger_limit: 100,
+                approaching_threshold: 0.5,
+                ..Default::default()
+            };
             let analyzer = Analyzer::new(config);
             let source = r#"
                 #[contracttype]
@@ -1377,4 +2067,175 @@ mod tests {
             assert!(issues.iter().any(|i| i.issue_type == EventIssueType::OptimizableTopic && i.message.contains("\"event1\"")));
         }
     */
+    #[test]
+    fn test_scan_deprecated_apis() {
+        let analyzer = Analyzer::new(SanctifyConfig::default());
+        let source = r#"
+            #[contractimpl]
+            impl MyContract {
+                pub fn legacy_storage(env: Env) {
+                    env.put_contract_data(&Symbol::new(&env, "key"), &123);
+                    let val: i32 = env.get_contract_data(&Symbol::new(&env, "key")).unwrap();
+                    if env.has_contract_data(&Symbol::new(&env, "key")) {
+                        env.remove_contract_data(&Symbol::new(&env, "key"));
+                    }
+                    let id = env.get_contract_id();
+                }
+
+                pub fn modern_storage(env: Env) {
+                    env.storage().instance().set(&Symbol::new(&env, "key"), &123);
+                    let val: i32 = env.storage().instance().get(&Symbol::new(&env, "key")).unwrap();
+                }
+            }
+        "#;
+        let issues = analyzer.scan_deprecated_apis(source);
+        assert_eq!(issues.len(), 5);
+        let funcs: Vec<String> = issues.iter().map(|i| i.deprecated_api.clone()).collect();
+        assert!(funcs.contains(&"put_contract_data".to_string()));
+        assert!(funcs.contains(&"get_contract_data".to_string()));
+        assert!(funcs.contains(&"has_contract_data".to_string()));
+        assert!(funcs.contains(&"remove_contract_data".to_string()));
+        assert!(funcs.contains(&"get_contract_id".to_string()));
+
+        assert!(issues.iter().all(|i| i.function_name == "legacy_storage"));
+    }
+
+    #[test]
+    fn test_scan_auth_gaps_indirect() {
+        let analyzer = Analyzer::new(SanctifyConfig::default());
+        let source = r#"
+            #[contractimpl]
+            impl MyContract {
+                fn helper_auth(env: Env) {
+                    env.require_auth();
+                }
+
+                fn helper_no_auth(env: Env) {
+                    // No auth here
+                }
+
+                pub fn safe_indirect(env: Env, val: u32) {
+                    Self::helper_auth(env.clone());
+                    env.storage().instance().set(&DataKey::Val, &val);
+                }
+
+                pub fn unsafe_indirect(env: Env, val: u32) {
+                    Self::helper_no_auth(env.clone());
+                    env.storage().instance().set(&DataKey::Val, &val);
+                }
+
+                pub fn deep_safe(env: Env, val: u32) {
+                    Self::deep_helper(env.clone());
+                    env.storage().instance().set(&DataKey::Val, &val);
+                }
+
+                fn deep_helper(env: Env) {
+                    Self::helper_auth(env);
+                }
+            }
+        "#;
+        let gaps = analyzer.scan_auth_gaps(source);
+        // Only unsafe_indirect should be flagged.
+        // deep_safe and safe_indirect should be fine.
+        assert!(gaps.contains(&"unsafe_indirect".to_string()));
+        assert!(!gaps.contains(&"safe_indirect".to_string()));
+        assert!(!gaps.contains(&"deep_safe".to_string()));
+        assert_eq!(gaps.len(), 1);
+    }
+
+    #[test]
+    fn test_scan_storage_collisions() {
+        let analyzer = Analyzer::new(SanctifyConfig::default());
+        let src = r#"
+            #![no_std]
+            use soroban_sdk::{contract, contractimpl, Env, Symbol};
+            #[contract]
+            pub struct TestContract;
+            #[contractimpl]
+            impl TestContract {
+                pub fn collision(env: Env) {
+                    let key = Symbol::new(&env, "admin");
+                    env.storage().instance().set(&key, &123);
+                    env.storage().persistent().set(&key, &456);
+                }
+            }
+        "#;
+        let issues = analyzer.scan_storage_collisions(src);
+        assert!(!issues.is_empty());
+        // In the quote-generated string, "& key" results in "key"
+        assert!(issues[0].key.contains("key"));
+        assert!(issues[0].storage_types.contains(&"Instance".to_string()));
+        assert!(issues[0].storage_types.contains(&"Persistent".to_string()));
+    }
+
+    #[test]
+    fn test_scan_unused_variables() {
+        let analyzer = Analyzer::new(SanctifyConfig::default());
+        let source = r#"
+            #[contractimpl]
+            impl MyContract {
+                pub fn unused_var(env: Env, used: u32, unused: u32) -> u32 {
+                    let local_used = used + 1;
+                    let local_unused = 10;
+                    local_used
+                }
+            }
+        "#;
+        let issues = analyzer.scan_unused_variables(source);
+        assert_eq!(issues.len(), 2);
+        let names: Vec<String> = issues.iter().map(|i| i.name.clone()).collect();
+        assert!(names.contains(&"unused".to_string()));
+        assert!(names.contains(&"local_unused".to_string()));
+        assert!(!names.contains(&"used".to_string()));
+        assert!(!names.contains(&"local_used".to_string()));
+    }
+
+    #[test]
+    fn test_suggest_fixes() {
+        let analyzer = Analyzer::new(SanctifyConfig::default());
+        let source = r#"
+            #[contractimpl]
+            impl MyContract {
+                pub fn missing_auth(env: Env, user: Address, val: u32) {
+                    env.storage().instance().set(&DataKey::Val, &val);
+                }
+
+                pub fn unused(env: Env, x: u32) -> u32 {
+                    let y = 10;
+                    5
+                }
+            }
+        "#;
+        let fixes = analyzer.suggest_fixes(source);
+        // 1 fix for missing_auth (AddAuth)
+        // (Unused 'user' fix is filtered out because it's used in AddAuth)
+        // 2 fixes for unused (PrefixUnused for x and y)
+        assert_eq!(fixes.len(), 3);
+
+        let types: Vec<FixType> = fixes.iter().map(|f| f.fix_type.clone()).collect();
+        assert!(types.contains(&FixType::AddAuth));
+        assert!(types.contains(&FixType::PrefixUnused));
+    }
+
+    #[test]
+    fn test_scan_arithmetic_custom_library() {
+        let analyzer = Analyzer::new(SanctifyConfig::default());
+        let source = r#"
+            #[contractimpl]
+            impl Vault {
+                pub fn calc_shares(env: Env, amount: i128, rate: i128) -> i128 {
+                    amount.fixed_mul(rate)
+                }
+
+                pub fn calc_assets(env: Env, shares: i128, rate: i128) -> i128 {
+                    shares.fixed_div(rate)
+                }
+            }
+        "#;
+        let issues = analyzer.scan_arithmetic_overflow(source);
+        assert_eq!(issues.len(), 2);
+        let ops: Vec<String> = issues.iter().map(|i| i.operation.clone()).collect();
+        assert!(ops.contains(&"fixed_mul".to_string()));
+        assert!(ops.contains(&"fixed_div".to_string()));
+    }
 }

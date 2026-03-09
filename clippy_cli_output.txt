@@ -1,0 +1,125 @@
+warning: profiles for the non root package will be ignored, specify profiles at the workspace root:
+package:   /Users/ucheekezie/Documents/web3work/drips/sanctifier1/contracts/kani-poc/Cargo.toml
+workspace: /Users/ucheekezie/Documents/web3work/drips/sanctifier1/Cargo.toml
+   Compiling soroban-spec-rust v20.5.0
+    Checking soroban-env-host v20.3.0
+   Compiling soroban-sdk-macros v20.5.0
+    Checking soroban-ledger-snapshot v20.5.0
+    Checking soroban-sdk v20.5.0
+    Checking sanctifier-core v0.1.0 (/Users/ucheekezie/Documents/web3work/drips/sanctifier1/tooling/sanctifier-core)
+    Checking sanctifier-cli v0.1.0 (/Users/ucheekezie/Documents/web3work/drips/sanctifier1/tooling/sanctifier-cli)
+error: use of deprecated associated function `assert_cmd::Command::cargo_bin`: incompatible with a custom cargo build-dir, see instead `cargo::cargo_bin_cmd!`
+ --> tooling/sanctifier-cli/tests/cli_tests.rs:7:28
+  |
+7 |     let mut cmd = Command::cargo_bin("sanctifier").unwra...
+  |                            ^^^^^^^^^
+  |
+  = note: `-D deprecated` implied by `-D warnings`
+  = help: to override `-D warnings` add `#[allow(deprecated)]`
+
+error: use of deprecated associated function `assert_cmd::Command::cargo_bin`: incompatible with a custom cargo build-dir, see instead `cargo::cargo_bin_cmd!`
+  --> tooling/sanctifier-cli/tests/cli_tests.rs:16:28
+   |
+16 |     let mut cmd = Command::cargo_bin("sanctifier").unwr...
+   |                            ^^^^^^^^^
+
+error: use of deprecated associated function `assert_cmd::Command::cargo_bin`: incompatible with a custom cargo build-dir, see instead `cargo::cargo_bin_cmd!`
+  --> tooling/sanctifier-cli/tests/cli_tests.rs:32:28
+   |
+32 |     let mut cmd = Command::cargo_bin("sanctifier").unwr...
+   |                            ^^^^^^^^^
+
+error: use of deprecated associated function `assert_cmd::Command::cargo_bin`: incompatible with a custom cargo build-dir, see instead `cargo::cargo_bin_cmd!`
+  --> tooling/sanctifier-cli/tests/cli_tests.rs:52:28
+   |
+52 |     let mut cmd = Command::cargo_bin("sanctifier").unwr...
+   |                            ^^^^^^^^^
+
+error: use of deprecated associated function `assert_cmd::Command::cargo_bin`: incompatible with a custom cargo build-dir, see instead `cargo::cargo_bin_cmd!`
+  --> tooling/sanctifier-cli/tests/cli_tests.rs:71:28
+   |
+71 |     let mut cmd = Command::cargo_bin("sanctifier").unwr...
+   |                            ^^^^^^^^^
+
+error: could not compile `sanctifier-cli` (test "cli_tests") due to 5 previous errors
+warning: build failed, waiting for other jobs to finish...
+error: function `collect_rs_files` is never used
+   --> tooling/sanctifier-cli/src/main.rs:639:4
+    |
+639 | fn collect_rs_files(path: &std::path::PathBuf) -> Vec<...
+    |    ^^^^^^^^^^^^^^^^
+    |
+    = note: `-D dead-code` implied by `-D warnings`
+    = help: to override `-D warnings` add `#[allow(dead_code)]`
+
+error: this `map_or` can be simplified
+   --> tooling/sanctifier-cli/src/main.rs:466:26
+    |
+466 | ...&& path.extension().map_or(false, |e| e == "rs") {
+    |       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.93.0/index.html#unnecessary_map_or
+    = note: `-D clippy::unnecessary-map-or` implied by `-D warnings`
+    = help: to override `-D warnings` add `#[allow(clippy::unnecessary_map_or)]`
+help: use is_some_and instead
+    |
+466 -     if path.is_file() && path.extension().map_or(false, |e| e == "rs") {
+466 +     if path.is_file() && path.extension().is_some_and(|e| e == "rs") {
+    |
+
+error: this function has too many arguments (14/7)
+   --> tooling/sanctifier-cli/src/main.rs:490:1
+    |
+490 | / fn analyze_directory(
+491 | |     dir: &Path,
+492 | |     analyzer: &Analyzer,
+493 | |     config: &SanctifyConfig,
+...   |
+504 | |     upgrade_report: &mut UpgradeReport,
+505 | | ) {
+    | |_^
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.93.0/index.html#too_many_arguments
+    = note: `-D clippy::too-many-arguments` implied by `-D warnings`
+    = help: to override `-D warnings` add `#[allow(clippy::too_many_arguments)]`
+
+error: this expression creates a reference which is immediately dereferenced by the compiler
+   --> tooling/sanctifier-cli/src/main.rs:526:21
+    |
+526 |                     &analyzer,
+    |                     ^^^^^^^^^ help: change this to: `analyzer`
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.93.0/index.html#needless_borrow
+    = note: `-D clippy::needless-borrow` implied by `-D warnings`
+    = help: to override `-D warnings` add `#[allow(clippy::needless_borrow)]`
+
+error: parameter is only used in recursion
+   --> tooling/sanctifier-cli/src/main.rs:503:5
+    |
+503 |     all_symbolic_paths: &mut Vec<sanctifier_core::symb...
+    |     ^^^^^^^^^^^^^^^^^^ help: if this is intentional, prefix it with an underscore: `_all_symbolic_paths`
+    |
+note: parameter used here
+   --> tooling/sanctifier-cli/src/main.rs:537:21
+    |
+537 |                     all_symbolic_paths,
+    |                     ^^^^^^^^^^^^^^^^^^
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.93.0/index.html#only_used_in_recursion
+    = note: `-D clippy::only-used-in-recursion` implied by `-D warnings`
+    = help: to override `-D warnings` add `#[allow(clippy::only_used_in_recursion)]`
+
+error: parameter is only used in recursion
+   --> tooling/sanctifier-cli/src/main.rs:504:5
+    |
+504 |     upgrade_report: &mut UpgradeReport,
+    |     ^^^^^^^^^^^^^^ help: if this is intentional, prefix it with an underscore: `_upgrade_report`
+    |
+note: parameter used here
+   --> tooling/sanctifier-cli/src/main.rs:538:21
+    |
+538 |                     upgrade_report,
+    |                     ^^^^^^^^^^^^^^
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.93.0/index.html#only_used_in_recursion
+
+error: could not compile `sanctifier-cli` (bin "sanctifier" test) due to 6 previous errors
+error: could not compile `sanctifier-cli` (bin "sanctifier") due to 6 previous errors

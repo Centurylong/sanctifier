@@ -45,20 +45,18 @@ impl VisitMut for KaniBridgeVisitor {
 
             // Very naive check for `env.storage()`
             let receiver_str = quote!(#mc).to_string();
-            if receiver_str.contains("env . storage ( )") || receiver_str.contains("env.storage()")
+            if (receiver_str.contains("env . storage ( )")
+                || receiver_str.contains("env.storage()"))
+                && (method_name == "set" || method_name == "get" || method_name == "has")
             {
-                if method_name == "set" || method_name == "get" || method_name == "has" {
-                    // Replace the whole expression with a Kani mock
-                    if method_name == "get" {
-                        *expr = parse_quote!(kani::any());
-                    } else if method_name == "has" {
-                        *expr = parse_quote!(kani::any());
-                    } else {
-                        // For void returns like set, remove
-                        *expr = parse_quote!(());
-                    }
-                    return;
+                // Replace the whole expression with a Kani mock
+                if method_name == "get" || method_name == "has" {
+                    *expr = parse_quote!(kani::any());
+                } else {
+                    // For void returns like set, remove
+                    *expr = parse_quote!(());
                 }
+                return;
             }
         }
 

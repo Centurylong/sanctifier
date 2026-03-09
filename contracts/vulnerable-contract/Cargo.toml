@@ -3,6 +3,9 @@ name = "vulnerable-contract"
 version = "0.1.0"
 edition = "2021"
 
+[lints]
+workspace = true
+
 [dependencies]
 soroban-sdk = "20.0.0"
 

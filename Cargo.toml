@@ -2,17 +2,21 @@
 members = [
     "tooling/sanctifier-cli",
     "tooling/sanctifier-core",
+    "tooling/sanctifier-wasm",
+    "tooling/sanctifier-sdk",
     "contracts/vulnerable-contract",
     "contracts/kani-poc",
+    "contracts/reentrancy-guardian",
 ]
 resolver = "2"
+
+[workspace.lints.rust]
+unexpected_cfgs = "allow"
 
 [profile.release]
 opt-level = "z"
 lto = true
 codegen-units = 1
 
-[patch.crates-io]
-arbitrary = { git = "https://github.com/rust-fuzz/arbitrary", branch = "main" }
-derive_arbitrary = { git = "https://github.com/rust-fuzz/arbitrary", branch = "main" }
+
 
