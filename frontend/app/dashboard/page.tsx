@@ -10,7 +10,10 @@ import { SummaryChart } from "../components/SummaryChart";
 import { KaniMetricsWidget } from "../components/KaniMetricsWidget";
 import { SymbolicGraphWidget } from "../components/SymbolicGraphWidget";
 import { ThemeToggle } from "../components/ThemeToggle";
+import { LoadingSpinner } from "../components/LoadingSpinner";
+import { SanctityScoreWidget } from "../components/SanctityScoreWidget";
 import Link from "next/link";
+
 import { analyzeSourceInBrowser } from "../lib/wasm";
 
 const SAMPLE_JSON = `{
@@ -67,6 +70,10 @@ export default function DashboardPage() {
   const runWasmAnalysis = useCallback(async () => {
     setError(null);
     setWasmBusy(true);
+
+    // Yield control back to the browser to allow the spinner to paint
+    await new Promise((resolve) => setTimeout(resolve, 50));
+
     try {
       const report = await analyzeSourceInBrowser(rustSource);
       setReportData(report);
@@ -147,24 +154,37 @@ export default function DashboardPage() {
             placeholder={"// Paste your Soroban contract here"}
             className="mt-2 w-full h-40 rounded-lg border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-950 p-3 font-mono text-sm focus:ring-2 focus:ring-zinc-400 dark:focus:ring-zinc-600 outline-none"
           />
-          <div className="mt-3">
+          <div className="mt-3 flex items-center gap-4">
             <button
               onClick={runWasmAnalysis}
               disabled={wasmBusy || rustSource.trim().length === 0}
               className="rounded-lg bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900 px-4 py-2 text-sm font-medium disabled:opacity-50 hover:bg-zinc-800 dark:hover:bg-zinc-200"
             >
-              {wasmBusy ? "Analyzing…" : "Run in Browser (WASM)"}
+              Run in Browser (WASM)
             </button>
+            {wasmBusy && (
+              <div className="flex items-center gap-2 text-sm text-zinc-600 dark:text-zinc-400">
+                <LoadingSpinner size="sm" />
+                <span>Running analysis...</span>
+              </div>
+            )}
           </div>
         </section>
 
-        {(findings.length > 0 || reportData?.kani_metrics || (reportData?.symbolic_paths && reportData.symbolic_paths.length > 0)) && (
+        {(findings.length > 0 || reportData?.kani_metrics || (reportData?.symbolic_paths && reportData.symbolic_paths.length > 0) || reportData?.sanctity_score) && (
           <>
+            {reportData?.sanctity_score && (
+              <section>
+                <SanctityScoreWidget score={reportData.sanctity_score} />
+              </section>
+            )}
+
             {reportData?.kani_metrics && (
               <section>
                 <KaniMetricsWidget metrics={reportData.kani_metrics} />
               </section>
             )}
+
 
             {reportData?.symbolic_paths && reportData.symbolic_paths.length > 0 && (
               <section>

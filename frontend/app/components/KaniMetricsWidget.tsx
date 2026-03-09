@@ -66,7 +66,7 @@ export function KaniMetricsWidget({ metrics }: Props) {
                     </div>
 
                     {/* Metric Stats */}
-                    <div className="flex-1 grid grid-cols-2 sm:grid-cols-4 gap-4 w-full">
+                    <div className="flex-1 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 w-full">
                         <div className="rounded-md border border-zinc-200 dark:border-zinc-800 p-4 text-center">
                             <div className="text-sm font-medium text-zinc-500 dark:text-zinc-400 mb-1">Total Assertions</div>
                             <div className="text-2xl font-bold text-zinc-900 dark:text-zinc-100">{total_assertions}</div>

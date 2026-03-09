@@ -6,6 +6,7 @@ members = [
     "tooling/sanctifier-sdk",
     "contracts/vulnerable-contract",
     "contracts/kani-poc",
+    "contracts/reentrancy-guardian",
 ]
 resolver = "2"
 
