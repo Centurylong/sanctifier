@@ -1197,6 +1197,7 @@ impl Analyzer {
             issues: Vec::new(),
             current_fn: None,
             seen: HashSet::new(),
+            u128_bindings: HashSet::new(),
         };
         visitor.visit_file(&file);
         visitor.issues
@@ -1423,6 +1424,8 @@ struct ArithVisitor {
     current_fn: Option<String>,
     /// De-duplicates issues: one per (function_name, operator) pair.
     seen: HashSet<(String, String)>,
+    /// Variables in the current function known to be `u128`.
+    u128_bindings: HashSet<String>,
 }
 
 impl ArithVisitor {
@@ -1457,23 +1460,67 @@ impl ArithVisitor {
             _ => None,
         }
     }
+
+    fn suggestion_for_u128(op_str: &str) -> Option<&'static str> {
+        match op_str {
+            "+" => Some("Use `.checked_add(rhs)` for `u128` arithmetic in Soroban contracts"),
+            "-" => Some("Use `.checked_sub(rhs)` for `u128` arithmetic in Soroban contracts"),
+            "*" => Some("Use `.checked_mul(rhs)` for `u128` arithmetic in Soroban contracts"),
+            _ => None,
+        }
+    }
+
+    fn is_u128_expr(&self, expr: &syn::Expr) -> bool {
+        match expr {
+            syn::Expr::Path(path) => path
+                .path
+                .segments
+                .last()
+                .map(|seg| self.u128_bindings.contains(&seg.ident.to_string()))
+                .unwrap_or(false),
+            syn::Expr::Lit(syn::ExprLit {
+                lit: syn::Lit::Int(lit),
+                ..
+            }) => lit.suffix() == "u128",
+            syn::Expr::Paren(inner) => self.is_u128_expr(&inner.expr),
+            syn::Expr::Group(inner) => self.is_u128_expr(&inner.expr),
+            syn::Expr::Reference(inner) => self.is_u128_expr(&inner.expr),
+            syn::Expr::Field(inner) => self.is_u128_expr(&inner.base),
+            syn::Expr::Unary(inner) => self.is_u128_expr(&inner.expr),
+            syn::Expr::Cast(inner) => is_u128_type(&inner.ty) || self.is_u128_expr(&inner.expr),
+            _ => false,
+        }
+    }
 }
 
 impl<'ast> Visit<'ast> for ArithVisitor {
     /// Track the current function when descending into an impl method.
     fn visit_impl_item_fn(&mut self, node: &'ast syn::ImplItemFn) {
         let prev = self.current_fn.take();
+        let prev_bindings = std::mem::take(&mut self.u128_bindings);
         self.current_fn = Some(node.sig.ident.to_string());
+        self.u128_bindings = collect_u128_params(&node.sig.inputs);
         visit::visit_impl_item_fn(self, node);
         self.current_fn = prev;
+        self.u128_bindings = prev_bindings;
     }
 
     /// Also handle top-level `fn` items (helper functions outside impls).
     fn visit_item_fn(&mut self, node: &'ast syn::ItemFn) {
         let prev = self.current_fn.take();
+        let prev_bindings = std::mem::take(&mut self.u128_bindings);
         self.current_fn = Some(node.sig.ident.to_string());
+        self.u128_bindings = collect_u128_params(&node.sig.inputs);
         visit::visit_item_fn(self, node);
         self.current_fn = prev;
+        self.u128_bindings = prev_bindings;
+    }
+
+    fn visit_local(&mut self, node: &'ast syn::Local) {
+        if let Some(name) = extract_local_ident_if_u128(node) {
+            self.u128_bindings.insert(name);
+        }
+        visit::visit_local(self, node);
     }
 
     fn visit_expr_binary(&mut self, node: &'ast syn::ExprBinary) {
@@ -1481,6 +1528,11 @@ impl<'ast> Visit<'ast> for ArithVisitor {
             if let Some((op_str, suggestion)) = Self::classify_op(&node.op) {
                 // Skip concatenation of string literals (false positive for `+`)
                 if !is_string_literal(&node.left) && !is_string_literal(&node.right) {
+                    let is_u128_operation =
+                        self.is_u128_expr(&node.left) || self.is_u128_expr(&node.right);
+                    let suggestion_text = Self::suggestion_for_u128(op_str)
+                        .filter(|_| is_u128_operation)
+                        .unwrap_or(suggestion);
                     let key = (fn_name.clone(), op_str.to_string());
                     if !self.seen.contains(&key) {
                         self.seen.insert(key);
@@ -1489,7 +1541,7 @@ impl<'ast> Visit<'ast> for ArithVisitor {
                         self.issues.push(ArithmeticIssue {
                             function_name: fn_name.clone(),
                             operation: op_str.to_string(),
-                            suggestion: suggestion.to_string(),
+                            suggestion: suggestion_text.to_string(),
                             location: format!("{}:{}", fn_name, line),
                         });
                     }
@@ -1671,6 +1723,71 @@ fn is_string_literal(expr: &syn::Expr) -> bool {
             ..
         })
     )
+}
+
+fn is_u128_type(ty: &syn::Type) -> bool {
+    match ty {
+        syn::Type::Path(tp) => tp
+            .path
+            .segments
+            .last()
+            .map(|seg| seg.ident == "u128")
+            .unwrap_or(false),
+        syn::Type::Reference(r) => is_u128_type(&r.elem),
+        syn::Type::Group(g) => is_u128_type(&g.elem),
+        syn::Type::Paren(p) => is_u128_type(&p.elem),
+        _ => false,
+    }
+}
+
+fn pat_ident_name(pat: &syn::Pat) -> Option<String> {
+    match pat {
+        syn::Pat::Ident(id) => Some(id.ident.to_string()),
+        syn::Pat::Type(pt) => pat_ident_name(&pt.pat),
+        _ => None,
+    }
+}
+
+fn collect_u128_params(
+    inputs: &syn::punctuated::Punctuated<syn::FnArg, syn::token::Comma>,
+) -> HashSet<String> {
+    let mut names = HashSet::new();
+    for input in inputs {
+        if let syn::FnArg::Typed(pt) = input {
+            if is_u128_type(&pt.ty) {
+                if let Some(name) = pat_ident_name(&pt.pat) {
+                    names.insert(name);
+                }
+            }
+        }
+    }
+    names
+}
+
+fn extract_local_ident_if_u128(local: &syn::Local) -> Option<String> {
+    match &local.pat {
+        syn::Pat::Type(pt) => {
+            if is_u128_type(&pt.ty) {
+                return pat_ident_name(&pt.pat);
+            }
+            None
+        }
+        syn::Pat::Ident(_) => {
+            if let Some(init) = &local.init {
+                if let syn::Expr::Lit(syn::ExprLit {
+                    lit: syn::Lit::Int(lit),
+                    ..
+                }) = init.expr.as_ref()
+                {
+                    if lit.suffix() == "u128" {
+                        return pat_ident_name(&local.pat);
+                    }
+                }
+            }
+            None
+        }
+        _ => None,
+    }
 }
 
 #[cfg(test)]
@@ -2034,6 +2151,61 @@ mod tests {
         assert!(issues[0].suggestion.contains("checked_add"));
         // Location should include function name
         assert!(issues[0].location.starts_with("risky:"));
+    }
+
+    #[test]
+    fn test_scan_arithmetic_overflow_u128_ops_in_soroban_contracts() {
+        let analyzer = Analyzer::new(SanctifyConfig::default());
+        let source = r#"
+            #[contractimpl]
+            impl Token {
+                pub fn settle(env: Env, total: u128, amount: u128) -> u128 {
+                    let fee = 1u128;
+                    (total - amount) + (amount * fee)
+                }
+            }
+        "#;
+
+        let issues = analyzer.scan_arithmetic_overflow(source);
+        assert_eq!(issues.len(), 3);
+
+        let add = issues
+            .iter()
+            .find(|i| i.operation == "+")
+            .expect("missing + issue");
+        let sub = issues
+            .iter()
+            .find(|i| i.operation == "-")
+            .expect("missing - issue");
+        let mul = issues
+            .iter()
+            .find(|i| i.operation == "*")
+            .expect("missing * issue");
+
+        assert!(add.suggestion.contains("checked_add"));
+        assert!(sub.suggestion.contains("checked_sub"));
+        assert!(mul.suggestion.contains("checked_mul"));
+    }
+
+    #[test]
+    fn test_scan_arithmetic_overflow_u128_checked_methods_not_flagged() {
+        let analyzer = Analyzer::new(SanctifyConfig::default());
+        let source = r#"
+            #[contractimpl]
+            impl Token {
+                pub fn safe_settle(env: Env, total: u128, amount: u128) -> Option<u128> {
+                    let remaining = total.checked_sub(amount)?;
+                    remaining.checked_add(amount.checked_mul(1u128)?)
+                }
+            }
+        "#;
+
+        let issues = analyzer.scan_arithmetic_overflow(source);
+        assert!(
+            issues.is_empty(),
+            "Expected no issues for checked u128 arithmetic, got: {:?}",
+            issues
+        );
     }
 
     /*

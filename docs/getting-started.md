@@ -193,7 +193,7 @@ Functions that write to contract storage must call `require_auth()` or `require_
 **Fix:** Replace with `Result`-returning functions and propagate errors using the `?` operator or Soroban's `panic_with_error!` macro.
 
 #### 🔢 Unchecked Arithmetic
-Plain `+`, `-`, `*` operators can silently overflow in Rust's release builds on the `wasm32` target, producing incorrect balances or state.
+Plain `+`, `-`, `*` operators on integer balances (including common Soroban `u128`, `i128`, and `i64` cases) can silently overflow in Rust's release builds on the `wasm32` target, producing incorrect balances or state.
 
 **Fix:** Use `checked_add()`, `checked_sub()`, `checked_mul()`, or their `saturating_*` equivalents.
 
