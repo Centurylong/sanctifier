@@ -1,5 +1,5 @@
-use sanctifier_core::{Analyzer, SanctifyConfig};
 use crate::CachedAnalysis;
+use sanctifier_core::{Analyzer, SanctifyConfig};
 
 pub struct RuleEngine<'a> {
     analyzer: &'a Analyzer,
@@ -20,7 +20,9 @@ impl<'a> RuleEngine<'a> {
             panic_issues: self.analyzer.scan_panics(content),
             arithmetic_issues: self.analyzer.scan_arithmetic_overflow(content),
             deprecated_api_issues: self.analyzer.scan_deprecated_apis(content),
-            custom_rule_matches: self.analyzer.analyze_custom_rules(content, &self.config.custom_rules),
+            custom_rule_matches: self
+                .analyzer
+                .analyze_custom_rules(content, &self.config.custom_rules),
             gas_estimations: self.analyzer.scan_gas_estimation(content),
             reentrancy_issues: self.analyzer.scan_reentrancy_risks(content),
         };
@@ -57,7 +59,6 @@ impl<'a> RuleEngine<'a> {
         analysis
     }
 }
-
 
 #[cfg(test)]
 mod tests;

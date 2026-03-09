@@ -2,7 +2,7 @@
 mod tests {
     use crate::rules::RuleEngine;
     use sanctifier_core::{Analyzer, SanctifyConfig};
-    
+
     // ── Macro to helpers ────────────────────────────────────────────────────────
     fn setup_engine() -> (Analyzer, SanctifyConfig) {
         let config = SanctifyConfig::default();
@@ -14,7 +14,7 @@ mod tests {
     fn test_trigger_ledger_size_warning() {
         let (analyzer, config) = setup_engine();
         let engine = RuleEngine::new(&analyzer, &config);
-        
+
         let source = r#"
             #![no_std]
             use soroban_sdk::{contracttype, Bytes};
@@ -32,7 +32,7 @@ mod tests {
     fn test_trigger_unsafe_patterns() {
         let (analyzer, config) = setup_engine();
         let engine = RuleEngine::new(&analyzer, &config);
-        
+
         let source = r#"
             #[contractimpl]
             impl Contract {
@@ -51,7 +51,7 @@ mod tests {
     fn test_trigger_auth_gaps() {
         let (analyzer, config) = setup_engine();
         let engine = RuleEngine::new(&analyzer, &config);
-        
+
         let source = r#"
             #[contractimpl]
             impl Contract {
@@ -70,7 +70,7 @@ mod tests {
     fn test_trigger_panic_issues() {
         let (analyzer, config) = setup_engine();
         let engine = RuleEngine::new(&analyzer, &config);
-        
+
         let source = r#"
             #[contractimpl]
             impl Contract {
@@ -88,7 +88,7 @@ mod tests {
     fn test_trigger_arithmetic_issues() {
         let (analyzer, config) = setup_engine();
         let engine = RuleEngine::new(&analyzer, &config);
-        
+
         let source = r#"
             #[contractimpl]
             impl Contract {
@@ -106,7 +106,7 @@ mod tests {
     fn test_trigger_deprecated_apis() {
         let (analyzer, config) = setup_engine();
         let engine = RuleEngine::new(&analyzer, &config);
-        
+
         let source = r#"
             #[contractimpl]
             impl Contract {
@@ -117,14 +117,17 @@ mod tests {
         "#;
         let results = engine.run_all(source, None);
         assert!(!results.deprecated_api_issues.is_empty());
-        assert_eq!(results.deprecated_api_issues[0].deprecated_api, "put_contract_data");
+        assert_eq!(
+            results.deprecated_api_issues[0].deprecated_api,
+            "put_contract_data"
+        );
     }
 
     #[test]
     fn test_trigger_reentrancy_risks() {
         let (analyzer, config) = setup_engine();
         let engine = RuleEngine::new(&analyzer, &config);
-        
+
         let source = r#"
             #[contractimpl]
             impl Contract {
@@ -139,7 +142,10 @@ mod tests {
         "#;
         let results = engine.run_all(source, None);
         assert!(!results.reentrancy_issues.is_empty());
-        assert_eq!(results.reentrancy_issues[0].issue_type, "missing_reentrancy_guardian");
+        assert_eq!(
+            results.reentrancy_issues[0].issue_type,
+            "missing_reentrancy_guardian"
+        );
     }
 
     #[test]
@@ -152,7 +158,7 @@ mod tests {
 
         let analyzer = Analyzer::new(config.clone());
         let engine = RuleEngine::new(&analyzer, &config);
-        
+
         let source = r#"
             // TODO: Implement something here
             pub fn placeholder() {}

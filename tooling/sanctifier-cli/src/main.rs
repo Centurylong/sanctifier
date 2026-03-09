@@ -15,10 +15,8 @@ use std::path::{Path, PathBuf};
 
 pub mod rules;
 
-
 #[derive(Serialize, Deserialize, Default, Clone)]
 pub struct CachedAnalysis {
-
     pub hash: String,
     pub size_warnings: Vec<SizeWarning>,
     pub unsafe_patterns: Vec<UnsafePattern>,
@@ -236,7 +234,6 @@ fn main() {
                     all_symbolic_paths.extend(sym_paths);
                 }
             }
-
 
             cache.save(if path.is_dir() {
                 path
