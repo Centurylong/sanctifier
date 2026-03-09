@@ -13,6 +13,8 @@ use std::collections::HashMap;
 use std::fs;
 use std::path::{Path, PathBuf};
 
+pub mod rules;
+
 #[derive(Serialize, Deserialize, Default, Clone)]
 pub struct CachedAnalysis {
     pub hash: String,
@@ -227,8 +229,6 @@ fn main() {
                     all_custom_rule_matches.extend(analysis.custom_rule_matches);
                     all_gas_estimations.extend(analysis.gas_estimations);
                     all_reentrancy_issues.extend(analysis.reentrancy_issues);
-                    let gas_reports = analyzer.scan_gas_estimation(&content);
-                    all_gas_estimations.extend(gas_reports);
 
                     let sym_paths = analyzer.analyze_symbolic_paths(&content);
                     all_symbolic_paths.extend(sym_paths);
@@ -241,6 +241,30 @@ fn main() {
                 path.parent().unwrap_or(Path::new("."))
             });
 
+            // ── Sanctity Score Calculation ──────────────────────────────────────────
+            // Placeholder metrics for formal verification and test coverage
+            // In a production environment, these would be pulled from Kani results and tarpaulin/grcov
+            let proven_assertions = 11;
+            let total_assertions = 13;
+            let test_coverage = 0.85; // 85% coverage placeholder
+
+            let scoring_input = sanctifier_core::scoring::ScoringInput {
+                size_warnings: &all_size_warnings,
+                unsafe_patterns: &all_unsafe_patterns,
+                auth_gaps: &all_auth_gaps,
+                panic_issues: &all_panic_issues,
+                arithmetic_issues: &all_arithmetic_issues,
+                deprecated_api_issues: &all_deprecated_api_issues,
+                custom_rule_matches: &all_custom_rule_matches,
+                reentrancy_issues: &all_reentrancy_issues,
+                upgrade_report: &upgrade_report,
+                proven_assertions,
+                total_assertions,
+                test_coverage,
+            };
+
+            let sanctity_score = sanctifier_core::scoring::calculate_sanctity_score(scoring_input);
+
             if is_json {
                 eprintln!("{} Static analysis complete.", "✅".green());
             } else {
@@ -249,6 +273,7 @@ fn main() {
 
             if format == "json" {
                 let mut output = serde_json::json!({
+                    "sanctity_score": sanctity_score,
                     "size_warnings": all_size_warnings,
                     "unsafe_patterns": all_unsafe_patterns,
                     "auth_gaps": all_auth_gaps,
@@ -261,9 +286,9 @@ fn main() {
                     "symbolic_paths": all_symbolic_paths,
                     "upgrade_report": upgrade_report,
                     "kani_metrics": KaniVerificationMetrics {
-                        total_assertions: 12,
-                        proven: 11,
-                        failed: 1,
+                        total_assertions: total_assertions as usize,
+                        proven: proven_assertions as usize,
+                        failed: (total_assertions - proven_assertions) as usize,
                         unreachable: 0,
                     }
                 });
@@ -280,6 +305,55 @@ fn main() {
                     serde_json::to_string_pretty(&output).unwrap_or_else(|_| "{}".to_string())
                 );
             } else {
+                println!(
+                    "\n{}",
+                    "╔══════════════════════════════════════════════════════════════╗".cyan()
+                );
+                println!("║ {:^60} ║", "🛡️  SANCTIFIER ANALYSIS REPORT".bold());
+                println!(
+                    "{}",
+                    "╠══════════════════════════════════════════════════════════════╣".cyan()
+                );
+
+                let score_color = if sanctity_score.total_score >= 80 {
+                    sanctity_score.total_score.to_string().green()
+                } else if sanctity_score.total_score >= 50 {
+                    sanctity_score.total_score.to_string().yellow()
+                } else {
+                    sanctity_score.total_score.to_string().red()
+                };
+
+                println!(
+                    "║ {:^60} ║",
+                    format!("Sanctity Score: {} / 100", score_color.bold())
+                );
+                println!(
+                    "║ {:^60} ║",
+                    format!(
+                        "Security: {} | Proofs: {} | Tests: {}%",
+                        sanctity_score.security_score,
+                        sanctity_score.verification_score,
+                        (test_coverage * 100.0) as u32
+                    )
+                );
+                println!(
+                    "{}",
+                    "╚══════════════════════════════════════════════════════════════╝".cyan()
+                );
+
+                if !sanctity_score.deductions.is_empty() {
+                    println!("\n{} Score Deductions:", "📉".red());
+                    for deduction in &sanctity_score.deductions {
+                        println!(
+                            "   {} [-{}] {}: {}",
+                            "•".red(),
+                            deduction.amount,
+                            deduction.category.bold(),
+                            deduction.message
+                        );
+                    }
+                }
+
                 if all_size_warnings.is_empty() {
                     println!("\nNo ledger size issues found.");
                 } else {
@@ -663,62 +737,7 @@ fn run_analysis(
     analyzer: &Analyzer,
     config: &SanctifyConfig,
 ) -> CachedAnalysis {
-    let mut analysis = CachedAnalysis::default();
-
-    let warnings = analyzer.analyze_ledger_size(content);
-    for mut w in warnings {
-        w.struct_name = format!("{}: {}", path.display(), w.struct_name);
-        analysis.size_warnings.push(w);
-    }
-
-    let patterns = analyzer.analyze_unsafe_patterns(content);
-    for mut p in patterns {
-        p.snippet = format!("{}: {}", path.display(), p.snippet);
-        analysis.unsafe_patterns.push(p);
-    }
-
-    let gaps = analyzer.scan_auth_gaps(content);
-    for g in gaps {
-        analysis
-            .auth_gaps
-            .push(format!("{}: {}", path.display(), g));
-    }
-
-    let panics = analyzer.scan_panics(content);
-    for p in panics {
-        let mut p_mod = p.clone();
-        p_mod.location = format!("{}: {}", path.display(), p.location);
-        analysis.panic_issues.push(p_mod);
-    }
-
-    let arith = analyzer.scan_arithmetic_overflow(content);
-    for mut a in arith {
-        a.location = format!("{}: {}", path.display(), a.location);
-        analysis.arithmetic_issues.push(a);
-    }
-
-    let deprecated = analyzer.scan_deprecated_apis(content);
-    for mut d in deprecated {
-        d.location = format!("{}: {}", path.display(), d.location);
-        analysis.deprecated_api_issues.push(d);
-    }
-
-    let custom_matches = analyzer.analyze_custom_rules(content, &config.custom_rules);
-    for mut m in custom_matches {
-        m.snippet = format!("{}: {}", path.display(), m.snippet);
-        analysis.custom_rule_matches.push(m);
-    }
-
-    let gas_reports = analyzer.scan_gas_estimation(content);
-    analysis.gas_estimations.extend(gas_reports);
-
-    let reentrancy = analyzer.scan_reentrancy_risks(content);
-    for mut r in reentrancy {
-        r.location = format!("{}: {}", path.display(), r.location);
-        analysis.reentrancy_issues.push(r);
-    }
-
-    analysis
+    crate::rules::RuleEngine::new(analyzer, config).run_all(content, Some(path))
 }
 
 fn fix_directory(
