@@ -384,7 +384,6 @@ impl Analyzer {
         };
 
         let mut visitor = StorageVisitor {
-            issues: Vec::new(),
             current_fn: None,
             instance_keys: HashSet::new(),
             persistent_keys: HashSet::new(),
@@ -1576,7 +1575,6 @@ impl<'ast> Visit<'ast> for UnusedVariableVisitor {
 // ── StorageVisitor ──────────────────────────────────────────────────────────
 
 struct StorageVisitor {
-    issues: Vec<StorageCollisionIssue>,
     current_fn: Option<String>,
     instance_keys: HashSet<String>,
     persistent_keys: HashSet<String>,
