@@ -10,12 +10,20 @@ export default function Home() {
         <p className="text-lg text-zinc-600 dark:text-zinc-400 text-center max-w-md">
           Stellar Soroban Security & Formal Verification Suite
         </p>
-        <Link
-          href="/dashboard"
-          className="rounded-lg bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900 px-6 py-3 font-medium hover:bg-zinc-800 dark:hover:bg-zinc-200 transition-colors"
-        >
-          Open Security Dashboard
-        </Link>
+        <div className="flex gap-4">
+          <Link
+            href="/dashboard"
+            className="rounded-lg bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900 px-6 py-3 font-medium hover:bg-zinc-800 dark:hover:bg-zinc-200 transition-colors"
+          >
+            Open Security Dashboard
+          </Link>
+          <Link
+            href="/stream"
+            className="rounded-lg border-2 border-zinc-900 dark:border-zinc-100 text-zinc-900 dark:text-zinc-100 px-6 py-3 font-medium hover:bg-zinc-100 dark:hover:bg-zinc-900 transition-colors"
+          >
+            Real-time Stream
+          </Link>
+        </div>
       </main>
     </div>
   );
