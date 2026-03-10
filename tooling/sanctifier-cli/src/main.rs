@@ -5,12 +5,14 @@ pub mod commands;
 use clap::{Parser, Subcommand};
 use colored::*;
 use sanctifier_core::gas_estimator::GasEstimationReport;
+use sanctifier_core::recursion::RecursionIssue;
 use sanctifier_core::zk_proof::ZkProofSummary;
 use sanctifier_core::{
     Analyzer, ArithmeticIssue, CustomRuleMatch, DeprecatedApiIssue, FixType, SanctifyConfig,
     SizeWarning, UnsafePattern, UpgradeReport,
 };
 use serde::{Deserialize, Serialize};
+use tokio::runtime::Runtime;
 
 use sha2::{Digest, Sha256};
 use std::collections::HashMap;
@@ -31,6 +33,8 @@ pub struct CachedAnalysis {
     pub custom_rule_matches: Vec<CustomRuleMatch>,
     pub gas_estimations: Vec<GasEstimationReport>,
     pub reentrancy_issues: Vec<sanctifier_core::reentrancy::ReentrancyIssue>,
+    pub recursion_issues: Vec<RecursionIssue>,
+    pub storage_type_issues: Vec<sanctifier_core::storage_type_validator::StorageTypeIssue>,
 }
 
 #[derive(Serialize, Deserialize, Default)]
@@ -181,7 +185,7 @@ fn main() {
             path,
             format,
             limit,
-            llm_explain,
+            llm_explain: _,
         } => {
             let is_json = format == "json";
 
@@ -212,7 +216,11 @@ fn main() {
 
             let mut cache = AnalysisCache::load(path);
             let analyzer = Analyzer::new(config.clone());
-            // Pass llm_explain to AnalyzeArgs if using exec()
+            let rt = if *llm_explain && !is_json {
+                Some(Runtime::new().unwrap())
+            } else {
+                None
+            };
 
             let mut all_size_warnings: Vec<SizeWarning> = Vec::new();
             let mut all_unsafe_patterns: Vec<UnsafePattern> = Vec::new();
@@ -224,6 +232,8 @@ fn main() {
             let mut all_gas_estimations: Vec<GasEstimationReport> = Vec::new();
             let mut all_reentrancy_issues: Vec<sanctifier_core::reentrancy::ReentrancyIssue> =
                 Vec::new();
+            let mut all_recursion_issues: Vec<RecursionIssue> = Vec::new();
+            let mut all_storage_type_issues: Vec<sanctifier_core::storage_type_validator::StorageTypeIssue> = Vec::new();
             let mut all_symbolic_paths: Vec<sanctifier_core::symbolic::SymbolicGraph> = Vec::new();
             let mut upgrade_report = UpgradeReport::empty();
 
@@ -281,6 +291,8 @@ fn main() {
                     all_custom_rule_matches.extend(analysis.custom_rule_matches);
                     all_gas_estimations.extend(analysis.gas_estimations);
                     all_reentrancy_issues.extend(analysis.reentrancy_issues);
+                    all_recursion_issues.extend(analysis.recursion_issues);
+                    all_storage_type_issues.extend(analysis.storage_type_issues);
 
                     let sym_paths = analyzer.analyze_symbolic_paths(&content);
                     all_symbolic_paths.extend(sym_paths);
@@ -335,6 +347,8 @@ fn main() {
                     "custom_rule_matches": all_custom_rule_matches,
                     "gas_estimations": all_gas_estimations,
                     "reentrancy_risks": all_reentrancy_issues,
+                    "recursion_issues": all_recursion_issues,
+                    "storage_type_issues": all_storage_type_issues,
                     "symbolic_paths": all_symbolic_paths,
                     "upgrade_report": upgrade_report,
                     "kani_metrics": KaniVerificationMetrics {
@@ -457,6 +471,17 @@ fn main() {
                             "->".red(),
                             gap.bold()
                         );
+                        if let Some(rt) = &rt {
+                            if let Ok(resp) = rt.block_on(llm::get_llm_explanation("auth_gap", gap))
+                            {
+                                println!(
+                                    "      {} {}",
+                                    "LLM Explanation:".cyan(),
+                                    resp.explanation
+                                );
+                                println!("      {} {}", "Mitigation:".cyan(), resp.mitigation);
+                            }
+                        }
                     }
                 } else {
                     println!("\nNo authentication gaps found.");
@@ -472,6 +497,22 @@ fn main() {
                             issue.issue_type.yellow().bold(),
                             issue.location
                         );
+                        if let Some(rt) = &rt {
+                            let detail = format!(
+                                "Function {}: {} at {}",
+                                issue.function_name, issue.issue_type, issue.location
+                            );
+                            if let Ok(resp) =
+                                rt.block_on(llm::get_llm_explanation("panic_issue", &detail))
+                            {
+                                println!(
+                                    "      {} {}",
+                                    "LLM Explanation:".cyan(),
+                                    resp.explanation
+                                );
+                                println!("      {} {}", "Mitigation:".cyan(), resp.mitigation);
+                            }
+                        }
                     }
                     println!("   {} Tip: Prefer returning Result or Error types for better contract safety.", "💡".blue());
                 } else {
@@ -492,6 +533,45 @@ fn main() {
                     }
                 } else {
                     println!("\nNo arithmetic overflow risks found.");
+                }
+
+                if !all_recursion_issues.is_empty() {
+                    println!("\n{} Found Recursive Call Patterns!", "🔄".red());
+                    for issue in &all_recursion_issues {
+                        println!(
+                            "   {} {}: {}",
+                            "->".red(),
+                            format!("{:?}", issue.recursion_type).yellow().bold(),
+                            issue.message
+                        );
+                        println!(
+                            "      {} Call chain: {}",
+                            "📍".cyan(),
+                            issue.call_chain.join(" -> ").cyan()
+                        );
+                    }
+                    println!("   {} Tip: Soroban has limited stack depth. Consider iterative approaches or bounded recursion.", "💡".blue());
+                } else {
+                    println!("\nNo recursion issues found.");
+                }
+
+                if !all_storage_type_issues.is_empty() {
+                    println!("\n{} Found Storage Type Issues!", "💾".yellow());
+                    for issue in &all_storage_type_issues {
+                        println!(
+                            "   {} Function {}: {} storage for key '{}' ({})",
+                            "->".red(),
+                            issue.function_name.bold(),
+                            issue.current_storage_type.yellow().bold(),
+                            issue.key.cyan(),
+                            issue.severity.to_uppercase()
+                        );
+                        println!("      {} {}", "Reason:".blue(), issue.reason);
+                        println!("      {} Use {} storage instead", "Recommendation:".green(), issue.recommended_storage_type.green().bold());
+                    }
+                    println!("   {} Tip: Use Persistent for data that must survive forever, Instance for session data, Temporary for cache.", "💡".blue());
+                } else {
+                    println!("\nNo storage type issues found.");
                 }
 
                 if !all_deprecated_api_issues.is_empty() {
@@ -605,7 +685,11 @@ fn main() {
                 std::process::exit(1);
             }
             if let Ok(content) = fs::read_to_string(path) {
-                match sanctifier_core::kani_bridge::KaniBridge::translate_for_kani(&content) {
+                let config = load_config(path);
+                match sanctifier_core::kani_bridge::KaniBridge::translate_for_kani(
+                    &content,
+                    config.kani_unwind,
+                ) {
                     Ok(harness) => {
                         if let Some(out_path) = output {
                             if let Err(e) = std::fs::write(out_path, harness) {
@@ -631,6 +715,7 @@ fn main() {
                 std::process::exit(1);
             }
         }
+
         Commands::Fix { path, yes, dry_run } => {
             println!(
                 "{} Sanctifier Fix: Scanning for automatic patches...",
