@@ -46,7 +46,6 @@
           "estimated_memory_bytes": 32
         }
       ],
-      "reentrancy_issues": [],
       "recursion_issues": []
     }
   }

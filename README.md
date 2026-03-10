@@ -26,6 +26,7 @@ Scans your Soroban code at compile-time to detect:
 - **Authorization Gaps**: Missing `require_auth` or weak access controls.
 - **Storage Collisions**: Improper usage of Instance vs. Persistent storage.
 - **Arithmetic Safety**: Proactive detection of potential overflows and underflows.
+- **Recursion Depth Limiter**: Detects recursive calls that could exceed Soroban stack limits.
 
 ### 2. Formal Verification (The Absolute)
 
