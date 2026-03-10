@@ -1,29 +1,29 @@
 {
   "files": {
-    "../../contracts/vulnerable-contract/src/lib.rs": {
-      "hash": "7c7e29306ea75ebcb689a9ded60330ec9935fed26ecab3b5f50bb10e21ec631a",
+    "contracts/vulnerable-contract/src/lib.rs": {
+      "hash": "fa33a5ae635b683cfd78ac007054918fa48009e9e3b014ab5236ecfca10d844d",
       "size_warnings": [],
       "unsafe_patterns": [
         {
           "pattern_type": "Expect",
           "line": 0,
-          "snippet": "../../contracts/vulnerable-contract/src/lib.rs: env . storage () . instance () . get (& symbol_short ! (\"admin\")) . expect (\"Admin not set\")"
+          "snippet": "contracts/vulnerable-contract/src/lib.rs: env . storage () . instance () . get (& symbol_short ! (\"admin\")) . expect (\"Admin not set\")"
         }
       ],
       "auth_gaps": [
-        "../../contracts/vulnerable-contract/src/lib.rs: set_admin",
-        "../../contracts/vulnerable-contract/src/lib.rs: set_admin_secure"
+        "contracts/vulnerable-contract/src/lib.rs: set_admin",
+        "contracts/vulnerable-contract/src/lib.rs: set_admin_secure"
       ],
       "panic_issues": [
         {
           "function_name": "set_admin_secure",
           "issue_type": "expect",
-          "location": "../../contracts/vulnerable-contract/src/lib.rs: set_admin_secure"
+          "location": "contracts/vulnerable-contract/src/lib.rs: set_admin_secure"
         },
         {
           "function_name": "fail_explicitly",
           "issue_type": "panic!",
-          "location": "../../contracts/vulnerable-contract/src/lib.rs: fail_explicitly"
+          "location": "contracts/vulnerable-contract/src/lib.rs: fail_explicitly"
         }
       ],
       "arithmetic_issues": [],
@@ -45,7 +45,9 @@
           "estimated_instructions": 50,
           "estimated_memory_bytes": 32
         }
-      ]
+      ],
+      "reentrancy_issues": [],
+      "recursion_issues": []
     }
   }
 }

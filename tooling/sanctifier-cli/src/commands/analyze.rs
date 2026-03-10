@@ -56,6 +56,7 @@ pub fn exec(args: AnalyzeArgs) -> anyhow::Result<()> {
     let mut all_panic_issues = Vec::new();
     let mut all_arithmetic_issues: Vec<ArithmeticIssue> = Vec::new();
     let mut all_recursion_issues: Vec<RecursionIssue> = Vec::new();
+    let mut all_storage_type_issues: Vec<sanctifier_core::storage_type_validator::StorageTypeIssue> = Vec::new();
 
     if path.is_dir() {
         analyze_directory(
@@ -67,6 +68,7 @@ pub fn exec(args: AnalyzeArgs) -> anyhow::Result<()> {
             &mut all_panic_issues,
             &mut all_arithmetic_issues,
             &mut all_recursion_issues,
+            &mut all_storage_type_issues,
         );
     } else if path.extension().and_then(|s| s.to_str()) == Some("rs") {
         if let Ok(content) = fs::read_to_string(path) {
@@ -101,6 +103,12 @@ pub fn exec(args: AnalyzeArgs) -> anyhow::Result<()> {
                 r.location = format!("{}: {}", path.display(), r.location);
                 all_recursion_issues.push(r);
             }
+
+            let storage_types = analyzer.scan_storage_type_validation(&content);
+            for mut s in storage_types {
+                s.location = format!("{}: {}", path.display(), s.location);
+                all_storage_type_issues.push(s);
+            }
         }
     }
 
@@ -113,6 +121,7 @@ pub fn exec(args: AnalyzeArgs) -> anyhow::Result<()> {
             "panic_issues": all_panic_issues,
             "arithmetic_issues": all_arithmetic_issues,
             "recursion_issues": all_recursion_issues,
+            "storage_type_issues": all_storage_type_issues,
         });
         println!("{}", serde_json::to_string_pretty(&output).unwrap_or_else(|_| "{}".to_string()));
     } else {
@@ -214,6 +223,32 @@ pub fn exec(args: AnalyzeArgs) -> anyhow::Result<()> {
         } else {
             println!("\nNo recursion issues found.");
         }
+
+        if !all_storage_type_issues.is_empty() {
+            println!("\n{} Found Storage Type Issues!", "💾".yellow());
+            for issue in all_storage_type_issues {
+                println!(
+                    "   {} Function {}: {} storage for key '{}' ({})",
+                    "->".red(),
+                    issue.function_name.bold(),
+                    issue.current_storage_type.yellow().bold(),
+                    issue.key.cyan(),
+                    issue.severity.to_uppercase()
+                );
+                println!("      {} {}", "Reason:".blue(), issue.reason);
+                println!("      {} Use {} storage instead", "Recommendation:".green(), issue.recommended_storage_type.green().bold());
+                if args.llm_explain {
+                    let detail = format!("Function {}: {} storage for key '{}' - {}", issue.function_name, issue.current_storage_type, issue.key, issue.reason);
+                    if let Ok(resp) = rt.block_on(llm::get_llm_explanation("storage_type", &detail)) {
+                        println!("      {} {}", "LLM Explanation:".cyan(), resp.explanation);
+                        println!("      {} {}", "Mitigation:".cyan(), resp.mitigation);
+                    }
+                }
+            }
+            println!("   {} Tip: Use Persistent for data that must survive forever, Instance for session data, Temporary for cache.", "💡".blue());
+        } else {
+            println!("\nNo storage type issues found.");
+        }
         
         println!("\nNo upgrade pattern issues found.");
     }
@@ -243,6 +278,7 @@ fn analyze_directory(
     all_panic_issues: &mut Vec<sanctifier_core::PanicIssue>,
     all_arithmetic_issues: &mut Vec<ArithmeticIssue>,
     all_recursion_issues: &mut Vec<RecursionIssue>,
+    all_storage_type_issues: &mut Vec<sanctifier_core::storage_type_validator::StorageTypeIssue>,
 ) {
     if let Ok(entries) = fs::read_dir(dir) {
         for entry in entries.flatten() {
@@ -250,7 +286,7 @@ fn analyze_directory(
             if path.is_dir() {
                 analyze_directory(
                     &path, analyzer, all_size_warnings, all_unsafe_patterns, all_auth_gaps,
-                    all_panic_issues, all_arithmetic_issues, all_recursion_issues,
+                    all_panic_issues, all_arithmetic_issues, all_recursion_issues, all_storage_type_issues,
                 );
             } else if path.extension().and_then(|s| s.to_str()) == Some("rs") {
                 if let Ok(content) = fs::read_to_string(&path) {
@@ -284,6 +320,12 @@ fn analyze_directory(
                     for mut r in recursion {
                         r.location = format!("{}: {}", path.display(), r.location);
                         all_recursion_issues.push(r);
+                    }
+
+                    let storage_types = analyzer.scan_storage_type_validation(&content);
+                    for mut s in storage_types {
+                        s.location = format!("{}: {}", path.display(), s.location);
+                        all_storage_type_issues.push(s);
                     }
                 }
             }
