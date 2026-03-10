@@ -1,7 +1,9 @@
 pub mod gas_estimator;
 pub mod kani_bridge;
 pub mod reentrancy;
+pub mod recursion;
 pub mod scoring;
+pub mod storage_type_validator;
 pub mod symbolic;
 pub mod zk_proof;
 
@@ -419,6 +421,14 @@ impl Analyzer {
         final_issues
     }
 
+    pub fn scan_storage_type_validation(&self, source: &str) -> Vec<storage_type_validator::StorageTypeIssue> {
+        with_panic_guard(|| self.scan_storage_type_validation_impl(source))
+    }
+
+    fn scan_storage_type_validation_impl(&self, source: &str) -> Vec<storage_type_validator::StorageTypeIssue> {
+        storage_type_validator::analyze_storage_types(source)
+    }
+
     pub fn scan_gas_estimation(&self, source: &str) -> Vec<gas_estimator::GasEstimationReport> {
         with_panic_guard(|| self.scan_gas_estimation_impl(source))
     }
@@ -426,6 +436,15 @@ impl Analyzer {
     fn scan_gas_estimation_impl(&self, source: &str) -> Vec<gas_estimator::GasEstimationReport> {
         let estimator = gas_estimator::GasEstimator::new();
         estimator.estimate_contract(source)
+    }
+
+    pub fn scan_recursion(&self, source: &str) -> Vec<recursion::RecursionIssue> {
+        with_panic_guard(|| self.scan_recursion_impl(source))
+    }
+
+    fn scan_recursion_impl(&self, source: &str) -> Vec<recursion::RecursionIssue> {
+        let mut analyzer = recursion::RecursionAnalyzer::new();
+        analyzer.analyze(source)
     }
 
     fn scan_auth_gaps_impl(&self, source: &str) -> Vec<String> {
@@ -2341,6 +2360,34 @@ mod tests {
         assert!(issues[0].key.contains("key"));
         assert!(issues[0].storage_types.contains(&"Instance".to_string()));
         assert!(issues[0].storage_types.contains(&"Persistent".to_string()));
+    }
+
+    #[test]
+    fn test_scan_storage_type_validation() {
+        let analyzer = Analyzer::new(SanctifyConfig::default());
+        let src = r#"
+            #[contractimpl]
+            impl TestContract {
+                pub fn bad_temp_storage(env: Env) {
+                    env.storage().persistent().set(&"temp_data", &123);
+                    env.storage().temporary().set(&"user_balance", &1000);
+                }
+            }
+        "#;
+        let issues = analyzer.scan_storage_type_validation(src);
+        assert!(!issues.is_empty());
+        
+        // Should find temp data in persistent storage
+        let temp_issue = issues.iter().find(|i| i.key.contains("temp_data"));
+        assert!(temp_issue.is_some());
+        assert_eq!(temp_issue.unwrap().current_storage_type, "Persistent");
+        assert_eq!(temp_issue.unwrap().recommended_storage_type, "Temporary");
+        
+        // Should find balance in temporary storage
+        let balance_issue = issues.iter().find(|i| i.key.contains("balance"));
+        assert!(balance_issue.is_some());
+        assert_eq!(balance_issue.unwrap().current_storage_type, "Temporary");
+        assert_eq!(balance_issue.unwrap().recommended_storage_type, "Persistent");
     }
 
     #[test]

@@ -12,7 +12,7 @@ re-entered while its current execution frame is still on the host stack. However
 **state-based reentrancy** within complex workflows remains possible:
 
 > An attacker-controlled contract could observe intermediate, partially-updated state
-> during a complex workflow and call a *different* entry-point on the same contract
+> during a complex workflow and call a _different_ entry-point on the same contract
 > that depends on that unstable state — before the original invocation has finalized.
 
 ## Contract location
@@ -43,6 +43,7 @@ The caller **must supply the exact current nonce** when calling `enter`. The con
 immediately increments it on success.
 
 This prevents:
+
 - **Replay attacks** — a captured `enter` call cannot be replayed (nonce already advanced).
 - **State-based reentrancy** — even if an attacker can observe the state between `enter`
   and `exit`, they cannot enter the same logical slot because the nonce has already
@@ -66,10 +67,10 @@ guardian.get_nonce() -> u64;
 
 ## Error codes
 
-| Error | Code | Meaning |
-|-------|------|---------|
-| `Error::Locked` | 1 | `enter` called while lock is already active (re-entry attempt) |
-| `Error::Mismatch` | 2 | Provided nonce does not match the contract's current nonce |
+| Error             | Code | Meaning                                                        |
+| ----------------- | ---- | -------------------------------------------------------------- |
+| `Error::Locked`   | 1    | `enter` called while lock is already active (re-entry attempt) |
+| `Error::Mismatch` | 2    | Provided nonce does not match the contract's current nonce     |
 
 ## Usage pattern (parent contract)
 
@@ -95,6 +96,7 @@ cargo test -p reentrancy-guardian
 ```
 
 Expected output:
+
 ```
 running 4 tests
 test test::test_exit_releases_lock ... ok
@@ -106,23 +108,67 @@ test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out
 
 ## Static analysis detection
 
-The `sanctifier-core` analyzer includes a static scan rule (`scan_reentrancy_risks`)
-that detects contract functions which:
-1. Mutate contract storage, **AND**
-2. Perform external cross-contract calls, **BUT**
-3. Do **not** call a `ReentrancyGuardian.enter(...)` before doing so
+The `sanctifier-core` analyzer includes enhanced static analysis that detects multiple
+risky reentrancy patterns in contract functions:
+
+### Detected Patterns
+
+1. **External Call in Loop** (High Severity)
+   - External calls inside `for`, `while`, or `loop` constructs
+   - Can lead to reentrancy attacks and excessive gas consumption
+
+2. **Multiple External Calls** (High Severity)
+   - Functions making 2+ external calls without reentrancy protection
+   - Increases attack surface for complex reentrancy scenarios
+
+3. **State After Call** (High Severity)
+   - State mutations occurring after external calls
+   - Violates Checks-Effects-Interactions (CEI) pattern
+
+4. **Critical CEI Violation** (High Severity)
+   - State mutations both before AND after external calls
+   - Most dangerous pattern - state can be manipulated mid-execution
+
+5. **State Before Call** (Medium Severity)
+   - Classic reentrancy pattern: state mutation followed by external call
+   - Should use reentrancy guard or follow CEI pattern
+
+### Usage
 
 Run via the CLI:
+
 ```bash
 sanctifier analyze ./my-contract
 ```
 
-A finding will appear in the output as:
+Example findings:
+
 ```
 🔄 Reentrancy Risk Detected!
-   -> Function `complex_workflow`: mutates state + external call without reentrancy guard
-      💡 Use `ReentrancyGuardian.enter(nonce)` / `.exit()` to protect this function.
+   -> Function `batch_transfer`: External call in loop (HIGH)
+      💡 External calls in loops can lead to reentrancy attacks and gas issues.
+         Consider batching operations or using a reentrancy guard.
+
+🔄 Reentrancy Risk Detected!
+   -> Function `complex_workflow`: Multiple external calls without guard (HIGH)
+      💡 Function makes 3 external calls without reentrancy protection.
+         Use ReentrancyGuardian.enter(nonce) / .exit() to protect this function.
+
+🔄 Reentrancy Risk Detected!
+   -> Function `risky_update`: State mutation after external call (HIGH)
+      💡 State mutation after external call violates Checks-Effects-Interactions pattern.
+         Move state changes before the external call or use ReentrancyGuardian.
 ```
+
+### Pattern Detection Details
+
+The analyzer tracks:
+
+- Statement execution order to detect CEI violations
+- Loop contexts to identify calls in iterations
+- Multiple external call sequences
+- Various guard naming patterns (`guardian`, `guard`, `reentrancy_lock`)
+- Different external call methods (`client.*`, `invoke_contract`, etc.)
 
 ## Security notes
 

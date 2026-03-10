@@ -239,6 +239,8 @@ mod tests {
                 issue_type: "reentrancy".to_string(),
                 location: "loc".to_string(),
                 recommendation: "Use a guard".to_string(),
+                severity: "medium".to_string(),
+                pattern: crate::reentrancy::RiskyPattern::NoGuard,
             }],
             upgrade_report: &UpgradeReport::empty(),
             proven_assertions: 10,
