@@ -59,6 +59,21 @@ Run an initial security audit on your project:
 sanctifier analyze ./contracts/my-project
 ```
 
+#### Real-time Analysis Streaming
+
+Watch your analysis progress in real-time via WebSocket:
+
+```bash
+# Start the streaming server
+sanctifier stream ./contracts/my-project --port 9001
+
+# In another terminal, start the frontend
+cd frontend && npm run dev
+# Navigate to http://localhost:3000/stream
+```
+
+See [Real-time Streaming Documentation](docs/realtime-streaming.md) for details.
+
 #### LLM-Assisted Explanations (Experimental)
 To get plain-English explanations and mitigation strategies for findings, use:
 ```bash

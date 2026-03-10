@@ -1,4 +1,7 @@
 mod llm;
+mod ws_server;
+pub mod commands;
+
 use clap::{Parser, Subcommand};
 use colored::*;
 use sanctifier_core::gas_estimator::GasEstimationReport;
@@ -102,6 +105,17 @@ pub enum Commands {
         #[arg(long, default_value_t = false)]
         llm_explain: bool,
     },
+    /// Stream analysis progress via WebSocket
+    Stream {
+        /// Path to the Soroban contract or project directory
+        path: PathBuf,
+        /// WebSocket server port
+        #[arg(short, long, default_value_t = 9001)]
+        port: u16,
+        /// Maximum ledger entry size limit in bytes
+        #[arg(short, long, default_value_t = 64000)]
+        limit: usize,
+    },
     /// Generate a summary report
     Report {
         /// Optional path to save the generated report
@@ -135,6 +149,38 @@ fn main() {
     let cli = Cli::parse();
 
     match &cli.command {
+        Commands::Stream { path, port, limit } => {
+            let rt = tokio::runtime::Runtime::new().unwrap();
+            rt.block_on(async {
+                let addr = format!("127.0.0.1:{}", port).parse().unwrap();
+                let (server, log_tx) = ws_server::WebSocketServer::new(100);
+
+                // Spawn the WebSocket server
+                let server_handle = tokio::spawn(async move {
+                    if let Err(e) = server.start(addr).await {
+                        eprintln!("WebSocket server error: {}", e);
+                    }
+                });
+
+                // Give the server a moment to start
+                tokio::time::sleep(tokio::time::Duration::from_millis(100)).await;
+
+                // Run the analysis with logging
+                let args = commands::stream::StreamArgs {
+                    path: path.clone(),
+                    port: *port,
+                    limit: *limit,
+                };
+
+                if let Err(e) = commands::stream::exec(args, log_tx).await {
+                    eprintln!("{} Analysis error: {}", "❌".red(), e);
+                }
+
+                // Keep server running for a bit to ensure all messages are sent
+                tokio::time::sleep(tokio::time::Duration::from_secs(2)).await;
+                server_handle.abort();
+            });
+        }
         Commands::Analyze {
             path,
             format,
