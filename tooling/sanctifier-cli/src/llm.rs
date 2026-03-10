@@ -1,12 +1,14 @@
 use anyhow::Result;
 use serde::Serialize;
 
+#[allow(dead_code)]
 #[derive(Serialize)]
 pub struct LlmRequest<'a> {
     pub finding_type: &'a str,
     pub finding_detail: &'a str,
 }
 
+#[allow(dead_code)]
 #[derive(Debug, serde::Deserialize)]
 pub struct LlmResponse {
     pub explanation: String,
@@ -14,6 +16,7 @@ pub struct LlmResponse {
 }
 
 /// Sends a finding to the LLM API and returns the explanation and mitigation.
+#[allow(dead_code)]
 pub async fn get_llm_explanation(finding_type: &str, finding_detail: &str) -> Result<LlmResponse> {
     let client = reqwest::Client::new();
     let req = LlmRequest {

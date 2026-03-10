@@ -89,3 +89,40 @@ Then run:
 ```bash
 cargo kani --package kani-poc-contract
 ```
+
+## Configuration and Loop Unwinding
+
+For contracts with loops, Kani often requires a specified unwinding limit to complete verification. Sanctifier allows you to configure this globally for all generated Kani harnesses using the `.sanctify.toml` configuration file.
+
+### Setting Loop Unwind Limit
+
+Add the `kani_unwind` field to your `.sanctify.toml` file:
+
+```toml
+# .sanctify.toml
+kani_unwind = 10
+```
+
+When this is set, all generated Kani harnesses will include the `#[kani::unwind(N)]` attribute. This is particularly useful for bounded model checking where deep loops would otherwise cause state-space explosion or termination issues.
+
+### Generating Kani Harnesses
+
+Use the Sanctifier CLI to generate Kani-compatible Rust code:
+
+```bash
+sanctifier kani contract.rs --output kani_harness.rs
+```
+
+If `kani_unwind` is set in `.sanctify.toml`, the output will look like:
+
+```rust
+#[cfg(kani)]
+#[kani::proof]
+#[kani::unwind(10)]
+pub fn kani_harness_my_function() {
+    // ... generated harness logic ...
+}
+```
+
+This allows you to verify complex loops without manually editing the generated harnesses.
+

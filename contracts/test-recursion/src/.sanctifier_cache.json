@@ -1,0 +1,122 @@
+{
+  "files": {
+    "contracts/test-recursion/src/lib.rs": {
+      "hash": "731e246f9f28779dfedf905d5818f54a4b5945441ab2f219020a9eff24a9df35",
+      "size_warnings": [],
+      "unsafe_patterns": [],
+      "auth_gaps": [],
+      "panic_issues": [],
+      "arithmetic_issues": [
+        {
+          "function_name": "factorial",
+          "operation": "*",
+          "suggestion": "Use `.checked_mul(rhs)` or `.saturating_mul(rhs)` to handle overflow",
+          "location": "contracts/test-recursion/src/lib.rs: factorial:14"
+        },
+        {
+          "function_name": "factorial",
+          "operation": "-",
+          "suggestion": "Use `.checked_sub(rhs)` or `.saturating_sub(rhs)` to handle underflow",
+          "location": "contracts/test-recursion/src/lib.rs: factorial:14"
+        },
+        {
+          "function_name": "fibonacci",
+          "operation": "+",
+          "suggestion": "Use `.checked_add(rhs)` or `.saturating_add(rhs)` to handle overflow",
+          "location": "contracts/test-recursion/src/lib.rs: fibonacci:23"
+        },
+        {
+          "function_name": "fibonacci",
+          "operation": "-",
+          "suggestion": "Use `.checked_sub(rhs)` or `.saturating_sub(rhs)` to handle underflow",
+          "location": "contracts/test-recursion/src/lib.rs: fibonacci:23"
+        },
+        {
+          "function_name": "process_b",
+          "operation": "-",
+          "suggestion": "Use `.checked_sub(rhs)` or `.saturating_sub(rhs)` to handle underflow",
+          "location": "contracts/test-recursion/src/lib.rs: process_b:38"
+        },
+        {
+          "function_name": "add",
+          "operation": "+",
+          "suggestion": "Use `.checked_add(rhs)` or `.saturating_add(rhs)` to handle overflow",
+          "location": "contracts/test-recursion/src/lib.rs: add:46"
+        },
+        {
+          "function_name": "multiply",
+          "operation": "*",
+          "suggestion": "Use `.checked_mul(rhs)` or `.saturating_mul(rhs)` to handle overflow",
+          "location": "contracts/test-recursion/src/lib.rs: multiply:56"
+        }
+      ],
+      "deprecated_api_issues": [],
+      "custom_rule_matches": [],
+      "gas_estimations": [
+        {
+          "function_name": "factorial",
+          "estimated_instructions": 85,
+          "estimated_memory_bytes": 32
+        },
+        {
+          "function_name": "fibonacci",
+          "estimated_instructions": 135,
+          "estimated_memory_bytes": 32
+        },
+        {
+          "function_name": "process_a",
+          "estimated_instructions": 75,
+          "estimated_memory_bytes": 32
+        },
+        {
+          "function_name": "add",
+          "estimated_instructions": 55,
+          "estimated_memory_bytes": 32
+        },
+        {
+          "function_name": "multiply_and_add",
+          "estimated_instructions": 92,
+          "estimated_memory_bytes": 40
+        }
+      ],
+      "reentrancy_issues": [],
+      "recursion_issues": [
+        {
+          "function_name": "factorial",
+          "recursion_type": "Direct",
+          "call_chain": [
+            "factorial",
+            "factorial"
+          ],
+          "estimated_depth": null,
+          "message": "Function 'factorial' calls itself directly, which may exceed Soroban stack limits",
+          "location": "contracts/test-recursion/src/lib.rs: factorial"
+        },
+        {
+          "function_name": "process_a",
+          "recursion_type": "Indirect",
+          "call_chain": [
+            "process_a",
+            "process_b",
+            "process_a",
+            "process_a"
+          ],
+          "estimated_depth": null,
+          "message": "Function 'process_a' is part of a recursive call chain: process_a -> process_b -> process_a -> process_a",
+          "location": "contracts/test-recursion/src/lib.rs: process_a"
+        },
+        {
+          "function_name": "fibonacci",
+          "recursion_type": "Direct",
+          "call_chain": [
+            "fibonacci",
+            "fibonacci"
+          ],
+          "estimated_depth": null,
+          "message": "Function 'fibonacci' calls itself directly, which may exceed Soroban stack limits",
+          "location": "contracts/test-recursion/src/lib.rs: fibonacci"
+        }
+      ]
+    }
+  }
+}

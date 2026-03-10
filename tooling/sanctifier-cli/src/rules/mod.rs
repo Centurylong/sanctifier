@@ -25,6 +25,8 @@ impl<'a> RuleEngine<'a> {
                 .analyze_custom_rules(content, &self.config.custom_rules),
             gas_estimations: self.analyzer.scan_gas_estimation(content),
             reentrancy_issues: self.analyzer.scan_reentrancy_risks(content),
+            recursion_issues: self.analyzer.scan_recursion(content),
+            storage_type_issues: self.analyzer.scan_storage_type_validation(content),
         };
 
         if let Some(p) = path {
@@ -53,6 +55,12 @@ impl<'a> RuleEngine<'a> {
             }
             for r in &mut analysis.reentrancy_issues {
                 r.location = format!("{}: {}", p_str, r.location);
+            }
+            for r in &mut analysis.recursion_issues {
+                r.location = format!("{}: {}", p_str, r.location);
+            }
+            for s in &mut analysis.storage_type_issues {
+                s.location = format!("{}: {}", p_str, s.location);
             }
         }
 
