@@ -262,6 +262,8 @@ pub struct SanctifyConfig {
     pub custom_rules: Vec<CustomRule>,
     #[serde(default)]
     pub exclude: Vec<String>,
+    #[serde(default)]
+    pub kani_unwind: Option<u32>,
 }
 
 fn default_ignore_paths() -> Vec<String> {
@@ -297,6 +299,7 @@ impl Default for SanctifyConfig {
             strict_mode: false,
             custom_rules: vec![],
             exclude: vec![],
+            kani_unwind: None,
         }
     }
 }

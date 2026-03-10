@@ -69,7 +69,7 @@ pub struct KaniBridge;
 impl KaniBridge {
     /// Takes a Soroban contract source string and returns a Kani-compatible
     /// Rust source string with host environment calls mocked.
-    pub fn translate_for_kani(source: &str) -> Result<String, syn::Error> {
+    pub fn translate_for_kani(source: &str, unwind: Option<u32>) -> Result<String, syn::Error> {
         let mut ast: File = parse_file(source)?;
 
         let mut visitor = KaniBridgeVisitor {
@@ -121,9 +121,17 @@ impl KaniBridge {
 
                                 let self_ty = &i.self_ty;
 
+                                // Inject loop unwinding if specified
+                                let unwind_attr = if let Some(n) = unwind {
+                                    quote! { #[kani::unwind(#n)] }
+                                } else {
+                                    quote! {}
+                                };
+
                                 let harness = quote! {
                                     #[cfg(kani)]
                                     #[kani::proof]
+                                    #unwind_attr
                                     pub fn #harness_name() {
                                         #(#kani_let_statements)*
                                         // Mock the call
@@ -143,5 +151,33 @@ impl KaniBridge {
 
         // Append harnesses at the end
         Ok(format!("{}\n{}", generated_str, harnesses_str))
+    }
+}
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_kani_unwind_injection() {
+        let source = r#"
+            #[contractimpl]
+            impl MyContract {
+                pub fn loop_fn(env: Env, n: u32) {
+                    for i in 0..n {
+                        // some loop
+                    }
+                }
+            }
+        "#;
+
+        // Test with unwind = Some(5)
+        let result = KaniBridge::translate_for_kani(source, Some(5)).unwrap();
+        // quote! might format numbers with type suffixes in string output
+        assert!(result.contains("kani :: unwind (5)") || result.contains("kani :: unwind (5u32)"));
+        assert!(result.contains("kani :: proof"));
+
+        // Test with unwind = None
+        let result_no_unwind = KaniBridge::translate_for_kani(source, None).unwrap();
+        assert!(!result_no_unwind.contains("kani :: unwind"));
     }
 }
