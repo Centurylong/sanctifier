@@ -6,6 +6,7 @@
       "size_warnings": [],
       "unsafe_patterns": [],
       "auth_gaps": [
+        "C:\\Users\\EMMA\\Desktop\\sanc\\tooling\\sanctifier-cli\\tests/fixtures/vulnerable_contract.rs: do_bad_stuff"
         "/home/idealz/Drips-Projects/sanctifier-Gf/tooling/sanctifier-cli/tests/fixtures/vulnerable_contract.rs: do_bad_stuff"
         "/home/mvrck/workspace/opensource/grantfox/sanctifierr/tooling/sanctifier-cli/tests/fixtures/vulnerable_contract.rs: do_bad_stuff"
       ],
@@ -13,6 +14,7 @@
         {
           "function_name": "panic_calc",
           "issue_type": "panic!",
+          "location": "C:\\Users\\EMMA\\Desktop\\sanc\\tooling\\sanctifier-cli\\tests/fixtures/vulnerable_contract.rs: panic_calc"
           "location": "/home/idealz/Drips-Projects/sanctifier-Gf/tooling/sanctifier-cli/tests/fixtures/vulnerable_contract.rs: panic_calc"
           "location": "/home/mvrck/workspace/opensource/grantfox/sanctifierr/tooling/sanctifier-cli/tests/fixtures/vulnerable_contract.rs: panic_calc"
         }

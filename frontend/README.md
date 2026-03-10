@@ -23,6 +23,7 @@ The web interface for interacting with the Sanctifier suite.
 - Upload WASM files for analysis.
 - View real-time security reports.
 - Dashboard for tracked contracts.
+- Visual Sanctity Score (0–100) with security, proofs, and coverage breakdown.
 
 ## Run Sanctifier in the Browser (WASM)
 
