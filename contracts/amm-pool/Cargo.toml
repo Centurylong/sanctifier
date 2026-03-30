@@ -7,7 +7,7 @@ edition = "2021"
 crate-type = ["rlib"]
 
 [dev-dependencies]
-proptest = "1.4"
+proptest = "1.11"
 
 [profile.release]
 opt-level = "z"
