@@ -105,6 +105,7 @@ validate_environment() {
             SOROBAN_SECRET_KEY="mock_secret_key_for_dry_run_only"
         else
             log_warning "SOROBAN_SECRET_KEY environment variable not set. Skipping deployment."
+            echo '{"version":"1.0","deployments":[],"last_updated":null,"validation_status":null}' > "$DEPLOYMENT_MANIFEST"
             exit 0
         fi
     fi
