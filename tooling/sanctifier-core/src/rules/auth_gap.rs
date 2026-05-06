@@ -142,12 +142,11 @@ fn check_fn_body(
                     check_expr(&init.expr, has_mutation, has_read, has_auth);
                 }
             }
-            syn::Stmt::Macro(m) => {
-                if m.mac.path.is_ident("require_auth")
-                    || m.mac.path.is_ident("require_auth_for_args")
-                {
-                    *has_auth = true;
-                }
+            syn::Stmt::Macro(m)
+                if (m.mac.path.is_ident("require_auth")
+                    || m.mac.path.is_ident("require_auth_for_args")) =>
+            {
+                *has_auth = true;
             }
             _ => {}
         }

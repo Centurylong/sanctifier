@@ -72,13 +72,14 @@ jobs:
         run: cargo fmt --check -p runtime-guard-wrapper
 
       - name: Run Clippy on wrapper contract
-        run: cargo clippy -p runtime-guard-wrapper --target wasm32-unknown-unknown --all-features -- -D warnings
+        run: cargo clippy -p runtime-guard-wrapper --target wasm32-unknown-unknown --no-default-features -- -D warnings
 
       - name: Build runtime guard wrapper contract
         run: |
           cargo build \
             -p runtime-guard-wrapper \
             --release \
+            --no-default-features \
             --target wasm32-unknown-unknown
 
       - name: Verify WASM artifact

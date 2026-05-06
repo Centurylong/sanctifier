@@ -5,6 +5,7 @@ pub mod gas_estimator;
 pub mod gas_report;
 pub mod patcher;
 pub mod rules;
+#[cfg(feature = "smt")]
 pub mod smt;
 mod storage_collision;
 use std::collections::HashSet;
@@ -385,15 +386,11 @@ impl Analyzer {
 
         for item in &file.items {
             match item {
-                Item::Struct(s) => {
-                    if has_contracttype(&s.attrs) {
-                        report.storage_types.push(s.ident.to_string());
-                    }
+                Item::Struct(s) if has_contracttype(&s.attrs) => {
+                    report.storage_types.push(s.ident.to_string());
                 }
-                Item::Enum(e) => {
-                    if has_contracttype(&e.attrs) {
-                        report.storage_types.push(e.ident.to_string());
-                    }
+                Item::Enum(e) if has_contracttype(&e.attrs) => {
+                    report.storage_types.push(e.ident.to_string());
                 }
                 Item::Impl(i) => {
                     for impl_item in &i.items {
@@ -435,10 +432,12 @@ impl Analyzer {
         with_panic_guard(|| self.scan_auth_gaps_impl(source))
     }
 
+    #[cfg(feature = "smt")]
     pub fn verify_smt_invariants(&self, _source: &str) -> Vec<smt::SmtInvariantIssue> {
         with_panic_guard(|| self.verify_smt_invariants_impl())
     }
 
+    #[cfg(feature = "smt")]
     fn verify_smt_invariants_impl(&self) -> Vec<smt::SmtInvariantIssue> {
         // In a full implementation, this would dynamically parse the AST to extract invariants.
         // For now, we return an empty vector to avoid false positives in general analysis.
@@ -528,14 +527,12 @@ impl Analyzer {
                 }
                 // In syn 2.0, bare macro calls (e.g. `panic!(...)`) are Stmt::Macro,
                 // not Stmt::Expr(Expr::Macro(...)).
-                syn::Stmt::Macro(m) => {
-                    if m.mac.path.is_ident("panic") {
-                        issues.push(PanicIssue {
-                            function_name: fn_name.to_string(),
-                            issue_type: "panic!".to_string(),
-                            location: fn_name.to_string(),
-                        });
-                    }
+                syn::Stmt::Macro(m) if m.mac.path.is_ident("panic") => {
+                    issues.push(PanicIssue {
+                        function_name: fn_name.to_string(),
+                        issue_type: "panic!".to_string(),
+                        location: fn_name.to_string(),
+                    });
                 }
                 _ => {}
             }
@@ -544,14 +541,12 @@ impl Analyzer {
 
     fn check_expr_panics(&self, expr: &syn::Expr, fn_name: &str, issues: &mut Vec<PanicIssue>) {
         match expr {
-            syn::Expr::Macro(m) => {
-                if m.mac.path.is_ident("panic") {
-                    issues.push(PanicIssue {
-                        function_name: fn_name.to_string(),
-                        issue_type: "panic!".to_string(),
-                        location: fn_name.to_string(),
-                    });
-                }
+            syn::Expr::Macro(m) if m.mac.path.is_ident("panic") => {
+                issues.push(PanicIssue {
+                    function_name: fn_name.to_string(),
+                    issue_type: "panic!".to_string(),
+                    location: fn_name.to_string(),
+                });
             }
             syn::Expr::MethodCall(m) => {
                 let method_name = m.method.to_string();
@@ -607,12 +602,11 @@ impl Analyzer {
                         self.check_expr(&init.expr, has_mutation, has_read, has_auth);
                     }
                 }
-                syn::Stmt::Macro(m) => {
-                    if m.mac.path.is_ident("require_auth")
-                        || m.mac.path.is_ident("require_auth_for_args")
-                    {
-                        *has_auth = true;
-                    }
+                syn::Stmt::Macro(m)
+                    if (m.mac.path.is_ident("require_auth")
+                        || m.mac.path.is_ident("require_auth_for_args")) =>
+                {
+                    *has_auth = true;
                 }
                 _ => {}
             }
@@ -719,34 +713,30 @@ impl Analyzer {
 
         for item in &file.items {
             match item {
-                Item::Struct(s) => {
-                    if has_contracttype(&s.attrs) {
-                        let size = self.estimate_struct_size(s);
-                        if let Some(level) =
-                            classify_size(size, limit, approaching, strict, strict_threshold)
-                        {
-                            warnings.push(SizeWarning {
-                                struct_name: s.ident.to_string(),
-                                estimated_size: size,
-                                limit,
-                                level,
-                            });
-                        }
+                Item::Struct(s) if has_contracttype(&s.attrs) => {
+                    let size = self.estimate_struct_size(s);
+                    if let Some(level) =
+                        classify_size(size, limit, approaching, strict, strict_threshold)
+                    {
+                        warnings.push(SizeWarning {
+                            struct_name: s.ident.to_string(),
+                            estimated_size: size,
+                            limit,
+                            level,
+                        });
                     }
                 }
-                Item::Enum(e) => {
-                    if has_contracttype(&e.attrs) {
-                        let size = self.estimate_enum_size(e);
-                        if let Some(level) =
-                            classify_size(size, limit, approaching, strict, strict_threshold)
-                        {
-                            warnings.push(SizeWarning {
-                                struct_name: e.ident.to_string(),
-                                estimated_size: size,
-                                limit,
-                                level,
-                            });
-                        }
+                Item::Enum(e) if has_contracttype(&e.attrs) => {
+                    let size = self.estimate_enum_size(e);
+                    if let Some(level) =
+                        classify_size(size, limit, approaching, strict, strict_threshold)
+                    {
+                        warnings.push(SizeWarning {
+                            struct_name: e.ident.to_string(),
+                            estimated_size: size,
+                            limit,
+                            level,
+                        });
                     }
                 }
                 Item::Impl(_) | Item::Macro(_) => {}
