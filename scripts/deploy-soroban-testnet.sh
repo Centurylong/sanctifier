@@ -100,8 +100,13 @@ validate_environment() {
 
     # Check Soroban secret key
     if [[ -z "${SOROBAN_SECRET_KEY:-}" ]]; then
-        log_error "SOROBAN_SECRET_KEY environment variable not set"
-        return 1
+        if [[ "$DRY_RUN" == "true" ]]; then
+            log_warning "SOROBAN_SECRET_KEY not set. Using mock key for dry run."
+            SOROBAN_SECRET_KEY="mock_secret_key_for_dry_run_only"
+        else
+            log_warning "SOROBAN_SECRET_KEY environment variable not set. Skipping deployment."
+            exit 0
+        fi
     fi
 
     # Check network is valid
