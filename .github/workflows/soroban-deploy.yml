@@ -64,7 +64,7 @@ jobs:
       - name: Install Soroban CLI
         run: |
           sudo apt-get update
-          sudo apt-get install -y libdbus-1-dev
+          sudo apt-get install -y libdbus-1-dev libudev-dev pkg-config
           cargo install --locked soroban-cli || true
           soroban --version
 
@@ -166,6 +166,8 @@ jobs:
 
       - name: Install Soroban CLI
         run: |
+          sudo apt-get update
+          sudo apt-get install -y libudev-dev pkg-config libdbus-1-dev
           cargo install --locked soroban-cli || true
 
       - name: Run continuous validation checks
