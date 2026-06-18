@@ -1,0 +1,82 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Sanctifier SDK browser demo</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <style>
+      body { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; max-width: 880px; margin: 24px auto; padding: 0 16px; color: #1c1d21; }
+      h1 { font-size: 1.4rem; margin-bottom: 0.25rem; }
+      .row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+      textarea { width: 100%; height: 280px; font: inherit; padding: 8px; }
+      .findings { border: 1px solid #ddd; padding: 12px; height: 280px; overflow: auto; background: #fafafa; }
+      .pill { display: inline-block; padding: 1px 8px; border-radius: 12px; font-size: 11px; margin-right: 6px; color: white; }
+      .high, .critical { background: #b32b2b; }
+      .medium { background: #c97600; }
+      .low { background: #2a6db5; }
+      .info { background: #5a5a5a; }
+      .meta { color: #555; font-size: 12px; }
+      button { padding: 8px 14px; font: inherit; cursor: pointer; }
+    </style>
+  </head>
+  <body>
+    <h1>Sanctifier browser demo</h1>
+    <p class="meta">Loads the @sanctifier/sdk browser bundle and runs the analyzer entirely in the browser. No server side calls.</p>
+    <div class="row">
+      <textarea id="src">use soroban_sdk::{contract, contractimpl, Env, Address};
+
+#[contract]
+pub struct Token;
+
+#[contractimpl]
+impl Token {
+    pub fn transfer(env: Env, from: Address, to: Address, amount: u64) {
+        let new_balance = amount + 100;
+        env.storage().instance().set(&from, &new_balance);
+    }
+}
+</textarea>
+      <div class="findings" id="out">Click analyze to run.</div>
+    </div>
+    <p><button id="run">Analyze</button> <span class="meta" id="version"></span></p>
+
+    <script type="module">
+      // Adjust the import path to match wherever you ship the SDK browser bundle.
+      // For real apps a bundler like Vite or webpack will resolve "@sanctifier/sdk".
+      import { analyze, init, coreVersion } from "../../dist/browser/index.js";
+
+      const out = document.getElementById("out");
+      const ver = document.getElementById("version");
+
+      // The browser entry needs the WASM bytes. Most bundlers expose a
+      // URL helper; the line below is the no-bundler form that fetches
+      // the binary that wasm-pack ships next to the JS glue.
+      await init(new URL("../../wasm/web/sanctifier_bg.wasm", import.meta.url));
+      ver.textContent = "core v" + coreVersion();
+
+      document.getElementById("run").addEventListener("click", async () => {
+        out.textContent = "Analyzing...";
+        try {
+          const report = await analyze(document.getElementById("src").value);
+          if (report.findings.length === 0) {
+            out.innerHTML = '<strong>Clean.</strong> No findings.';
+            return;
+          }
+          out.innerHTML = report.findings
+            .map((f) => {
+              const pill = '<span class="pill ' + f.severity + '">' + f.severity + '</span>';
+              return pill + "<strong>" + f.code + "</strong> " + escapeHtml(f.message) +
+                '<div class="meta">at ' + escapeHtml(f.location) + "</div>";
+            })
+            .join("<hr>");
+        } catch (err) {
+          out.textContent = "Error: " + err.message;
+        }
+      });
+
+      function escapeHtml(s) {
+        return s.replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+      }
+    </script>
+  </body>
+</html>

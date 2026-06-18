@@ -1,0 +1,13 @@
+{
+  "name": "sanctifier-wasm",
+  "description": "WASM wrapper for Sanctifier analysis engine",
+  "version": "0.1.0",
+  "license": "MIT",
+  "files": [
+    "sanctifier_bg.wasm",
+    "sanctifier.js",
+    "sanctifier.d.ts"
+  ],
+  "main": "sanctifier.js",
+  "types": "sanctifier.d.ts"
+}

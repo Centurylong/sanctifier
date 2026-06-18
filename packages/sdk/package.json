@@ -1,0 +1,72 @@
+{
+  "name": "@sanctifier/sdk",
+  "version": "0.1.0",
+  "description": "Typed JS/TS SDK for the Sanctifier Soroban security analyzer. Wraps the WASM core for Node and browser.",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Centurylong/sanctifier.git",
+    "directory": "packages/sdk"
+  },
+  "keywords": [
+    "soroban",
+    "stellar",
+    "smart-contracts",
+    "security",
+    "static-analysis",
+    "wasm",
+    "sanctifier"
+  ],
+  "type": "module",
+  "main": "./dist/node/index.cjs",
+  "module": "./dist/node/index.js",
+  "types": "./dist/types/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/types/index.d.ts",
+      "browser": {
+        "import": "./dist/browser/index.js",
+        "default": "./dist/browser/index.js"
+      },
+      "import": "./dist/node/index.js",
+      "require": "./dist/node/index.cjs",
+      "default": "./dist/node/index.js"
+    },
+    "./browser": {
+      "types": "./dist/types/index.d.ts",
+      "import": "./dist/browser/index.js",
+      "default": "./dist/browser/index.js"
+    },
+    "./node": {
+      "types": "./dist/types/index.d.ts",
+      "import": "./dist/node/index.js",
+      "require": "./dist/node/index.cjs",
+      "default": "./dist/node/index.js"
+    }
+  },
+  "files": [
+    "dist",
+    "wasm",
+    "README.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "build:wasm": "bash scripts/build-wasm.sh",
+    "build:ts": "tsup",
+    "build": "npm run build:wasm && npm run build:ts",
+    "test": "npm run build:ts && vitest run",
+    "test:watch": "vitest",
+    "typecheck": "tsc --noEmit",
+    "example:node": "node examples/node/run.mjs",
+    "clean": "rm -rf dist"
+  },
+  "devDependencies": {
+    "@types/node": "^20.11.0",
+    "tsup": "^8.0.2",
+    "typescript": "^5.3.3",
+    "vitest": "^1.2.2"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}
