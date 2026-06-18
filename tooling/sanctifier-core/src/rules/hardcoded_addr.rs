@@ -186,7 +186,7 @@ mod tests {
         let rule = HardcodedAddrRule::new();
         let source = r#"
             fn initialize() {
-                let admin = "GDKPBQY6HQZO2UFKLHJ5IKPFZ4GDKPBQY6HQZO2UFKLHJ5IKPFZ4G";
+                let admin = "GA7QYNF7SOWQ3GLR2BGMZEHXAVIRZA4KVWLTJJFC7MGXUA74P7UJVSGZ";
             }
         "#;
         let violations = rule.check(source);
@@ -199,7 +199,7 @@ mod tests {
         let rule = HardcodedAddrRule::new();
         let source = r#"
             fn verify_auth() {
-                let secret = "SDKPBQY6HQZO2UFKLHJ5IKPFZ4SDKPBQY6HQZO2UFKLHJ5IKPFZ4S";
+                let secret = "SA7QYNF7SOWQ3GLR2BGMZEHXAVIRZA4KVWLTJJFC7MGXUA74P7UJVSGZ";
             }
         "#;
         let violations = rule.check(source);

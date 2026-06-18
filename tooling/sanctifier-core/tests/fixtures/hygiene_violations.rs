@@ -29,13 +29,13 @@ pub struct HygieneViolations;
 impl HygieneViolations {
     // Violation: SANCT_HARDCODED_ADDR - Hardcoded admin address
     pub fn initialize(env: Env) {
-        let admin = "GDKPBQY6HQZO2UFKLHJ5IKPFZ4GDKPBQY6HQZO2UFKLHJ5IKPFZ4G";
+        let admin = "GA7QYNF7SOWQ3GLR2BGMZEHXAVIRZA4KVWLTJJFC7MGXUA74P7UJVSGZ";
         env.storage().instance().set(&"admin", &admin);
     }
 
     // Violation: SANCT_HARDCODED_ADDR - Hardcoded secret key (critical!)
     pub fn verify_signature(env: Env) -> bool {
-        let secret = "SDKPBQY6HQZO2UFKLHJ5IKPFZ4SDKPBQY6HQZO2UFKLHJ5IKPFZ4S";
+        let secret = "SA7QYNF7SOWQ3GLR2BGMZEHXAVIRZA4KVWLTJJFC7MGXUA74P7UJVSGZ";
         // Verify logic...
         true
     }
