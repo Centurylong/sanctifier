@@ -1,4 +1,5 @@
 use clap::Args;
+use colored::Colorize;
 use sanctifier_core::{
     invariant::{InvariantDecl, InvariantVerifyResult, SmtInvariantVerifier},
     Analyzer, SanctifyConfig,
@@ -83,7 +84,90 @@ pub(crate) fn run_verification(
     verifier.verify_all(&decls)
 }
 
-pub fn exec(_args: VerifyArgs) -> anyhow::Result<()> {
-    // Stub — output formatting added in next commit.
+pub fn exec(args: VerifyArgs) -> anyhow::Result<()> {
+    let decls = discover_invariants(&args.path);
+
+    if decls.is_empty() {
+        if !args.json {
+            println!(
+                "{} No #[sanctify::invariant] attributes found in {:?}",
+                "ℹ".cyan(),
+                args.path
+            );
+        } else {
+            println!("[]");
+        }
+        return Ok(());
+    }
+
+    let results = run_verification(decls);
+
+    if args.json {
+        let json = serde_json::to_string_pretty(&results.iter().map(|(d, r)| {
+            serde_json::json!({
+                "contract": d.contract_name,
+                "invariant": d.expr_str,
+                "location": d.location,
+                "result": r,
+            })
+        }).collect::<Vec<_>>())?;
+        println!("{}", json);
+    } else {
+        println!(
+            "\n{}\n",
+            "─── sanctifier verify ───────────────────────────────".bold()
+        );
+        for (decl, result) in &results {
+            let status = match result {
+                InvariantVerifyResult::Proven => "  PROVEN  ".on_green().black().bold(),
+                InvariantVerifyResult::Refuted { .. } => "  REFUTED ".on_red().white().bold(),
+                InvariantVerifyResult::Unknown => " UNKNOWN  ".on_yellow().black().bold(),
+                InvariantVerifyResult::Unsupported => "  KANI ↗  ".on_blue().white().bold(),
+            };
+            println!(
+                "{} {} :: {}",
+                status,
+                decl.contract_name.bold(),
+                decl.expr_str.cyan()
+            );
+            println!("         {}", decl.location.dimmed());
+            if let InvariantVerifyResult::Refuted { counterexample } = result {
+                println!(
+                    "         {} {}",
+                    "counterexample:".red().bold(),
+                    counterexample
+                );
+            }
+            if *result == InvariantVerifyResult::Unsupported {
+                println!(
+                    "         {} run: {}",
+                    "→".blue(),
+                    "cargo kani --target-dir /tmp/kani".dimmed()
+                );
+            }
+            println!();
+        }
+
+        let proven = results.iter().filter(|(_, r)| *r == InvariantVerifyResult::Proven).count();
+        let refuted = results.iter().filter(|(_, r)| matches!(r, InvariantVerifyResult::Refuted { .. })).count();
+        let kani = results.iter().filter(|(_, r)| *r == InvariantVerifyResult::Unsupported).count();
+        println!(
+            "{} {} proven  {} refuted  {} dispatched to Kani",
+            "Summary:".bold(),
+            proven.to_string().green().bold(),
+            refuted.to_string().red().bold(),
+            kani.to_string().blue().bold(),
+        );
+    }
+
+    if args.strict {
+        let has_failure = results.iter().any(|(_, r)| {
+            matches!(r, InvariantVerifyResult::Refuted { .. } | InvariantVerifyResult::Unknown)
+        });
+        if has_failure {
+            std::process::exit(1);
+        }
+    }
+
     Ok(())
 }
