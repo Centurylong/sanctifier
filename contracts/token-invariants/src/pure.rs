@@ -6,11 +6,7 @@
 
 /// Apply a transfer between two balances. Returns `(new_from, new_to)` or
 /// an error string if the amount is invalid or would cause underflow/overflow.
-pub fn transfer_pure(
-    from: i128,
-    to: i128,
-    amount: i128,
-) -> Result<(i128, i128), &'static str> {
+pub fn transfer_pure(from: i128, to: i128, amount: i128) -> Result<(i128, i128), &'static str> {
     if amount <= 0 {
         return Err("amount must be positive");
     }
@@ -32,7 +28,9 @@ pub fn burn_pure(balance: i128, amount: i128) -> Result<i128, &'static str> {
     if amount <= 0 {
         return Err("burn amount must be positive");
     }
-    balance.checked_sub(amount).ok_or("insufficient balance to burn")
+    balance
+        .checked_sub(amount)
+        .ok_or("insufficient balance to burn")
 }
 
 /// Verify the core supply invariant in pure arithmetic:

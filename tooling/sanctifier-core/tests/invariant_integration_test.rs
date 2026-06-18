@@ -1,4 +1,6 @@
-use sanctifier_core::invariant::{scan_invariant_attrs, InvariantVerifyResult};
+use sanctifier_core::invariant::scan_invariant_attrs;
+#[cfg(feature = "smt")]
+use sanctifier_core::invariant::InvariantVerifyResult;
 
 /// Verify the scanner correctly extracts invariants from a realistic source
 /// snippet that mirrors how token-invariants/src/lib.rs is written.

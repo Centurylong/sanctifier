@@ -103,14 +103,19 @@ pub fn exec(args: VerifyArgs) -> anyhow::Result<()> {
     let results = run_verification(decls);
 
     if args.json {
-        let json = serde_json::to_string_pretty(&results.iter().map(|(d, r)| {
-            serde_json::json!({
-                "contract": d.contract_name,
-                "invariant": d.expr_str,
-                "location": d.location,
-                "result": r,
-            })
-        }).collect::<Vec<_>>())?;
+        let json = serde_json::to_string_pretty(
+            &results
+                .iter()
+                .map(|(d, r)| {
+                    serde_json::json!({
+                        "contract": d.contract_name,
+                        "invariant": d.expr_str,
+                        "location": d.location,
+                        "result": r,
+                    })
+                })
+                .collect::<Vec<_>>(),
+        )?;
         println!("{}", json);
     } else {
         println!(
@@ -148,9 +153,18 @@ pub fn exec(args: VerifyArgs) -> anyhow::Result<()> {
             println!();
         }
 
-        let proven = results.iter().filter(|(_, r)| *r == InvariantVerifyResult::Proven).count();
-        let refuted = results.iter().filter(|(_, r)| matches!(r, InvariantVerifyResult::Refuted { .. })).count();
-        let kani = results.iter().filter(|(_, r)| *r == InvariantVerifyResult::Unsupported).count();
+        let proven = results
+            .iter()
+            .filter(|(_, r)| *r == InvariantVerifyResult::Proven)
+            .count();
+        let refuted = results
+            .iter()
+            .filter(|(_, r)| matches!(r, InvariantVerifyResult::Refuted { .. }))
+            .count();
+        let kani = results
+            .iter()
+            .filter(|(_, r)| *r == InvariantVerifyResult::Unsupported)
+            .count();
         println!(
             "{} {} proven  {} refuted  {} dispatched to Kani",
             "Summary:".bold(),
@@ -162,7 +176,10 @@ pub fn exec(args: VerifyArgs) -> anyhow::Result<()> {
 
     if args.strict {
         let has_failure = results.iter().any(|(_, r)| {
-            matches!(r, InvariantVerifyResult::Refuted { .. } | InvariantVerifyResult::Unknown)
+            matches!(
+                r,
+                InvariantVerifyResult::Refuted { .. } | InvariantVerifyResult::Unknown
+            )
         });
         if has_failure {
             std::process::exit(1);

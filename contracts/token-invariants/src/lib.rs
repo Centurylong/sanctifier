@@ -35,9 +35,7 @@ impl Token {
         }
         env.storage().instance().set(&ADMIN, &admin);
         env.storage().instance().set(&SUPPLY, &initial_supply);
-        env.storage()
-            .persistent()
-            .set(&admin, &initial_supply);
+        env.storage().persistent().set(&admin, &initial_supply);
     }
 
     /// Transfer `amount` tokens from `from` to `to`.
@@ -47,8 +45,7 @@ impl Token {
         let bal_from: i128 = env.storage().persistent().get(&from).unwrap_or(0);
         let bal_to: i128 = env.storage().persistent().get(&to).unwrap_or(0);
 
-        let (new_from, new_to) =
-            transfer_pure(bal_from, bal_to, amount).expect("transfer failed");
+        let (new_from, new_to) = transfer_pure(bal_from, bal_to, amount).expect("transfer failed");
 
         env.storage().persistent().set(&from, &new_from);
         env.storage().persistent().set(&to, &new_to);

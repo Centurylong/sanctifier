@@ -15,10 +15,7 @@ pub fn kani_harness(impl_name: &str, expr: &TokenStream, index: usize) -> TokenS
         &format!("__sanctify_inv_{}_{}", impl_name.to_lowercase(), index),
         Span::call_site(),
     );
-    let fn_name = Ident::new(
-        &format!("verify_invariant_{}", index),
-        Span::call_site(),
-    );
+    let fn_name = Ident::new(&format!("verify_invariant_{}", index), Span::call_site());
     let expr_str = expr.to_string();
 
     quote! {
