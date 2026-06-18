@@ -1,5 +1,8 @@
 use clap::Args;
-use sanctifier_core::{invariant::InvariantDecl, Analyzer, SanctifyConfig};
+use sanctifier_core::{
+    invariant::{InvariantDecl, InvariantVerifyResult, SmtInvariantVerifier},
+    Analyzer, SanctifyConfig,
+};
 use std::path::{Path, PathBuf};
 
 #[derive(Args)]
@@ -64,7 +67,23 @@ pub(crate) fn discover_invariants(path: &Path) -> Vec<InvariantDecl> {
     all_decls
 }
 
+/// Run the SMT verifier over all discovered invariants and return paired results.
+///
+/// Returns `(InvariantDecl, InvariantVerifyResult)` for every invariant found.
+/// When the `smt` feature is absent the function returns `Unsupported` for
+/// everything so the CLI can still print a meaningful message.
+pub(crate) fn run_verification(
+    decls: Vec<InvariantDecl>,
+) -> Vec<(InvariantDecl, InvariantVerifyResult)> {
+    if decls.is_empty() {
+        return vec![];
+    }
+
+    let verifier = SmtInvariantVerifier::new();
+    verifier.verify_all(&decls)
+}
+
 pub fn exec(_args: VerifyArgs) -> anyhow::Result<()> {
-    // Stub — result dispatch and output added in next commits.
+    // Stub — output formatting added in next commit.
     Ok(())
 }
