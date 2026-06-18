@@ -569,7 +569,11 @@ mod tests {
         let prover = SmtProver::new(&ctx);
         for inv in TokenInvariant::all() {
             let result = prover.prove_invariant(&inv);
-            assert!(!result.message.is_empty(), "message must not be empty for {}", inv.as_str());
+            assert!(
+                !result.message.is_empty(),
+                "message must not be empty for {}",
+                inv.as_str()
+            );
             assert!(!result.invariant.is_empty());
         }
     }
