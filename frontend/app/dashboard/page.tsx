@@ -1,11 +1,10 @@
 "use client";
 
-import { useState, useCallback } from "react";
-import type { AnalysisReport, CallGraphNode, CallGraphEdge, Finding, Severity } from "../types";
+import { useState, useCallback, Suspense } from "react";
+import type { AnalysisReport, CallGraphNode, CallGraphEdge, Finding } from "../types";
 import { transformReport, extractCallGraph } from "../lib/transform";
 import { exportToPdf } from "../lib/export-pdf";
-import { SeverityFilter } from "../components/SeverityFilter";
-import { FindingsList } from "../components/FindingsList";
+import { FindingsPanel } from "../components/FindingsPanel";
 import { SummaryChart } from "../components/SummaryChart";
 import { SanctityScore } from "../components/SanctityScore";
 import { CallGraph } from "../components/CallGraph";
@@ -29,7 +28,6 @@ export default function DashboardPage() {
   const [findings, setFindings] = useState<Finding[]>([]);
   const [callGraphNodes, setCallGraphNodes] = useState<CallGraphNode[]>([]);
   const [callGraphEdges, setCallGraphEdges] = useState<CallGraphEdge[]>([]);
-  const [severityFilter, setSeverityFilter] = useState<Severity | "all">("all");
   const [error, setError] = useState<string | null>(null);
   const [jsonInput, setJsonInput] = useState("");
   const [activeTab, setActiveTab] = useState<Tab>("findings");
@@ -247,13 +245,19 @@ export default function DashboardPage() {
                   aria-labelledby="findings-tab"
                 >
                   <section>
-                    <h2 className="text-lg font-semibold mb-4">Filter by Severity</h2>
-                    <SeverityFilter selected={severityFilter} onChange={setSeverityFilter} />
-                  </section>
-
-                  <section className="mt-8">
                     <h2 className="text-lg font-semibold mb-4">Findings</h2>
-                    <FindingsList findings={findings} severityFilter={severityFilter} />
+                    <Suspense
+                      fallback={
+                        <p
+                          className="py-8 text-center"
+                          style={{ color: "var(--muted-foreground)" }}
+                        >
+                          Loading findings…
+                        </p>
+                      }
+                    >
+                      <FindingsPanel findings={findings} />
+                    </Suspense>
                   </section>
                 </div>
               )}

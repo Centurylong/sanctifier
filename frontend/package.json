@@ -12,6 +12,8 @@
     "prepare": "husky"
   },
   "dependencies": {
+    "@tanstack/react-table": "^8.21.3",
+    "@tanstack/react-virtual": "^3.14.3",
     "jspdf": "^4.2.0",
     "next": "16.1.4",
     "react": "19.2.3",
