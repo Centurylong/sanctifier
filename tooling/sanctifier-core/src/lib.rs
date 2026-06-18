@@ -3,6 +3,7 @@ use std::panic::catch_unwind;
 pub mod finding_codes;
 pub mod gas_estimator;
 pub mod gas_report;
+pub mod invariant;
 pub mod patcher;
 pub mod rules;
 #[cfg(feature = "smt")]
