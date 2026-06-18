@@ -28,14 +28,13 @@ impl HardcodedAddrRule {
         }
 
         // Check for common secret patterns
-        if s.contains("secret")
+        if (s.contains("secret")
             || s.contains("SECRET")
             || s.contains("admin")
-            || s.contains("ADMIN")
+            || s.contains("ADMIN"))
+            && s.len() > 20
         {
-            if s.len() > 20 {
-                return true;
-            }
+            return true;
         }
 
         false
@@ -116,11 +115,7 @@ impl<'ast> Visit<'ast> for HardcodedAddrVisitor {
             syn::Lit::Str(lit_str) => {
                 let value = lit_str.value();
                 if HardcodedAddrRule::is_address_like(&value) {
-                    let fn_name = self
-                        .current_fn
-                        .as_ref()
-                        .map(|s| s.as_str())
-                        .unwrap_or("unknown");
+                    let fn_name = self.current_fn.as_deref().unwrap_or("unknown");
                     let is_auth = HardcodedAddrRule::is_auth_context(&self.current_fn);
                     let severity = if is_auth {
                         Severity::Error
@@ -158,11 +153,7 @@ impl<'ast> Visit<'ast> for HardcodedAddrVisitor {
                 let bytes = lit_bytes.value();
                 // Stellar addresses are 32 bytes, Ed25519 keys are 32 bytes
                 if bytes.len() == 32 || bytes.len() == 56 || bytes.len() == 64 {
-                    let fn_name = self
-                        .current_fn
-                        .as_ref()
-                        .map(|s| s.as_str())
-                        .unwrap_or("unknown");
+                    let fn_name = self.current_fn.as_deref().unwrap_or("unknown");
                     let is_auth = HardcodedAddrRule::is_auth_context(&self.current_fn);
 
                     if is_auth {

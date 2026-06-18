@@ -87,7 +87,7 @@ impl Rule for ErrorCodeCollisionRule {
                         // Explicit discriminant
                         discriminants
                             .entry(value)
-                            .or_insert_with(Vec::new)
+                            .or_default()
                             .push(variant_name.clone());
                         explicit_discriminants.insert(value);
                         current_implicit = value + 1;
@@ -95,7 +95,7 @@ impl Rule for ErrorCodeCollisionRule {
                         // Implicit discriminant
                         discriminants
                             .entry(current_implicit)
-                            .or_insert_with(Vec::new)
+                            .or_default()
                             .push(variant_name.clone());
                         implicit_discriminants.insert(current_implicit);
                         current_implicit += 1;
