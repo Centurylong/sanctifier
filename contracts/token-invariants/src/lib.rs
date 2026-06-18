@@ -2,6 +2,8 @@
 
 pub mod kani_proofs;
 pub mod pure;
+#[cfg(test)]
+mod pure_tests;
 
 use sanctify_macros::invariant;
 use soroban_sdk::{contract, contractimpl, symbol_short, Address, Env};
