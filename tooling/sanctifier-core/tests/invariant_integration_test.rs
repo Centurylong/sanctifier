@@ -1,4 +1,4 @@
-use sanctifier_core::invariant::scan_invariant_attrs;
+use sanctifier_core::invariant::{scan_invariant_attrs, InvariantDecl};
 #[cfg(feature = "smt")]
 use sanctifier_core::invariant::InvariantVerifyResult;
 
@@ -68,6 +68,18 @@ fn integration_scan_qualified_attribute() {
     let decls = scan_invariant_attrs(source, "qualified.rs");
     assert_eq!(decls.len(), 1);
     assert!(decls[0].expr_str.contains("=="));
+}
+
+/// Verify InvariantDecl equality works (PartialEq derived).
+#[test]
+fn integration_invariant_decl_equality() {
+    let a = InvariantDecl {
+        contract_name: "Token".into(),
+        expr_str: "x == x".into(),
+        location: "test:1".into(),
+    };
+    let b = a.clone();
+    assert_eq!(a, b);
 }
 
 /// Verify SMT fast-path: integer equality tautology is Proven.
