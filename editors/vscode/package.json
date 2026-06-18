@@ -1,0 +1,69 @@
+{
+  "name": "@sanctifier/vscode",
+  "displayName": "Sanctifier VS Code",
+  "description": "Run Sanctifier analysis on save and surface findings as inline diagnostics in VS Code.",
+  "version": "0.1.0",
+  "publisher": "sanctifier",
+  "engines": {
+    "vscode": "^1.80.0"
+  },
+  "main": "./out/extension.js",
+  "activationEvents": [
+    "onLanguage:rust",
+    "onCommand:sanctifier-vscode.analyzeActiveDocument"
+  ],
+  "scripts": {
+    "vscode:prepublish": "npm run compile",
+    "compile": "tsc -p ./tsconfig.json",
+    "watch": "tsc -p ./tsconfig.json --watch",
+    "package": "npx vsce package",
+    "publish": "npx vsce publish"
+  },
+  "dependencies": {
+    "@sanctifier/sdk": "file:../../packages/sdk"
+  },
+  "devDependencies": {
+    "@types/node": "^20.11.0",
+    "@types/vscode": "^1.103.0",
+    "typescript": "^5.7.0",
+    "vsce": "^2.0.0"
+  },
+  "contributes": {
+    "configuration": {
+      "type": "object",
+      "title": "Sanctifier",
+      "properties": {
+        "sanctifier-vscode.enabled": {
+          "type": "boolean",
+          "default": true,
+          "description": "Enable Sanctifier diagnostics in VS Code."
+        },
+        "sanctifier-vscode.analyzeOnSave": {
+          "type": "boolean",
+          "default": true,
+          "description": "Run Sanctifier analysis when Rust files are saved."
+        },
+        "sanctifier-vscode.failOn": {
+          "type": "string",
+          "enum": ["none", "info", "low", "medium", "high", "critical"],
+          "default": "none",
+          "description": "Treat findings at or above this severity as a failure when analyzing."
+        },
+        "sanctifier-vscode.enabledRules": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": [],
+          "description": "List of finding codes or rule names to analyze. Leave empty to run all enabled rules."
+        }
+      }
+    },
+    "commands": [
+      {
+        "command": "sanctifier-vscode.analyzeActiveDocument",
+        "title": "Sanctifier: Analyze Active Document"
+      }
+    ]
+  }
+}
