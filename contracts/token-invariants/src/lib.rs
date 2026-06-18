@@ -1,5 +1,6 @@
 #![no_std]
 
+pub mod kani_proofs;
 pub mod pure;
 
 use sanctify_macros::invariant;
