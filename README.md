@@ -1,25 +1,25 @@
-# Sanctifier 🛡️
+﻿# Sanctifier ðŸ›¡ï¸
 
 <p align="center">
   <img src="branding/logo.png" width="300" alt="Sanctifier Logo">
 </p>
 
-**Sanctifier** is a comprehensive security and formal verification suite built specifically for [Stellar Soroban](https://soroban.stellar.org/) smart contracts. In the high-stakes environment of DeFi and decentralized applications, "code is law" only holds true if the code is secure. Sanctifier ensures your contracts are not just compiled, but *sanctified*—rigorously tested, formally verified, and runtime-guarded against vulnerabilities.
+**Sanctifier** is a comprehensive security and formal verification suite built specifically for [Stellar Soroban](https://soroban.stellar.org/) smart contracts. In the high-stakes environment of DeFi and decentralized applications, "code is law" only holds true if the code is secure. Sanctifier ensures your contracts are not just compiled, but *sanctified*â€”rigorously tested, formally verified, and runtime-guarded against vulnerabilities.
 
-## 📂 Project Structure
+## ðŸ“‚ Project Structure
 
 ```text
 Sanctifier/
-├── contracts/          # Soroban smart contracts (examples & templates)
-├── frontend/           # Next.js Web Interface for the suite
-├── tooling/            # The core Rust analysis tools
-│   ├── sanctifier-cli  # CLI tool for developers
-│   └── sanctifier-core # Static analysis logic
-├── scripts/            # Deployment and CI scripts
-└── docs/               # Documentation
+â”œâ”€â”€ contracts/          # Soroban smart contracts (examples & templates)
+â”œâ”€â”€ frontend/           # Next.js Web Interface for the suite
+â”œâ”€â”€ tooling/            # The core Rust analysis tools
+â”‚   â”œâ”€â”€ sanctifier-cli  # CLI tool for developers
+â”‚   â””â”€â”€ sanctifier-core # Static analysis logic
+â”œâ”€â”€ scripts/            # Deployment and CI scripts
+â””â”€â”€ docs/               # Documentation
 ```
 
-## 🚀 Key Features
+## ðŸš€ Key Features
 
 ### 1. Static Sanctification (Static Analysis)
 Sanctifier scans your Rust/Soroban code before deployment to detect:
@@ -39,13 +39,13 @@ Deploy runtime guard wrapper contracts to Soroban testnet with continuous valida
 *   **CI/CD Integration**: GitHub Actions workflow for automated deployment and monitoring
 *   **Continuous Validation**: Periodic health checks and execution metrics collection
 
-## 📦 Installation (CLI)
+## ðŸ“¦ Installation (CLI)
 
 ```bash
 cargo install --path tooling/sanctifier-cli
 ```
 
-## 🛠 Usage
+## ðŸ›  Usage
 
 ### Analyze a Project
 Run the analysis suite on your Soroban project:
@@ -59,28 +59,28 @@ sanctifier analyze ./contracts/my-token
 When you run an analysis, Sanctifier displays security findings and recommendations:
 
 ```
-✨ Sanctifier: Valid Soroban project found at "./contracts/my-token"
-🔍 Analyzing contract at "./contracts/my-token"...
-✅ Static analysis complete.
+âœ¨ Sanctifier: Valid Soroban project found at "./contracts/my-token"
+ðŸ” Analyzing contract at "./contracts/my-token"...
+âœ… Static analysis complete.
 
-🛑 Found potential Authentication Gaps!
+ðŸ›‘ Found potential Authentication Gaps!
    -> Function `transfer` is modifying state without require_auth()
 
-🛑 Found explicit Panics/Unwraps!
+ðŸ›‘ Found explicit Panics/Unwraps!
    -> Function `mint`: Using `unwrap` (Location: src/lib.rs:transfer)
-   💡 Tip: Prefer returning Result or Error types for better contract safety.
+   ðŸ’¡ Tip: Prefer returning Result or Error types for better contract safety.
 
-🔢 Found unchecked Arithmetic Operations!
+ðŸ”¢ Found unchecked Arithmetic Operations!
    -> Function `compound_interest`: Unchecked `+` (src/lib.rs:compound_interest)
-      💡 Use checked_add() or saturating_add() to prevent overflow.
+      ðŸ’¡ Use checked_add() or saturating_add() to prevent overflow.
 
-⚠️  Found Ledger Size Warnings!
+âš ï¸  Found Ledger Size Warnings!
    LargeState approaches the ledger entry size limit!
       Estimated size: 68200 bytes (Limit: 64000 bytes)
 
-🔄 Upgrade Pattern Analysis
+ðŸ”„ Upgrade Pattern Analysis
    -> [missing_init] Contract has upgrade mechanism but no init function (src/lib.rs:42)
-      💡 Add an init() function to set post-upgrade state safely.
+      ðŸ’¡ Add an init() function to set post-upgrade state safely.
 ```
 
 For detailed explanations of each finding type and how to fix them, see [docs/getting-started.md](docs/getting-started.md#5-example-output--what-developers-see).
@@ -107,11 +107,18 @@ sanctifier analyze . --format json > sanctifier-report.json
 sanctifier badge --report sanctifier-report.json --svg-output badges/sanctifier-security.svg --markdown-output badges/sanctifier-security.md
 ```
 
-## 🤝 Contributing
+
+## Security Resources
+
+Looking for Soroban security tools, audit reports, incident post-mortems, and learning materials? Check out our curated list:
+
+**[Awesome Soroban Security](docs/awesome-soroban-security.md)** — a categorized collection of tools, audits, incidents, standards, and learning resources for building secure Soroban contracts.
+
+## ðŸ¤ Contributing
 We welcome contributions from the Stellar community! Please see our [Contributing Guide](CONTRIBUTING.md) for details.
 
-## 🔎 Finding Codes
+## ðŸ”Ž Finding Codes
 Unified finding codes (`S001`...`S007`) are documented in [docs/error-codes.md](docs/error-codes.md).
 
-## 📄 License
+## ðŸ“„ License
 MIT
