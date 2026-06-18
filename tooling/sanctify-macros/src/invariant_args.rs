@@ -8,6 +8,7 @@ use syn::{parse::Parse, parse::ParseStream, Expr, Result};
 pub struct InvariantArgs {
     pub expr: Expr,
     /// Original token string, kept for diagnostic messages and comment generation.
+    #[allow(dead_code)]
     pub expr_tokens: TokenStream,
 }
 
