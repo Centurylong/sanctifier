@@ -1407,6 +1407,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "sanctify-macros"
+version = "0.1.0"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn",
+]
+
+[[package]]
 name = "sec1"
 version = "0.7.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1851,6 +1860,14 @@ checksum = "be4d6b5f19ff7664e8c98d03e2139cb510db9b0a60b55f8e8709b689d939b6bc"
 dependencies = [
  "serde",
  "serde_json",
+]
+
+[[package]]
+name = "token-invariants"
+version = "0.1.0"
+dependencies = [
+ "sanctify-macros",
+ "soroban-sdk",
 ]
 
 [[package]]
