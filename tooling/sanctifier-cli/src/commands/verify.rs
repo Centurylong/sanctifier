@@ -20,6 +20,10 @@ pub struct VerifyArgs {
     /// Emit results as JSON instead of human-readable text.
     #[arg(long, default_value_t = false)]
     pub json: bool,
+
+    /// Suppress the summary line at the end of human-readable output.
+    #[arg(long, default_value_t = false)]
+    pub quiet: bool,
 }
 
 /// Recursively collect every `.rs` file under `dir`, skipping paths that
@@ -165,13 +169,15 @@ pub fn exec(args: VerifyArgs) -> anyhow::Result<()> {
             .iter()
             .filter(|(_, r)| *r == InvariantVerifyResult::Unsupported)
             .count();
-        println!(
-            "{} {} proven  {} refuted  {} dispatched to Kani",
-            "Summary:".bold(),
-            proven.to_string().green().bold(),
-            refuted.to_string().red().bold(),
-            kani.to_string().blue().bold(),
-        );
+        if !args.quiet {
+            println!(
+                "{} {} proven  {} refuted  {} dispatched to Kani",
+                "Summary:".bold(),
+                proven.to_string().green().bold(),
+                refuted.to_string().red().bold(),
+                kani.to_string().blue().bold(),
+            );
+        }
     }
 
     if args.strict {
