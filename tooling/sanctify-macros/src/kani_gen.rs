@@ -10,6 +10,11 @@ use syn::Ident;
 /// `expr`      — the invariant expression verbatim.
 /// `index`     — zero-based ordinal when there are multiple invariants on the
 ///               same impl block.
+///
+/// The generated module uses `use super::*` so that all items from the
+/// annotated `impl`'s module are in scope. Functions referenced by the
+/// expression must be callable without a `soroban_sdk::Env` — follow the
+/// pure-logic separation pattern from `contracts/kani-poc`.
 pub fn kani_harness(impl_name: &str, expr: &TokenStream, index: usize) -> TokenStream {
     let mod_name = Ident::new(
         &format!("__sanctify_inv_{}_{}", impl_name.to_lowercase(), index),
