@@ -73,3 +73,8 @@ jobs:
 
       - name: Build Release CLI
         run: cd tooling/sanctifier-cli && cargo build --release
+
+      - name: Build reentrancy-guard and protected-vault
+        run: |
+          cargo build -p reentrancy-guard
+          cargo build -p protected-vault

@@ -5,6 +5,7 @@ members = [
     "contracts/token-with-bugs",
     "contracts/amm-pool",
     "contracts/reentrancy-guard",
+    "contracts/protected-vault",
     "contracts/runtime-guard-wrapper",
     "contracts/kani-poc",
 ]
