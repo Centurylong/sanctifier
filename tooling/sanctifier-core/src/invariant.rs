@@ -196,3 +196,110 @@ fn parse_tautological_equality(expr: &str) -> Option<bool> {
         None
     }
 }
+
+// ── Tests ─────────────────────────────────────────────────────────────────────
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_scan_finds_sanctify_namespace_attribute() {
+        let source = r#"
+            use soroban_sdk::{contract, contractimpl, Env};
+
+            #[contract]
+            pub struct Token;
+
+            #[sanctify::invariant(total_supply == sum_of_balances())]
+            #[contractimpl]
+            impl Token {
+                pub fn total_supply(_env: Env) -> i128 { 0 }
+            }
+        "#;
+        let decls = scan_invariant_attrs(source, "test.rs");
+        assert_eq!(decls.len(), 1);
+        assert!(decls[0].expr_str.contains("total_supply"));
+        assert!(decls[0].location.contains("test.rs"));
+    }
+
+    #[test]
+    fn test_scan_finds_short_form_attribute() {
+        let source = r#"
+            #[invariant(x == x)]
+            impl MyContract {
+                pub fn noop() {}
+            }
+        "#;
+        let decls = scan_invariant_attrs(source, "contract.rs");
+        assert_eq!(decls.len(), 1);
+        assert_eq!(decls[0].expr_str.trim(), "x == x");
+    }
+
+    #[test]
+    fn test_scan_returns_empty_when_no_attribute() {
+        let source = r#"
+            #[contractimpl]
+            impl Token {
+                pub fn transfer(_env: soroban_sdk::Env) {}
+            }
+        "#;
+        let decls = scan_invariant_attrs(source, "token.rs");
+        assert!(decls.is_empty());
+    }
+
+    #[test]
+    fn test_scan_multiple_invariants_on_separate_impls() {
+        let source = r#"
+            #[sanctify::invariant(a == b())]
+            impl ContractA { pub fn a() {} }
+
+            #[sanctify::invariant(c == d())]
+            impl ContractB { pub fn c() {} }
+        "#;
+        let decls = scan_invariant_attrs(source, "multi.rs");
+        assert_eq!(decls.len(), 2);
+    }
+
+    #[test]
+    fn test_scan_invalid_syntax_returns_empty() {
+        let decls = scan_invariant_attrs("this is not rust", "bad.rs");
+        assert!(decls.is_empty());
+    }
+
+    #[cfg(feature = "smt")]
+    #[test]
+    fn test_smt_verifier_proves_integer_tautology() {
+        let decl = InvariantDecl {
+            contract_name: "Token".to_string(),
+            expr_str: "42 == 42".to_string(),
+            location: "test.rs:1".to_string(),
+        };
+        let result = SmtInvariantVerifier::new().verify_one(&decl);
+        assert_eq!(result, InvariantVerifyResult::Proven);
+    }
+
+    #[cfg(feature = "smt")]
+    #[test]
+    fn test_smt_verifier_refutes_false_equality() {
+        let decl = InvariantDecl {
+            contract_name: "Token".to_string(),
+            expr_str: "1 == 2".to_string(),
+            location: "test.rs:1".to_string(),
+        };
+        let result = SmtInvariantVerifier::new().verify_one(&decl);
+        assert!(matches!(result, InvariantVerifyResult::Refuted { .. }));
+    }
+
+    #[cfg(feature = "smt")]
+    #[test]
+    fn test_smt_verifier_unsupported_for_function_call() {
+        let decl = InvariantDecl {
+            contract_name: "Token".to_string(),
+            expr_str: "total_supply() == sum_of_balances()".to_string(),
+            location: "test.rs:1".to_string(),
+        };
+        let result = SmtInvariantVerifier::new().verify_one(&decl);
+        assert_eq!(result, InvariantVerifyResult::Unsupported);
+    }
+}
