@@ -169,6 +169,7 @@ impl SmtInvariantVerifier {
 }
 
 /// Parse `"N == M"` where N and M are i64 decimal literals.
+#[cfg(feature = "smt")]
 fn parse_integer_equality(expr: &str) -> Option<(i64, i64)> {
     let expr = expr.trim();
     let parts: Vec<&str> = expr.splitn(2, "==").collect();
@@ -182,6 +183,7 @@ fn parse_integer_equality(expr: &str) -> Option<(i64, i64)> {
 
 /// Return `Some(true)` when the expression is of the form `x == x` (same
 /// token on both sides), which is always a tautology.
+#[cfg(feature = "smt")]
 fn parse_tautological_equality(expr: &str) -> Option<bool> {
     let expr = expr.trim();
     let parts: Vec<&str> = expr.splitn(2, "==").collect();
