@@ -42,6 +42,8 @@ pub enum Commands {
     },
     /// Check for and download the latest Sanctifier binary
     Update,
+    /// Verify #[sanctify::invariant] declarations across a contract or workspace
+    Verify(commands::verify::VerifyArgs),
 }
 
 fn main() -> anyhow::Result<()> {
@@ -114,6 +116,9 @@ fn main() -> anyhow::Result<()> {
         }
         Commands::Update => {
             commands::update::exec()?;
+        }
+        Commands::Verify(args) => {
+            commands::verify::exec(args)?;
         }
     }
 
