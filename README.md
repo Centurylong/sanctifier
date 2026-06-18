@@ -108,7 +108,12 @@ sanctifier badge --report sanctifier-report.json --svg-output badges/sanctifier-
 ```
 
 ## 🤝 Contributing
-We welcome contributions from the Stellar community! Please see our [Contributing Guide](CONTRIBUTING.md) for details.
+
+- [Contributing Guide](CONTRIBUTING.md) — bootstrap, devcontainer, tests, PR flow
+- [Good first issues](.github/GOOD_FIRST_ISSUES.md) — starter pack with learning outcomes
+- [Roadmap](.github/ROADMAP.md) — public project board
+- [Discussions](https://github.com/Centurylong/sanctifier/discussions) — Q&A, ideas, show and tell
+- [Awesome Soroban Security](docs/awesome-soroban-security.md) — curated companion list
 
 ## 🔎 Finding Codes
 Unified finding codes (`S001`...`S007`) are documented in [docs/error-codes.md](docs/error-codes.md).
