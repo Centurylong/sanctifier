@@ -428,4 +428,63 @@ Day N+: Reporting
 - ✅ Production-grade reliability
 - ✅ Easy maintenance and extension
 
-**Last Updated:** February 25, 2026
+---
+
+## Invariant DSL (`#[sanctify::invariant]`)
+
+### Overview
+
+Issue #346 introduced a declarative invariant system built from three layers:
+
+```
+Contract source
+  └─ #[sanctify::invariant(EXPR)]
+        │
+        ├─ Normal build:  attribute is transparent (impl block passes through unchanged)
+        ├─ cargo kani:    emits #[kani::proof] harness that asserts EXPR
+        └─ sanctifier verify: scans AST, collects InvariantDecl, dispatches to Z3
+```
+
+### Components
+
+| Crate / module | Role |
+|---|---|
+| `tooling/sanctify-macros` | proc-macro crate — parses attribute, emits impl + optional Kani harness |
+| `tooling/sanctifier-core/src/invariant.rs` | `InvariantDecl`, `InvariantVerifyResult`, `scan_invariant_attrs`, `SmtInvariantVerifier` |
+| `tooling/sanctifier-cli/src/commands/verify.rs` | `sanctifier verify` subcommand — walks files, calls scanner, renders results |
+| `contracts/token-invariants` | Reference contract demonstrating the attribute and Kani harnesses |
+
+### Data flow
+
+```
+sanctifier verify ./contracts/token-invariants
+        │
+        ├─ collect_rs_files(path) → Vec<PathBuf>
+        ├─ for each file:
+        │     Analyzer::scan_invariant_attrs(source, label) → Vec<InvariantDecl>
+        │
+        └─ SmtInvariantVerifier::verify_all(decls)
+              │
+              ├─ Integer equality (42 == 42)     → Z3 UNSAT check → Proven
+              ├─ Tautology       (x == x)        → structural check → Proven
+              ├─ False equality  (1 == 2)        → Z3 SAT check  → Refuted
+              └─ Function calls  (f() == g())    → Unsupported   → defer to Kani
+```
+
+### Adding an invariant to a contract
+
+```rust
+// 1. Depend on sanctify-macros
+use sanctify_macros::invariant;
+
+// 2. Annotate the impl block
+#[invariant(pure::supply_is_conserved_after_transfer(0, 0, 0))]
+#[contractimpl]
+impl Token { ... }
+
+// 3. Run the verifier
+//    sanctifier verify ./contracts/my-contract
+//    cargo kani --package my-contract   (for full symbolic proof)
+```
+
+**Last Updated:** June 2026
