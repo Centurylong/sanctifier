@@ -102,3 +102,97 @@ pub enum InvariantVerifyResult {
     /// (e.g. it calls user functions). Dispatch to Kani instead.
     Unsupported,
 }
+
+// ── SMT-backed verifier ───────────────────────────────────────────────────────
+
+/// Attempts to verify an `InvariantDecl` using the Z3 SMT backend.
+///
+/// Only a subset of expressions can be dispatched to Z3: simple arithmetic
+/// equalities of the form `a == b` where both sides are integer literals or
+/// unconstrained symbolic integers. Everything else returns `Unsupported` so
+/// the caller can redirect to Kani.
+#[cfg(feature = "smt")]
+pub struct SmtInvariantVerifier;
+
+#[cfg(feature = "smt")]
+impl SmtInvariantVerifier {
+    pub fn new() -> Self {
+        SmtInvariantVerifier
+    }
+
+    /// Try to verify a single invariant declaration.
+    pub fn verify_one(&self, decl: &InvariantDecl) -> InvariantVerifyResult {
+        use z3::ast::Int;
+        use z3::{Config, Context, SatResult, Solver};
+
+        // Parse `lhs == rhs` where both sides are decimal integer literals.
+        if let Some((lhs, rhs)) = parse_integer_equality(&decl.expr_str) {
+            let cfg = Config::new();
+            let ctx = Context::new(&cfg);
+            let solver = Solver::new(&ctx);
+
+            let l = Int::from_i64(&ctx, lhs);
+            let r = Int::from_i64(&ctx, rhs);
+
+            // Assert the negation: if the solver can't find a model for !(l == r)
+            // then l == r is always true (proven). Otherwise it's refuted.
+            solver.assert(&l._eq(&r).not());
+
+            return match solver.check() {
+                SatResult::Unsat => InvariantVerifyResult::Proven,
+                SatResult::Sat => InvariantVerifyResult::Refuted {
+                    counterexample: format!("{} != {}", lhs, rhs),
+                },
+                SatResult::Unknown => InvariantVerifyResult::Unknown,
+            };
+        }
+
+        // Parse `a == a` style tautologies with matching identifiers.
+        if let Some(true) = parse_tautological_equality(&decl.expr_str) {
+            return InvariantVerifyResult::Proven;
+        }
+
+        // Expression involves user-defined functions or complex terms — defer to Kani.
+        InvariantVerifyResult::Unsupported
+    }
+
+    /// Verify all declarations and return paired results.
+    pub fn verify_all(
+        &self,
+        decls: &[InvariantDecl],
+    ) -> Vec<(InvariantDecl, InvariantVerifyResult)> {
+        decls
+            .iter()
+            .map(|d| (d.clone(), self.verify_one(d)))
+            .collect()
+    }
+}
+
+/// Parse `"N == M"` where N and M are i64 decimal literals.
+fn parse_integer_equality(expr: &str) -> Option<(i64, i64)> {
+    let expr = expr.trim();
+    let parts: Vec<&str> = expr.splitn(2, "==").collect();
+    if parts.len() != 2 {
+        return None;
+    }
+    let lhs = parts[0].trim().parse::<i64>().ok()?;
+    let rhs = parts[1].trim().parse::<i64>().ok()?;
+    Some((lhs, rhs))
+}
+
+/// Return `Some(true)` when the expression is of the form `x == x` (same
+/// token on both sides), which is always a tautology.
+fn parse_tautological_equality(expr: &str) -> Option<bool> {
+    let expr = expr.trim();
+    let parts: Vec<&str> = expr.splitn(2, "==").collect();
+    if parts.len() != 2 {
+        return None;
+    }
+    let lhs = parts[0].trim();
+    let rhs = parts[1].trim();
+    if lhs == rhs && !lhs.is_empty() {
+        Some(true)
+    } else {
+        None
+    }
+}
