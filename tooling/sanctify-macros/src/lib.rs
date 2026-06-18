@@ -1,11 +1,13 @@
+/// Reserved for future runtime-assertion mode — parses the invariant expression
+/// with its original token stream so diagnostics can reference the source span.
+#[allow(dead_code)]
 mod invariant_args;
 mod kani_gen;
 
-use invariant_args::InvariantArgs;
 use proc_macro::TokenStream;
 use proc_macro2::TokenStream as TokenStream2;
 use quote::quote;
-use syn::{parse_macro_input, spanned::Spanned, ItemImpl};
+use syn::{parse2, parse_macro_input, spanned::Spanned, Expr, ItemImpl};
 
 /// Declare a contract-level invariant that Sanctifier will verify.
 ///
@@ -31,10 +33,11 @@ use syn::{parse_macro_input, spanned::Spanned, ItemImpl};
 #[proc_macro_attribute]
 pub fn invariant(args: TokenStream, input: TokenStream) -> TokenStream {
     let args2 = TokenStream2::from(args.clone());
-    let inv: InvariantArgs = match syn::parse(args) {
-        Ok(a) => a,
-        Err(e) => return e.to_compile_error().into(),
-    };
+
+    // Validate the argument is a parseable Rust expression.
+    if let Err(e) = parse2::<Expr>(args2.clone()) {
+        return e.to_compile_error().into();
+    }
 
     let impl_item: ItemImpl = parse_macro_input!(input as ItemImpl);
 
@@ -46,9 +49,6 @@ pub fn invariant(args: TokenStream, input: TokenStream) -> TokenStream {
         .unwrap_or_else(|| "Contract".to_string());
 
     let harness = kani_gen::kani_harness(&self_name, &args2, 0);
-
-    let expr = &inv.expr;
-    let _ = expr; // expr kept for future runtime-assertion generation
 
     let expanded = quote! {
         #impl_item
