@@ -115,9 +115,16 @@ pub enum InvariantVerifyResult {
 pub struct SmtInvariantVerifier;
 
 #[cfg(feature = "smt")]
+impl Default for SmtInvariantVerifier {
+    fn default() -> Self {
+        SmtInvariantVerifier
+    }
+}
+
+#[cfg(feature = "smt")]
 impl SmtInvariantVerifier {
     pub fn new() -> Self {
-        SmtInvariantVerifier
+        SmtInvariantVerifier::default()
     }
 
     /// Try to verify a single invariant declaration.
