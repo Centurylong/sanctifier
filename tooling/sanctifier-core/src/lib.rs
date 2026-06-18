@@ -433,6 +433,19 @@ impl Analyzer {
         with_panic_guard(|| self.scan_auth_gaps_impl(source))
     }
 
+    /// Scan `source` for `#[sanctify::invariant(...)]` attributes and return
+    /// one `InvariantDecl` per invariant found.
+    ///
+    /// `file_label` is embedded in each declaration's `location` field and
+    /// should be the file path (or any stable identifier) for error messages.
+    pub fn scan_invariant_attrs(
+        &self,
+        source: &str,
+        file_label: &str,
+    ) -> Vec<invariant::InvariantDecl> {
+        with_panic_guard(|| invariant::scan_invariant_attrs(source, file_label))
+    }
+
     #[cfg(feature = "smt")]
     pub fn verify_smt_invariants(&self, _source: &str) -> Vec<smt::SmtInvariantIssue> {
         with_panic_guard(|| self.verify_smt_invariants_impl())
