@@ -7,6 +7,7 @@ import { exportToPdf } from "../lib/export-pdf";
 import { FindingsPanel } from "../components/FindingsPanel";
 import { SummaryChart } from "../components/SummaryChart";
 import { SanctityScore } from "../components/SanctityScore";
+import { ScoreTrendChart } from "../components/ScoreTrendChart";
 import { CallGraph } from "../components/CallGraph";
 import { ThemeToggle } from "../components/ThemeToggle";
 import { ErrorBoundary } from "../components/ErrorBoundary";
@@ -200,6 +201,11 @@ export default function DashboardPage() {
                 <SanctityScore findings={findings} />
                 <SummaryChart findings={findings} />
               </section>
+
+              {/* Historical trend. Reads from an in-memory adapter today and
+                  will swap to the persisted source from the shareable
+                  permalink work without touching this call site. */}
+              <ScoreTrendChart contractId="demo-healthy" />
 
               {/* Tab navigation */}
               <div 
