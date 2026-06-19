@@ -44,6 +44,8 @@ pub enum Commands {
     Update,
     /// Verify #[sanctify::invariant] declarations across a contract or workspace
     Verify(commands::verify::VerifyArgs),
+    /// Run SMT-based formal verification on Soroban token contract invariants
+    Prove(commands::prove::ProveArgs),
 }
 
 fn main() -> anyhow::Result<()> {
@@ -119,6 +121,9 @@ fn main() -> anyhow::Result<()> {
         }
         Commands::Verify(args) => {
             commands::verify::exec(args)?;
+        }
+        Commands::Prove(args) => {
+            commands::prove::exec(args)?;
         }
     }
 

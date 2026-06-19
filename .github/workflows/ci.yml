@@ -89,3 +89,10 @@ jobs:
         run: |
           cargo build -p reentrancy-guard
           cargo build -p protected-vault
+
+      - name: Verify SMT proof — supply_conserved
+        run: |
+          cd tooling/sanctifier-cli
+          ./target/release/sanctifier prove \
+            --invariant supply_conserved \
+            --no-save

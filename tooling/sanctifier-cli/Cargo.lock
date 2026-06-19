@@ -1702,6 +1702,7 @@ dependencies = [
  "tempfile",
  "tokio",
  "toml",
+ "z3",
 ]
 
 [[package]]
