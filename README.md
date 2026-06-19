@@ -141,6 +141,10 @@ sanctifier badge --report sanctifier-report.json --svg-output badges/sanctifier-
 
 ## Security Resources
 
+Found a vulnerability in Sanctifier itself? Please do not open a public issue.
+Use our [Security Policy](SECURITY.md) for the private advisory reporting
+channel, disclosure timeline, scope, and safe-harbor terms.
+
 Looking for Soroban security tools, audit reports, incident post-mortems, and learning materials? Check out our curated list:
 
 **[Awesome Soroban Security](docs/awesome-soroban-security.md)** — a categorized collection of tools, audits, incidents, standards, and learning resources for building secure Soroban contracts.
