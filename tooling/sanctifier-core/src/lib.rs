@@ -456,32 +456,12 @@ impl Analyzer {
 
     #[cfg(feature = "smt")]
     fn verify_smt_invariants_impl(&self) -> Vec<smt::SmtInvariantIssue> {
-        use z3::{Config, Context};
-        let cfg = Config::new();
-        let ctx = Context::new(&cfg);
-        let prover = smt::SmtProver::new(&ctx);
-
-        smt::TokenInvariant::all()
-            .iter()
-            .filter_map(|inv| {
-                let result = prover.prove_invariant(inv);
-                if result.status == smt::ProofStatus::Violated {
-                    let desc = match &result.counterexample {
-                        Some(ce) => {
-                            format!("{} Counterexample: {}", result.message, ce.call_sequence)
-                        }
-                        None => result.message.clone(),
-                    };
-                    Some(smt::SmtInvariantIssue {
-                        function_name: result.invariant.clone(),
-                        description: desc,
-                        location: "token contract (abstract model)".to_string(),
-                    })
-                } else {
-                    None
-                }
-            })
-            .collect()
+        // The abstract Z3 model checks hardcoded token invariants, not the source
+        // under analysis. Running it here produces false positives on every contract
+        // (BalanceNonNegative and NoUnauthorizedMint are VIOLATED by design in the
+        // abstract model). Invariant proving belongs exclusively to `sanctifier prove`,
+        // which invokes SmtProver directly. Return empty to keep `analyze` clean.
+        Vec::new()
     }
 
     pub fn scan_gas_estimation(&self, source: &str) -> Vec<gas_estimator::GasEstimationReport> {
