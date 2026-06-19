@@ -168,6 +168,9 @@ fn run(cli: Cli) -> anyhow::Result<i32> {
             clap_complete::generate(shell, &mut cmd, "sanctifier", &mut stdout);
             Ok(0)
         }
+        Commands::Verify(args) => {
+            commands::verify::exec(args)?;
+        }
     }
 }
 

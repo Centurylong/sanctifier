@@ -92,6 +92,37 @@ Send scan completion notifications to one or more webhook endpoints:
 sanctifier analyze ./contracts/my-token --webhook-url https://hooks.slack.com/services/XXX/YYY/ZZZ --webhook-url https://discord.com/api/webhooks/ID/TOKEN
 ```
 
+### Verify Contract Invariants
+Declare invariants with `#[sanctify::invariant(EXPR)]` and verify them:
+
+```rust
+// In your contract:
+use sanctify_macros::invariant;
+
+#[invariant(pure::supply_is_conserved_after_transfer(0, 0, 0))]
+#[contractimpl]
+impl Token { ... }
+```
+
+```bash
+# Scan a contract or workspace for declared invariants and check them
+sanctifier verify ./contracts/my-token
+
+# CI mode — exit non-zero if any invariant is refuted
+sanctifier verify ./contracts --strict
+
+# Machine-readable output
+sanctifier verify ./contracts --json
+
+# Full symbolic proof via Kani (for function-call invariants)
+cargo kani --package my-token
+```
+
+Invariants that reference pure functions (no `soroban_sdk::Env`) are dispatched
+to the Z3 SMT backend. Complex expressions are reported as `KANI ↗` with a
+reminder to run `cargo kani`. See `contracts/token-invariants` for a complete
+example.
+
 ### Update Sanctifier
 Check for and download the latest Sanctifier binary:
 
