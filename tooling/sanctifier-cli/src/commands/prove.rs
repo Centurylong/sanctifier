@@ -107,14 +107,12 @@ fn resolve_invariants(s: &str) -> anyhow::Result<Vec<TokenInvariant>> {
     if s == "all" {
         return Ok(TokenInvariant::all());
     }
-    TokenInvariant::parse(s)
-        .map(|i| vec![i])
-        .ok_or_else(|| {
-            anyhow::anyhow!(
-                "Unknown invariant '{s}'. Valid options: \
+    TokenInvariant::parse(s).map(|i| vec![i]).ok_or_else(|| {
+        anyhow::anyhow!(
+            "Unknown invariant '{s}'. Valid options: \
                 balance_non_negative, supply_conserved, no_unauthorized_mint, all"
-            )
-        })
+        )
+    })
 }
 
 fn print_result(r: &ProofResult) {
