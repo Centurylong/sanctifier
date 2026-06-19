@@ -10,15 +10,23 @@ what a detector reports shows up as a snapshot diff that a human must review.
 ```
 tests/
 ├── detector_snapshots.rs            # one #[test] per detector
+├── gallery_snapshots.rs             # full registry over the bug gallery
 ├── fixtures/detectors/<name>.rs     # a focused fixture that trips <name>
+├── fixtures/gallery/<bug>_*.rs      # canonical vulnerable + fixed corpus
 └── snapshots/                       # reviewed golden output (committed)
-    └── detector_snapshots__<name>.snap
+    ├── detector_snapshots__<name>.snap
+    └── gallery_snapshots__<bug>_*.snap
 ```
 
-Each test runs a single detector against its fixture and asserts the resulting
-`Vec<RuleViolation>` with `insta::assert_yaml_snapshot!`. The fixtures
-intentionally also contain *clean* code paths, so the snapshot proves both what
-the detector flags **and** what it correctly leaves alone.
+`detector_snapshots.rs` runs a single detector against its fixture and asserts
+the resulting `Vec<RuleViolation>` with `insta::assert_yaml_snapshot!`. The
+fixtures intentionally also contain *clean* code paths, so the snapshot proves
+both what the detector flags **and** what it correctly leaves alone.
+
+`gallery_snapshots.rs` runs the **full** default `RuleRegistry` over the
+[canonical vulnerable-contract gallery](fixtures/gallery/README.md) — ten bug
+classes, each as a vulnerable + fixed pair — so the shared corpus is wired into
+the snapshot suite. See that gallery README for the bug-class → finding-code map.
 
 ## Running
 
