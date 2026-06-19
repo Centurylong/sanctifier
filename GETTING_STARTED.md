@@ -2,6 +2,12 @@
 
 Congratulations! You now have a complete automation platform for deploying runtime guard wrapper contracts to Soroban testnet. Here's what you can do next:
 
+> **📚 Looking for the core docs?** The full, cross-linked documentation set —
+> [Migration Guide](docs/migration.md), [CLI Reference](docs/cli.md),
+> [Configuration Reference](docs/configuration.md), [FAQ](docs/faq.md), and
+> [Glossary](docs/glossary.md) — lives in [`docs/`](docs/README.md). This page
+> focuses specifically on runtime-guard deployment.
+
 ## 📋 Getting Started Checklist
 
 ### Immediate Actions (Today)

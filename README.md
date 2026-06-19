@@ -139,6 +139,19 @@ sanctifier badge --report sanctifier-report.json --svg-output badges/sanctifier-
 ```
 
 
+## Documentation
+
+The full, cross-linked documentation set lives in [`docs/`](docs/README.md):
+
+- **[Migration Guide](docs/migration.md)** — add Sanctifier to an existing Soroban repo (first scan → baseline → CI gate).
+- **[CLI Reference](docs/cli.md)** — every command and flag, auto-generated from the parser and verified in CI.
+- **[Configuration Reference](docs/configuration.md)** — every `.sanctify.toml` key, type, default, and precedence.
+- **[FAQ & Troubleshooting](docs/faq.md)** — common questions plus an error → fix table.
+- **[Glossary](docs/glossary.md)** — Soroban/Stellar security terms, anchored for deep-linking.
+
+Start at the [documentation index](docs/README.md).
+
+
 ## Security Resources
 
 Found a vulnerability in Sanctifier itself? Please do not open a public issue.
@@ -155,7 +168,7 @@ We welcome contributions from the Stellar community! Please see our [Contributin
 Every detector is covered by a golden `insta` snapshot so its findings can't regress unnoticed. If you add or change a detector, regenerate and review the snapshots — see [tooling/sanctifier-core/tests/README.md](tooling/sanctifier-core/tests/README.md).
 
 ## ðŸ”Ž Finding Codes
-Unified finding codes (`S001`...`S007`) are documented in [docs/error-codes.md](docs/error-codes.md).
+Unified finding codes (`S001`...`S016`) are documented in [docs/error-codes.md](docs/error-codes.md). For definitions of the underlying security terms, see the [Glossary](docs/glossary.md).
 
 ## ðŸ“„ License
 MIT

@@ -10,6 +10,7 @@ license = "MIT"
 
 [dependencies]
 clap = { version = "4.4", features = ["derive"] }
+clap-markdown = "0.1"
 anyhow = "1.0"
 sanctifier-core = { version = "0.1.0", path = "../sanctifier-core" }
 toml = "0.8"
