@@ -148,7 +148,16 @@ pub fn exec(args: AnalyzeArgs) -> anyhow::Result<()> {
             event_issues.extend(analyzer.scan_events(&content));
             unhandled_results.extend(analyzer.scan_unhandled_results(&content));
             upgrade_reports.push(analyzer.analyze_upgrade_patterns(&content));
-            smt_issues.extend(analyzer.verify_smt_invariants(&content));
+                #[cfg(feature = "smt")]
+                {
+                    for i in analyzer.verify_smt_invariants(&content) {
+                        smt_issues.push(serde_json::json!({
+                            "function_name": i.function_name,
+                            "description": i.description,
+                            "location": format!("{}:{}", file_name, i.location),
+                        }));
+                    }
+                }
         }
     }
 
@@ -299,9 +308,9 @@ pub fn exec(args: AnalyzeArgs) -> anyhow::Result<()> {
                 })).collect::<Vec<_>>(),
                 "smt_issues": smt_issues.iter().map(|s| serde_json::json!({
                     "code": finding_codes::SMT_INVARIANT_VIOLATION,
-                    "function_name": s.function_name,
-                    "description": s.description,
-                    "location": s.location,
+                    "function_name": s.get("function_name"),
+                    "description": s.get("description"),
+                    "location": s.get("location"),
                 })).collect::<Vec<_>>(),
             },
         });
@@ -449,14 +458,17 @@ pub fn exec(args: AnalyzeArgs) -> anyhow::Result<()> {
     if !smt_issues.is_empty() {
         println!("\n{} Found Formal Verification (SMT) issues!", "❌".red());
         for issue in &smt_issues {
+            let fn_name = issue.get("function_name").and_then(|v| v.as_str()).unwrap_or("<unknown>");
+            let desc = issue.get("description").and_then(|v| v.as_str()).unwrap_or("");
+            let loc = issue.get("location").and_then(|v| v.as_str()).unwrap_or("");
             println!(
                 "   {} [{}] Function: {}",
                 "->".red(),
                 finding_codes::SMT_INVARIANT_VIOLATION.bold(),
-                issue.function_name.bold()
+                fn_name.bold()
             );
-            println!("      Description: {}", issue.description);
-            println!("      Location: {}", issue.location);
+            println!("      Description: {}", desc);
+            println!("      Location: {}", loc);
         }
     }
 
@@ -549,7 +561,7 @@ fn walk_dir(
     event_issues: &mut Vec<sanctifier_core::EventIssue>,
     unhandled_results: &mut Vec<sanctifier_core::UnhandledResultIssue>,
     upgrade_reports: &mut Vec<sanctifier_core::UpgradeReport>,
-    smt_issues: &mut Vec<sanctifier_core::smt::SmtInvariantIssue>,
+    smt_issues: &mut Vec<serde_json::Value>,
 ) -> anyhow::Result<()> {
     for entry in fs::read_dir(dir)? {
         let entry = entry?;
@@ -645,11 +657,18 @@ fn walk_dir(
                 }
                 upgrade_reports.push(up);
 
-                let mut smt = analyzer.verify_smt_invariants(&content);
-                for i in &mut smt {
-                    i.location = format!("{}:{}", file_name, i.location);
+                #[cfg(feature = "smt")]
+                {
+                    let mut smt = analyzer.verify_smt_invariants(&content);
+                    for i in &mut smt {
+                        let i_val = serde_json::json!({
+                            "function_name": i.function_name,
+                            "description": i.description,
+                            "location": format!("{}:{}", file_name, i.location),
+                        });
+                        smt_issues.push(i_val);
+                    }
                 }
-                smt_issues.extend(smt);
             }
         }
     }
