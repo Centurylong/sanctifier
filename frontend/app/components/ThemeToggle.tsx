@@ -3,7 +3,22 @@
 import { useTheme } from "../providers/theme-provider";
 
 export function ThemeToggle() {
-  const { theme, toggleTheme } = useTheme();
+  const [dark, setDark] = useState<boolean>(() => {
+    if (typeof window === "undefined") return false;
+    return (
+      document.documentElement.classList.contains("dark") ||
+      window.matchMedia("(prefers-color-scheme: dark)").matches
+    );
+  });
+
+  useEffect(() => {
+    if (dark) document.documentElement.classList.add("dark");
+  }, [dark]);
+
+  const toggle = () => {
+    document.documentElement.classList.toggle("dark");
+    setDark(document.documentElement.classList.contains("dark"));
+  };
 
   return (
     <button

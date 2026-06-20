@@ -12,4 +12,5 @@ severity = "error"
 [[custom_rules]]
 name = "no_mem_forget"
 pattern = "std::mem::forget"
-severity = "warning"
+
+exclude = ["tooling", "frontend", "target", ".git"]

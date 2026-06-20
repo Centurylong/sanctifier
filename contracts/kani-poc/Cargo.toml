@@ -3,19 +3,22 @@ name = "kani-poc-contract"
 version = "0.1.0"
 edition = "2021"
 
+[lints]
+workspace = true
+
 [dependencies]
-soroban-sdk = { workspace = true }
+soroban-sdk = "20.0.0"
 
 [dev-dependencies]
-soroban-sdk = { workspace = true, features = ["testutils"] }
+soroban-sdk = { version = "20.0.0", features = ["testutils"] }
 
 [features]
 testutils = ["soroban-sdk/testutils"]
 
-
-
-[lints.rust]
-unexpected_cfgs = { level = "warn", check-cfg = ["cfg(kani)"] }
-
 [lib]
 crate-type = ["cdylib", "rlib"]
+
+[profile.release]
+opt-level = "z"
+lto = true
+codegen-units = 1

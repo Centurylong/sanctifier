@@ -1,0 +1,437 @@
+warning: profiles for the non root package will be ignored, specify profiles at the workspace root:
+package:   /Users/ucheekezie/Documents/web3work/drips/sanctifier1/contracts/kani-poc/Cargo.toml
+workspace: /Users/ucheekezie/Documents/web3work/drips/sanctifier1/Cargo.toml
+    Checking sanctifier-core v0.1.0 (/Users/ucheekezie/Documents/web3work/drips/sanctifier1/tooling/sanctifier-core)
+    Checking vulnerable-contract v0.1.0 (/Users/ucheekezie/Documents/web3work/drips/sanctifier1/contracts/vulnerable-contract)
+    Checking kani-poc-contract v0.1.0 (/Users/ucheekezie/Documents/web3work/drips/sanctifier1/contracts/kani-poc)
+    Checking sanctifier-sdk v0.1.0 (/Users/ucheekezie/Documents/web3work/drips/sanctifier1/tooling/sanctifier-sdk)
+error: unexpected `cfg` condition value: `testutils`
+  --> contracts/kani-poc/src/lib.rs:54:1
+   |
+54 | #[contract]
+   | ^^^^^^^^^^^
+   |
+   = note: no expected values for `feature`
+   = note: using a cfg inside a attribute macro will use the cfgs from the destination crate and not the ones from the defining crate
+   = help: try referring to `contract` crate for guidance on how handle this unexpected cfg
+   = help: the attribute macro `contract` may come from an old version of the `soroban_sdk_macros` crate, try updating your dependency with `cargo update -p soroban_sdk_macros`
+   = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg/cargo-specifics.html> for more information about checking conditional configuration
+   = note: `-D unexpected-cfgs` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(unexpected_cfgs)]`
+   = note: this error originates in the attribute macro `contract` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: unexpected `cfg` condition value: `testutils`
+ --> contracts/vulnerable-contract/src/lib.rs:4:1
+  |
+4 | #[contract]
+  | ^^^^^^^^^^^
+  |
+  = note: no expected values for `feature`
+  = note: using a cfg inside a attribute macro will use the cfgs from the destination crate and not the ones from the defining crate
+  = help: try referring to `contract` crate for guidance on how handle this unexpected cfg
+  = help: the attribute macro `contract` may come from an old version of the `soroban_sdk_macros` crate, try updating your dependency with `cargo update -p soroban_sdk_macros`
+  = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg/cargo-specifics.html> for more information about checking conditional configuration
+  = note: `-D unexpected-cfgs` implied by `-D warnings`
+  = help: to override `-D warnings` add `#[allow(unexpected_cfgs)]`
+  = note: this error originates in the attribute macro `contract` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: unexpected `cfg` condition value: `testutils`
+  --> contracts/kani-poc/src/lib.rs:57:1
+   |
+57 | #[contractimpl]
+   | ^^^^^^^^^^^^^^^
+   |
+   = note: no expected values for `feature`
+   = note: using a cfg inside a attribute macro will use the cfgs from the destination crate and not the ones from the defining crate
+   = help: try referring to `contractimpl` crate for guidance on how handle this unexpected cfg
+   = help: the attribute macro `contractimpl` may come from an old version of the `soroban_sdk_macros` crate, try updating your dependency with `cargo update -p soroban_sdk_macros`
+   = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg/cargo-specifics.html> for more information about checking conditional configuration
+   = note: this error originates in the attribute macro `contractimpl` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: unexpected `cfg` condition value: `testutils`
+ --> contracts/vulnerable-contract/src/lib.rs:7:1
+  |
+7 | #[contractimpl]
+  | ^^^^^^^^^^^^^^^
+  |
+  = note: no expected values for `feature`
+  = note: using a cfg inside a attribute macro will use the cfgs from the destination crate and not the ones from the defining crate
+  = help: try referring to `contractimpl` crate for guidance on how handle this unexpected cfg
+  = help: the attribute macro `contractimpl` may come from an old version of the `soroban_sdk_macros` crate, try updating your dependency with `cargo update -p soroban_sdk_macros`
+  = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg/cargo-specifics.html> for more information about checking conditional configuration
+  = note: this error originates in the attribute macro `contractimpl` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: unexpected `cfg` condition value: `testutils`
+  --> contracts/kani-poc/src/lib.rs:57:1
+   |
+57 | #[contractimpl]
+   | ^^^^^^^^^^^^^^^
+   |
+   = note: no expected values for `feature`
+   = note: using a cfg inside a attribute macro will use the cfgs from the destination crate and not the ones from the defining crate
+   = help: try referring to `soroban_sdk::contractclient` crate for guidance on how handle this unexpected cfg
+   = help: the attribute macro `soroban_sdk::contractclient` may come from an old version of the `soroban_sdk_macros` crate, try updating your dependency with `cargo update -p soroban_sdk_macros`
+   = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg/cargo-specifics.html> for more information about checking conditional configuration
+   = note: this error originates in the attribute macro `soroban_sdk::contractclient` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: unexpected `cfg` condition value: `testutils`
+ --> contracts/vulnerable-contract/src/lib.rs:7:1
+  |
+7 | #[contractimpl]
+  | ^^^^^^^^^^^^^^^
+  |
+  = note: no expected values for `feature`
+  = note: using a cfg inside a attribute macro will use the cfgs from the destination crate and not the ones from the defining crate
+  = help: try referring to `soroban_sdk::contractclient` crate for guidance on how handle this unexpected cfg
+  = help: the attribute macro `soroban_sdk::contractclient` may come from an old version of the `soroban_sdk_macros` crate, try updating your dependency with `cargo update -p soroban_sdk_macros`
+  = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg/cargo-specifics.html> for more information about checking conditional configuration
+  = note: this error originates in the attribute macro `soroban_sdk::contractclient` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: unexpected `cfg` condition name: `kani`
+ --> tooling/sanctifier-sdk/tests/macro_test.rs:5:5
+  |
+5 |     guard_invariant!(true);
+  |     ^^^^^^^^^^^^^^^^^^^^^^
+  |
+  = help: expected names are: `docsrs`, `feature`, and `test` and 31 more
+  = note: using a cfg inside a macro will use the cfgs from the destination crate and not the ones from the defining crate
+  = help: try referring to `guard_invariant` crate for guidance on how handle this unexpected cfg
+  = help: the macro `guard_invariant` may come from an old version of the `sanctifier_sdk` crate, try updating your dependency with `cargo update -p sanctifier_sdk`
+  = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg/cargo-specifics.html> for more information about checking conditional configuration
+  = note: `-D unexpected-cfgs` implied by `-D warnings`
+  = help: to override `-D warnings` add `#[allow(unexpected_cfgs)]`
+  = note: this error originates in the macro `guard_invariant` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: unexpected `cfg` condition name: `kani`
+ --> tooling/sanctifier-sdk/tests/macro_test.rs:5:5
+  |
+5 |     guard_invariant!(true);
+  |     ^^^^^^^^^^^^^^^^^^^^^^
+  |
+  = note: using a cfg inside a macro will use the cfgs from the destination crate and not the ones from the defining crate
+  = help: try referring to `guard_invariant` crate for guidance on how handle this unexpected cfg
+  = help: the macro `guard_invariant` may come from an old version of the `sanctifier_sdk` crate, try updating your dependency with `cargo update -p sanctifier_sdk`
+  = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg/cargo-specifics.html> for more information about checking conditional configuration
+  = note: this error originates in the macro `guard_invariant` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: unexpected `cfg` condition name: `kani`
+  --> tooling/sanctifier-sdk/tests/macro_test.rs:11:5
+   |
+11 |     guard_invariant!(false);
+   |     ^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: using a cfg inside a macro will use the cfgs from the destination crate and not the ones from the defining crate
+   = help: try referring to `guard_invariant` crate for guidance on how handle this unexpected cfg
+   = help: the macro `guard_invariant` may come from an old version of the `sanctifier_sdk` crate, try updating your dependency with `cargo update -p sanctifier_sdk`
+   = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg/cargo-specifics.html> for more information about checking conditional configuration
+   = note: this error originates in the macro `guard_invariant` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: unexpected `cfg` condition name: `kani`
+  --> tooling/sanctifier-sdk/tests/macro_test.rs:16:5
+   |
+16 |     guard_invariant!(true, "Should not panic");
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: using a cfg inside a macro will use the cfgs from the destination crate and not the ones from the defining crate
+   = help: try referring to `guard_invariant` crate for guidance on how handle this unexpected cfg
+   = help: the macro `guard_invariant` may come from an old version of the `sanctifier_sdk` crate, try updating your dependency with `cargo update -p sanctifier_sdk`
+   = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg/cargo-specifics.html> for more information about checking conditional configuration
+   = note: this error originates in the macro `guard_invariant` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: unexpected `cfg` condition name: `kani`
+  --> tooling/sanctifier-sdk/tests/macro_test.rs:22:5
+   |
+22 |     guard_invariant!(false, "Custom error");
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: using a cfg inside a macro will use the cfgs from the destination crate and not the ones from the defining crate
+   = help: try referring to `guard_invariant` crate for guidance on how handle this unexpected cfg
+   = help: the macro `guard_invariant` may come from an old version of the `sanctifier_sdk` crate, try updating your dependency with `cargo update -p sanctifier_sdk`
+   = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg/cargo-specifics.html> for more information about checking conditional configuration
+   = note: this error originates in the macro `guard_invariant` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: unexpected `cfg` condition name: `kani`
+  --> tooling/sanctifier-sdk/tests/macro_test.rs:31:5
+   |
+31 |     guard_invariant!(env, false, "Env-aware panic");
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: using a cfg inside a macro will use the cfgs from the destination crate and not the ones from the defining crate
+   = help: try referring to `guard_invariant` crate for guidance on how handle this unexpected cfg
+   = help: the macro `guard_invariant` may come from an old version of the `sanctifier_sdk` crate, try updating your dependency with `cargo update -p sanctifier_sdk`
+   = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg/cargo-specifics.html> for more information about checking conditional configuration
+   = note: this error originates in the macro `guard_invariant` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: unused import: `AssertUnwindSafe`
+ --> tooling/sanctifier-core/src/lib.rs:8:32
+  |
+8 | use std::panic::{catch_unwind, AssertUnwindSafe};
+  |                                ^^^^^^^^^^^^^^^^
+  |
+  = note: `-D unused-imports` implied by `-D warnings`
+  = help: to override `-D warnings` add `#[allow(unused_imports)]`
+
+error: empty line after doc comment
+   --> tooling/sanctifier-core/src/lib.rs:918:5
+    |
+918 | /     /// 2. Opportunities to use `symbol_short!` for ...
+919 | |     /* pub fn scan_events(&self, source: &str) -> Ve...
+920 | |         with_panic_guard(|| self.scan_events_impl(so...
+...   |
+938 | |
+    | |_^
+...
+941 |       pub fn analyze_unsafe_patterns(&self, source: &s...
+    |       ------------------------------ the comment documents this function
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.93.0/index.html#empty_line_after_doc_comments
+    = note: `-D clippy::empty-line-after-doc-comments` implied by `-D warnings`
+    = help: to override `-D warnings` add `#[allow(clippy::empty_line_after_doc_comments)]`
+    = help: if the empty line is unintentional, remove it
+help: if the doc comment should not document function `analyze_unsafe_patterns` then comment it out
+    |
+916 ~     // /// Scans for `env.events().publish(topics, data)` and checks:
+917 ~     // /// 1. Consistency of topic counts for the same event name.
+918 ~     // /// 2. Opportunities to use `symbol_short!` for gas savings.
+    |
+
+error: unused variable: `admin`
+  --> contracts/vulnerable-contract/src/lib.rs:19:13
+   |
+19 |         let admin: Symbol = env
+   |             ^^^^^ help: if this is intentional, prefix it with an underscore: `_admin`
+   |
+   = note: `-D unused-variables` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(unused_variables)]`
+
+error: could not compile `sanctifier-sdk` (test "macro_test") due to 10 previous errors
+warning: build failed, waiting for other jobs to finish...
+error: could not compile `kani-poc-contract` (lib) due to 3 previous errors
+error: could not compile `vulnerable-contract` (lib) due to 4 previous errors
+error: could not compile `vulnerable-contract` (lib test) due to 4 previous errors
+error: could not compile `kani-poc-contract` (lib test) due to 3 previous errors
+error: unused variable: `approaching`
+   --> tooling/sanctifier-core/src/lib.rs:803:13
+    |
+803 |         let approaching = (limit as f64 * DEFAULT_APPR...
+    |             ^^^^^^^^^^^ help: if this is intentional, prefix it with an underscore: `_approaching`
+    |
+    = note: `-D unused-variables` implied by `-D warnings`
+    = help: to override `-D warnings` add `#[allow(unused_variables)]`
+
+error: unused variable: `strict`
+   --> tooling/sanctifier-core/src/lib.rs:804:13
+    |
+804 |         let strict = self.config.strict_mode;
+    |             ^^^^^^ help: if this is intentional, prefix it with an underscore: `_strict`
+
+error: unused variable: `strict_threshold`
+   --> tooling/sanctifier-core/src/lib.rs:805:13
+    |
+805 |         let strict_threshold = limit / 2;
+    |             ^^^^^^^^^^^^^^^^ help: if this is intentional, prefix it with an underscore: `_strict_threshold`
+
+error: function `has_attr` is never used
+   --> tooling/sanctifier-core/src/lib.rs:115:4
+    |
+115 | fn has_attr(attrs: &[syn::Attribute], name: &str) -> b...
+    |    ^^^^^^^^
+    |
+    = note: `-D dead-code` implied by `-D warnings`
+    = help: to override `-D warnings` add `#[allow(dead_code)]`
+
+error: you should consider adding a `Default` implementation for `GasEstimator`
+  --> tooling/sanctifier-core/src/gas_estimator.rs:15:5
+   |
+15 | /     pub fn new() -> Self {
+16 | |         Self {}
+17 | |     }
+   | |_____^
+   |
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.93.0/index.html#new_without_default
+   = note: `-D clippy::new-without-default` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::new_without_default)]`
+help: try adding this
+   |
+14 + impl Default for GasEstimator {
+15 +     fn default() -> Self {
+16 +         Self::new()
+17 +     }
+18 + }
+   |
+
+error: this `if` statement can be collapsed
+  --> tooling/sanctifier-core/src/kani_bridge.rs:48:13
+   |
+48 | / ...   if receiver_str.contains("env . storage ( )") |...
+49 | | ...   {
+50 | | ...       if method_name == "set" || method_name == "...
+...  |
+62 | | ...   }
+   | |_______^
+   |
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.93.0/index.html#collapsible_if
+   = note: `-D clippy::collapsible-if` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::collapsible_if)]`
+help: collapse nested if block
+   |
+48 ~             if (receiver_str.contains("env . storage ( )") || receiver_str.contains("env.storage()")
+49 ~             if receiver_str.contains("env . storage ( )") || receiver_str.contains("env.storage()"))
+50 |             {
+51 ~                 && (method_name == "set" || method_name == "get" || method_name == "has") {
+52 |                     // Replace the whole expression with a Kani mock
+...
+61 |                     return;
+62 ~                 }
+   |
+
+error: this `if` has identical blocks
+  --> tooling/sanctifier-core/src/kani_bridge.rs:52:45
+   |
+52 |   ...   if method_name == "get" {
+   |  _______________________________^
+53 | | ...       *expr = parse_quote!(kani::any());
+54 | | ...   } else if method_name == "has" {
+   | |_______^
+   |
+note: same as this
+  --> tooling/sanctifier-core/src/kani_bridge.rs:54:52
+   |
+54 |   ...   } else if method_name == "has" {
+   |  ______________________________________^
+55 | | ...       *expr = parse_quote!(kani::any());
+56 | | ...   } else {
+   | |_______^
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.93.0/index.html#if_same_then_else
+   = note: `-D clippy::if-same-then-else` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::if_same_then_else)]`
+
+error: you should consider adding a `Default` implementation for `ExecutionPath`
+  --> tooling/sanctifier-core/src/symbolic.rs:19:5
+   |
+19 | /     pub fn new() -> Self {
+20 | |         Self {
+21 | |             nodes: Vec::new(),
+22 | |             is_panic: false,
+23 | |         }
+24 | |     }
+   | |_____^
+   |
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.93.0/index.html#new_without_default
+help: try adding this
+   |
+18 + impl Default for ExecutionPath {
+19 +     fn default() -> Self {
+20 +         Self::new()
+21 +     }
+22 + }
+   |
+
+error: used `assert_eq!` with a literal bool
+   --> tooling/sanctifier-core/src/symbolic.rs:229:9
+    |
+229 |         assert_eq!(graph.paths[0].is_panic, false);
+    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.93.0/index.html#bool_assert_comparison
+    = note: `-D clippy::bool-assert-comparison` implied by `-D warnings`
+    = help: to override `-D warnings` add `#[allow(clippy::bool_assert_comparison)]`
+help: replace it with `assert!(..)`
+    |
+229 -         assert_eq!(graph.paths[0].is_panic, false);
+229 +         assert!(!graph.paths[0].is_panic);
+    |
+
+error: used `assert_eq!` with a literal bool
+   --> tooling/sanctifier-core/src/symbolic.rs:260:9
+    |
+260 |         assert_eq!(graph.paths[0].is_panic, true);
+    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.93.0/index.html#bool_assert_comparison
+help: replace it with `assert!(..)`
+    |
+260 -         assert_eq!(graph.paths[0].is_panic, true);
+260 +         assert!(graph.paths[0].is_panic);
+    |
+
+error: match can be simplified with `.unwrap_or_default()`
+  --> tooling/sanctifier-core/src/lib.rs:24:5
+   |
+24 | /     match catch_unwind(f) {
+25 | |         Ok(res) => res,
+26 | |         Err(_) => R::default(),
+27 | |     }
+   | |_____^ help: ascribe the type R and replace your expression with: `catch_unwind(f).unwrap_or_default()`
+   |
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.93.0/index.html#manual_unwrap_or_default
+   = note: `-D clippy::manual-unwrap-or-default` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::manual_unwrap_or_default)]`
+
+error: this `if` has identical blocks
+   --> tooling/sanctifier-core/src/lib.rs:277:22
+    |
+277 |       if size >= limit {
+    |  ______________________^
+278 | |         Some(SizeWarningLevel::ExceedsLimit)
+279 | |     } else if strict && size >= strict_threshold {
+    | |_____^
+    |
+note: same as this
+   --> tooling/sanctifier-core/src/lib.rs:279:50
+    |
+279 |       } else if strict && size >= strict_threshold {
+    |  __________________________________________________^
+280 | |         Some(SizeWarningLevel::ExceedsLimit)
+281 | |     } else if size as f64 >= limit as f64 * approachi...
+    | |_____^
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.93.0/index.html#if_same_then_else
+
+error: this `map_or` can be simplified
+   --> tooling/sanctifier-core/src/lib.rs:677:24
+    |
+677 |   ...   || i.else_branch.as_ref().map_or(false, |(_, e...
+    |  __________^
+678 | | ...       self.check_expr_inner_for_auth(e, known_au...
+679 | | ...   })
+    | |________^
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.93.0/index.html#unnecessary_map_or
+    = note: `-D clippy::unnecessary-map-or` implied by `-D warnings`
+    = help: to override `-D warnings` add `#[allow(clippy::unnecessary_map_or)]`
+help: use is_some_and instead
+    |
+677 -                     || i.else_branch.as_ref().map_or(false, |(_, e)| {
+677 +                     || i.else_branch.as_ref().is_some_and(|(_, e)| {
+    |
+
+error: doc list item without indentation
+   --> tooling/sanctifier-core/src/lib.rs:939:9
+    |
+939 |     /// Visitor-based scan for `panic!`, `.unwrap()`, ...
+    |         ^
+    |
+    = help: if this is supposed to be its own paragraph, add a blank line
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.93.0/index.html#doc_lazy_continuation
+    = note: `-D clippy::doc-lazy-continuation` implied by `-D warnings`
+    = help: to override `-D warnings` add `#[allow(clippy::doc_lazy_continuation)]`
+help: indent this line
+    |
+939 |     ///    Visitor-based scan for `panic!`, `.unwrap()`, `.expect()` with line
+    |         +++
+
+error: doc list item without indentation
+   --> tooling/sanctifier-core/src/lib.rs:940:9
+    |
+940 |     /// numbers derived from proc-macro2 span locations.
+    |         ^
+    |
+    = help: if this is supposed to be its own paragraph, add a blank line
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.93.0/index.html#doc_lazy_continuation
+help: indent this line
+    |
+940 |     ///    numbers derived from proc-macro2 span locations.
+    |         +++
+
+error: could not compile `sanctifier-core` (lib) due to 15 previous errors
+error: could not compile `sanctifier-core` (lib test) due to 17 previous errors

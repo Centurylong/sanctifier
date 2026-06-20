@@ -8,26 +8,6 @@
 
 use soroban_sdk::{contract, contractimpl, symbol_short, Env, Symbol};
 
-// ── Token initialisation pure logic (verified with Kani) ─────────────────────
-//
-// The contract must only be initialised once.  We model the "already initialised"
-// flag as a single boolean: `is_initialized == true` means setup has already run.
-// The function is pure (no Host/FFI), so Kani can reason about every possible
-// combination of inputs exhaustively.
-
-/// Attempt to initialise the token contract.
-///
-/// * `is_initialized` – whether the contract has already been set up.
-/// * Returns `Ok(())` on success (transitions the flag from `false` → `true`).
-/// * Returns `Err("already initialized")` if the token was already set up,
-///   guaranteeing that a second call can **never** succeed.
-pub fn initialize_pure(is_initialized: bool) -> Result<(), &'static str> {
-    if is_initialized {
-        return Err("already initialized");
-    }
-    Ok(())
-}
-
 // ── Pure logic (verified with Kani) ─────────────────────────────────────────────
 //
 // These functions operate only on i128 and have no Host/FFI dependencies.
@@ -80,21 +60,6 @@ impl TokenContract {
     /// A full implementation would read/write balances via env.storage().
     pub fn transfer(balance_from: i128, balance_to: i128, amount: i128) -> (i128, i128) {
         transfer_pure(balance_from, balance_to, amount).expect("transfer failed")
-    }
-
-    /// One-shot initialisation entry point.
-    ///
-    /// Reads the flag from instance storage, delegates to `initialize_pure`, and
-    /// persists the flag on success.  Kani verifies the pure guard; the Host layer
-    /// here is intentionally thin and untouched by the proof.
-    pub fn initialize(env: Env, _name: Symbol) {
-        let already: bool = env
-            .storage()
-            .instance()
-            .get(&symbol_short!("init"))
-            .unwrap_or(false);
-        initialize_pure(already).expect("already initialized");
-        env.storage().instance().set(&symbol_short!("init"), &true);
     }
 
     /// A function that interacts with Env (Host types).

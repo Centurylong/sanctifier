@@ -23,3 +23,22 @@ The web interface for interacting with the Sanctifier suite.
 - Upload WASM files for analysis.
 - View real-time security reports.
 - Dashboard for tracked contracts.
+
+## Run Sanctifier in the Browser (WASM)
+
+The dashboard can run the Rust analysis engine directly in your browser using WebAssembly.
+To build the WASM bundle locally:
+
+```bash
+# From the repository root
+wasm-pack build tooling/sanctifier-wasm --release --target web --out-dir frontend/public/wasm
+```
+
+Then start the app:
+
+```bash
+cd frontend
+npm run dev
+```
+
+Open the Dashboard and use the "Analyze Rust Source (Runs in Your Browser)" section.
