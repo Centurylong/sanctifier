@@ -18,10 +18,11 @@ testutils = ["soroban-sdk/testutils"]
 [lints.rust]
 unexpected_cfgs = { level = "warn", check-cfg = ['cfg(kani)'] }
 
-
-[lib]
-crate-type = ["cdylib"]
-
 [dev-dependencies]
 soroban-sdk = { version = "20.0.0", features = ["testutils"] }
 
+[features]
+testutils = ["soroban-sdk/testutils"]
+
+[lib]
+crate-type = ["cdylib"]
