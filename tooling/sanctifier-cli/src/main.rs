@@ -109,6 +109,8 @@ pub enum Commands {
         #[arg(short, long)]
         dry_run: bool,
     },
+    /// Print the CLI reference as Markdown (used to keep docs/cli.md up to date)
+    GenerateDocs,
 }
 
 fn main() -> anyhow::Result<()> {
@@ -199,6 +201,9 @@ fn main() -> anyhow::Result<()> {
                     total_fixes
                 );
             }
+        }
+        Commands::GenerateDocs => {
+            print!("{}", clap_markdown::help_markdown::<Cli>());
         }
     }
 
