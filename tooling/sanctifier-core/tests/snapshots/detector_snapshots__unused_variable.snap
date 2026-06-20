@@ -1,0 +1,16 @@
+---
+source: tooling/sanctifier-core/tests/detector_snapshots.rs
+expression: findings
+---
+- rule_name: unused_variable
+  severity: Warning
+  message: "Unused local variable: 'scratch'"
+  location: "13:12"
+  suggestion: "Prefix with underscore: '_scratch'"
+  patches:
+    - start_line: 13
+      start_column: 12
+      end_line: 13
+      end_column: 19
+      replacement: _scratch
+      description: "Prefix unused variable 'scratch' with underscore"

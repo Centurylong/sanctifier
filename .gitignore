@@ -1,8 +1,17 @@
-/target
+**/target/
 **/*.rs.bk
 *.swp
 .DS_Store
 
-
 .env.local
 .env
+node_modulessanc/
+
+# JS/TS packages
+**/node_modules/
+**/dist/
+*.tsbuildinfo
+
+# wasm-pack build outputs (used as intermediate, not committed)
+tooling/sanctifier-wasm/pkg-web/
+tooling/sanctifier-wasm/pkg-node/

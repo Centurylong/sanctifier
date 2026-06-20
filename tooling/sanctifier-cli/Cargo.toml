@@ -1,3 +1,6 @@
+[workspace]
+members = ["."]
+
 [package]
 name = "sanctifier-cli"
 version = "0.1.0"
@@ -10,8 +13,9 @@ workspace = true
 
 [dependencies]
 clap = { version = "4.4", features = ["derive"] }
+clap-markdown = "0.1"
 anyhow = "1.0"
-sanctifier-core = { path = "../sanctifier-core" }
+sanctifier-core = { version = "0.1.0", path = "../sanctifier-core" }
 toml = "0.8"
 tokio = { version = "1.0", features = ["full"] }
 colored = "2.0"

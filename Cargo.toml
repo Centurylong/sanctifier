@@ -1,10 +1,14 @@
 [workspace]
 members = [
-    "tooling/sanctifier-cli",
     "tooling/sanctifier-core",
     "tooling/sanctifier-wasm",
     "tooling/sanctifier-sdk",
     "contracts/vulnerable-contract",
+    "contracts/token-with-bugs",
+    "contracts/amm-pool",
+    "contracts/reentrancy-guard",
+    "contracts/protected-vault",
+    "contracts/runtime-guard-wrapper",
     "contracts/kani-poc",
     "contracts/reentrancy-guardian",
 ]

@@ -1,0 +1,109 @@
+name: CI
+
+on:
+  push:
+    branches: ["main"]
+  pull_request:
+    branches: ["main"]
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  ci:
+    name: Continuous Integration
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install stable Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+
+      - name: Cache cargo registry & build artifacts
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/bin/
+            ~/.cargo/registry/index/
+            ~/.cargo/registry/cache/
+            ~/.cargo/git/db/
+            target/
+          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-cargo-
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libz3-dev libdbus-1-dev
+
+      - name: Check formatting
+        run: cargo fmt --all --check
+
+      - name: Run Clippy
+        run: |
+          cargo clippy -p sanctifier-core --all-targets --all-features -- -D warnings
+          cd tooling/sanctifier-cli && cargo clippy --all-targets -- -D warnings
+
+      - name: Build All (Debug)
+        run: |
+          cargo build -p sanctifier-core --all-features
+          cd tooling/sanctifier-cli && cargo build
+
+      - name: CLI reference is up to date
+        # Regenerates docs/cli.md from the clap command definitions and fails if
+        # it differs from the committed copy, so the CLI reference can never drift
+        # from the parser. Regenerate locally with:
+        #   cargo run -p sanctifier-cli -- generate-docs > docs/cli.md
+        run: |
+          cargo run -p sanctifier-cli --manifest-path tooling/sanctifier-cli/Cargo.toml \
+            -- generate-docs > docs/cli.md
+          git diff --exit-code -- docs/cli.md \
+            || { echo "::error::docs/cli.md is stale. Run: cargo run -p sanctifier-cli -- generate-docs > docs/cli.md"; exit 1; }
+
+      - name: Run All Tests
+        run: |
+          cargo test -p sanctifier-core --all-features
+          cd tooling/sanctifier-cli && cargo test
+
+      - name: Install cargo-insta
+        uses: taiki-e/install-action@v2
+        with:
+          tool: cargo-insta
+
+      - name: Detector golden snapshots (insta)
+        # Fails the build if any detector's findings differ from its reviewed
+        # snapshot. Regenerate locally with `cargo insta test` then review with
+        # `cargo insta review` (see tooling/sanctifier-core/tests/README.md).
+        run: cargo insta test -p sanctifier-core --all-features --check --unreferenced reject
+
+      - name: Install tarpaulin
+        run: cargo install cargo-tarpaulin || true
+
+      - name: Generate Coverage Report
+        run: cargo tarpaulin -p sanctifier-core --out Xml
+
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v3
+        with:
+          file: cobertura.xml
+          fail_ci_if_error: false
+
+      - name: Build Release CLI
+        run: cd tooling/sanctifier-cli && cargo build --release
+
+      - name: Build reentrancy-guard and protected-vault
+        run: |
+          cargo build -p reentrancy-guard
+          cargo build -p protected-vault
+
+      - name: Verify SMT proof — supply_conserved
+        run: |
+          cd tooling/sanctifier-cli
+          ./target/release/sanctifier prove \
+            --invariant supply_conserved \
+            --no-save

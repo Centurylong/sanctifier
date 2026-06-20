@@ -1,0 +1,8 @@
+---
+source: tooling/sanctifier-core/tests/detector_snapshots.rs
+expression: findings
+---
+- rule_name: ledger_size
+  severity: Error
+  message: "Struct 'OversizedState' estimated size 131104 bytes exceeds or approaches limit"
+  location: "OversizedState:estimated 131104 bytes, limit 64000 bytes"

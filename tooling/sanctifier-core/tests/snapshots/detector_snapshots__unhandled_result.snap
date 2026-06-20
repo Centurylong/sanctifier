@@ -1,0 +1,9 @@
+---
+source: tooling/sanctifier-core/tests/detector_snapshots.rs
+expression: findings
+---
+- rule_name: unhandled_result
+  severity: Warning
+  message: "Result returned from 'persist (& env)' is not handled"
+  location: "save:22"
+  suggestion: "Use ?, match, or .unwrap()/.expect() to handle the Result"

@@ -1,0 +1,26 @@
+name: PR Labeler
+
+# Applies path-based area/type labels to pull requests using .github/labeler.yml.
+#
+# Uses `pull_request_target` so the workflow definition and token come from the
+# base branch — this lets labeling work for PRs from forks (the common case for
+# this widely-forked repo) without exposing a write token to PR-author code.
+
+on:
+  pull_request_target:
+    types: [opened, synchronize, reopened]
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  label:
+    name: Apply area labels
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/labeler@v5
+        with:
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
+          configuration-path: .github/labeler.yml
+          sync-labels: true

@@ -1,5 +1,5 @@
-ignore_paths = ["target", ".git"]
-enabled_rules = ["auth_gaps", "panics", "arithmetic", "ledger_size"]
+ignore_paths = ["target", ".git", "test_snapshots"]
+enabled_rules = ["auth_gaps", "panics", "arithmetic", "ledger_size", "invariants"]
 ledger_limit = 64000
 strict_mode = false
 
@@ -7,6 +7,7 @@ strict_mode = false
 [[custom_rules]]
 name = "no_unsafe_block"
 pattern = "unsafe\\s*\\{"
+severity = "error"
 
 [[custom_rules]]
 name = "no_mem_forget"

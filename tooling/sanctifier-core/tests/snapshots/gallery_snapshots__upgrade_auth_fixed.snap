@@ -1,0 +1,5 @@
+---
+source: tooling/sanctifier-core/tests/gallery_snapshots.rs
+expression: findings
+---
+[]

@@ -1,4 +1,4 @@
-# Sanctifier 🛡️
+﻿# Sanctifier ðŸ›¡ï¸
 
 **The Definitive Security & Formal Verification Suite for Stellar Soroban**
 

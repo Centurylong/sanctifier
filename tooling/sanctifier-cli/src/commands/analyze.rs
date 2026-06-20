@@ -1,5 +1,6 @@
-use std::fs;
-use std::path::{Path, PathBuf};
+use crate::commands::webhook::{
+    send_scan_completed_webhooks, ScanWebhookPayload, ScanWebhookSummary,
+};
 use clap::Args;
 use colored::*;
 use sanctifier_core::{Analyzer, ArithmeticIssue, SizeWarning, UnsafePattern};
@@ -28,84 +29,285 @@ pub struct AnalyzeArgs {
 pub fn exec(args: AnalyzeArgs) -> anyhow::Result<()> {
     let path = &args.path;
     let format = &args.format;
-    let limit = args.limit;
+    let _limit = args.limit;
     let is_json = format == "json";
 
     if !is_soroban_project(path) {
-        eprintln!(
-            "{} Error: {:?} is not a valid Soroban project. (Missing Cargo.toml with 'soroban-sdk' dependency)",
-            "❌".red(),
-            path
-        );
+        if is_json {
+            let err = serde_json::json!({
+                "error": format!("{:?} is not a valid Soroban project", path),
+                "success": false,
+            });
+            println!("{}", serde_json::to_string_pretty(&err)?);
+        } else {
+            eprintln!(
+                "{} Error: {:?} is not a valid Soroban project. (Missing Cargo.toml with 'soroban-sdk' dependency)",
+                "❌".red(),
+                path
+            );
+        }
         std::process::exit(1);
     }
 
     if is_json {
-        eprintln!("{} Sanctifier: Valid Soroban project found at {:?}", "✨".green(), path);
+        eprintln!(
+            "{} Sanctifier: Valid Soroban project found at {:?}",
+            "✨".green(),
+            path
+        );
         eprintln!("{} Analyzing contract at {:?}...", "🔍".blue(), path);
     } else {
-        println!("{} Sanctifier: Valid Soroban project found at {:?}", "✨".green(), path);
+        println!(
+            "{} Sanctifier: Valid Soroban project found at {:?}",
+            "✨".green(),
+            path
+        );
         println!("{} Analyzing contract at {:?}...", "🔍".blue(), path);
+        use std::io::{self, Write};
+        io::stdout().flush().ok();
     }
 
-    let mut analyzer = Analyzer::new(sanctifier_core::SanctifyConfig::default());
-    
-    let mut all_size_warnings: Vec<SizeWarning> = Vec::new();
-    let mut all_unsafe_patterns: Vec<UnsafePattern> = Vec::new();
-    let mut all_auth_gaps: Vec<String> = Vec::new();
-    let mut all_panic_issues = Vec::new();
-    let mut all_arithmetic_issues: Vec<ArithmeticIssue> = Vec::new();
+    let mut config = load_config(path);
+    config.ledger_limit = args.limit; // Apply CLI limit to config
+    let analyzer = Analyzer::new(config);
+
+    // Load vulnerability database
+    let vuln_db = match &args.vuln_db {
+        Some(db_path) => {
+            if !is_json {
+                println!(
+                    "{} Loading custom vulnerability database from {:?}",
+                    "📦".blue(),
+                    db_path
+                );
+            }
+            VulnDatabase::load(db_path)?
+        }
+        None => {
+            if !is_json {
+                println!(
+                    "{} Loading built-in vulnerability database (v{})",
+                    "📦".blue(),
+                    VulnDatabase::load_default().version
+                );
+            }
+            VulnDatabase::load_default()
+        }
+    };
+
+    let mut collisions = Vec::new();
+    let mut size_warnings = Vec::new();
+    let mut unsafe_patterns = Vec::new();
+    let mut auth_gaps = Vec::new();
+    let mut panic_issues = Vec::new();
+    let mut arithmetic_issues = Vec::new();
+    let mut custom_matches = Vec::new();
+    let mut vuln_matches: Vec<VulnMatch> = Vec::new();
+    let mut event_issues = Vec::new();
+    let mut unhandled_results = Vec::new();
+    let mut upgrade_reports = Vec::new();
+    let mut smt_issues = Vec::new();
 
     if path.is_dir() {
-        analyze_directory(
+        walk_dir(
             path,
             &analyzer,
-            &mut all_size_warnings,
-            &mut all_unsafe_patterns,
-            &mut all_auth_gaps,
-            &mut all_panic_issues,
-            &mut all_arithmetic_issues,
-        );
+            &vuln_db,
+            &mut collisions,
+            &mut size_warnings,
+            &mut unsafe_patterns,
+            &mut auth_gaps,
+            &mut panic_issues,
+            &mut arithmetic_issues,
+            &mut custom_matches,
+            &mut vuln_matches,
+            &mut event_issues,
+            &mut unhandled_results,
+            &mut upgrade_reports,
+            &mut smt_issues,
+        )?;
     } else if path.extension().and_then(|s| s.to_str()) == Some("rs") {
         if let Ok(content) = fs::read_to_string(path) {
-            all_size_warnings.extend(analyzer.analyze_ledger_size(&content));
-
-            let patterns = analyzer.analyze_unsafe_patterns(&content);
-            for mut p in patterns {
-                p.snippet = format!("{}: {}", path.display(), p.snippet);
-                all_unsafe_patterns.push(p);
-            }
-
-            let gaps = analyzer.scan_auth_gaps(&content);
-            for g in gaps {
-                all_auth_gaps.push(format!("{}: {}", path.display(), g));
-            }
-
-            let panics = analyzer.scan_panics(&content);
-            for p in panics {
-                let mut p_mod = p.clone();
-                p_mod.location = format!("{}: {}", path.display(), p.location);
-                all_panic_issues.push(p_mod);
-            }
-
-            let arith = analyzer.scan_arithmetic_overflow(&content);
-            for mut a in arith {
-                a.location = format!("{}: {}", path.display(), a.location);
-                all_arithmetic_issues.push(a);
-            }
+            let file_name = path.display().to_string();
+            collisions.extend(analyzer.scan_storage_collisions(&content));
+            size_warnings.extend(analyzer.analyze_ledger_size(&content));
+            unsafe_patterns.extend(analyzer.analyze_unsafe_patterns(&content));
+            auth_gaps.extend(analyzer.scan_auth_gaps(&content));
+            panic_issues.extend(analyzer.scan_panics(&content));
+            arithmetic_issues.extend(analyzer.scan_arithmetic_overflow(&content));
+            custom_matches
+                .extend(analyzer.analyze_custom_rules(&content, &analyzer.config.custom_rules));
+            vuln_matches.extend(vuln_db.scan(&content, &file_name));
+            event_issues.extend(analyzer.scan_events(&content));
+            unhandled_results.extend(analyzer.scan_unhandled_results(&content));
+            upgrade_reports.push(analyzer.analyze_upgrade_patterns(&content));
+            smt_issues.extend(analyzer.verify_smt_invariants(&content));
         }
     }
 
+    let total_findings = collisions.len()
+        + size_warnings.len()
+        + unsafe_patterns.len()
+        + auth_gaps.len()
+        + panic_issues.len()
+        + arithmetic_issues.len()
+        + custom_matches.len()
+        + event_issues.len()
+        + unhandled_results.len()
+        + upgrade_reports
+            .iter()
+            .map(|r| r.findings.len())
+            .sum::<usize>()
+        + smt_issues.len();
+
+    let has_critical =
+        !auth_gaps.is_empty() || panic_issues.iter().any(|p| p.issue_type == "panic!");
+    let has_high = !arithmetic_issues.is_empty()
+        || !panic_issues.is_empty()
+        || !smt_issues.is_empty()
+        || !unhandled_results.is_empty()
+        || size_warnings
+            .iter()
+            .any(|w| w.level == SizeWarningLevel::ExceedsLimit);
+    let timestamp = chrono_timestamp();
+
+    let webhook_payload = ScanWebhookPayload {
+        event: "scan.completed",
+        project_path: path.display().to_string(),
+        timestamp_unix: timestamp.clone(),
+        summary: ScanWebhookSummary {
+            total_findings,
+            has_critical,
+            has_high,
+        },
+    };
+
+    if let Err(err) = send_scan_completed_webhooks(&args.webhook_urls, &webhook_payload) {
+        eprintln!("⚠️ Failed to initialize webhook client: {}", err);
+    }
+
     if is_json {
-        eprintln!("{} Static analysis complete.\n", "✅".green());
-        let output = serde_json::json!({
-            "size_warnings": all_size_warnings,
-            "unsafe_patterns": all_unsafe_patterns,
-            "auth_gaps": all_auth_gaps,
-            "panic_issues": all_panic_issues,
-            "arithmetic_issues": all_arithmetic_issues,
+        let report = serde_json::json!({
+            "storage_collisions": collisions,
+            "ledger_size_warnings": size_warnings,
+            "unsafe_patterns": unsafe_patterns,
+            "auth_gaps": auth_gaps,
+            "panic_issues": panic_issues,
+            "arithmetic_issues": arithmetic_issues,
+            "custom_rules": custom_matches,
+            "event_issues": event_issues,
+            "unhandled_results": unhandled_results,
+            "upgrade_reports": upgrade_reports,
+            "smt_issues": smt_issues,
+            "vulnerability_db_matches": vuln_matches,
+            "vulnerability_db_version": vuln_db.version,
+            "metadata": {
+                "version": env!("CARGO_PKG_VERSION"),
+                "timestamp": timestamp,
+                "project_path": path.display().to_string(),
+                "format": "sanctifier-ci-v1",
+            },
+            "error_codes": finding_codes::all_finding_codes(),
+            "summary": {
+                "total_findings": total_findings,
+                "storage_collisions": collisions.len(),
+                "auth_gaps": auth_gaps.len(),
+                "panic_issues": panic_issues.len(),
+                "arithmetic_issues": arithmetic_issues.len(),
+                "size_warnings": size_warnings.len(),
+                "unsafe_patterns": unsafe_patterns.len(),
+                "custom_rule_matches": custom_matches.len(),
+                "event_issues": event_issues.len(),
+                "unhandled_results": unhandled_results.len(),
+                "smt_issues": smt_issues.len(),
+                "has_critical": has_critical,
+                "has_high": has_high,
+            },
+            "findings": {
+                "storage_collisions": collisions.iter().map(|c| serde_json::json!({
+                    "code": finding_codes::STORAGE_COLLISION,
+                    "key_value": c.key_value,
+                    "key_type": c.key_type,
+                    "location": c.location,
+                    "message": c.message,
+                })).collect::<Vec<_>>(),
+                "ledger_size_warnings": size_warnings.iter().map(|w| serde_json::json!({
+                    "code": finding_codes::LEDGER_SIZE_RISK,
+                    "struct_name": w.struct_name,
+                    "estimated_size": w.estimated_size,
+                    "limit": w.limit,
+                    "level": w.level,
+                })).collect::<Vec<_>>(),
+                "unsafe_patterns": unsafe_patterns.iter().map(|p| serde_json::json!({
+                    "code": finding_codes::UNSAFE_PATTERN,
+                    "pattern_type": p.pattern_type,
+                    "line": p.line,
+                    "snippet": p.snippet,
+                })).collect::<Vec<_>>(),
+                "auth_gaps": auth_gaps.iter().map(|g| serde_json::json!({
+                    "code": finding_codes::AUTH_GAP,
+                    "function": g,
+                })).collect::<Vec<_>>(),
+                "panic_issues": panic_issues.iter().map(|p| serde_json::json!({
+                    "code": finding_codes::PANIC_USAGE,
+                    "function_name": p.function_name,
+                    "issue_type": p.issue_type,
+                    "location": p.location,
+                })).collect::<Vec<_>>(),
+                "arithmetic_issues": arithmetic_issues.iter().map(|a| serde_json::json!({
+                    "code": finding_codes::ARITHMETIC_OVERFLOW,
+                    "function_name": a.function_name,
+                    "operation": a.operation,
+                    "suggestion": a.suggestion,
+                    "location": a.location,
+                })).collect::<Vec<_>>(),
+                "custom_rules": custom_matches.iter().map(|m| serde_json::json!({
+                    "code": finding_codes::CUSTOM_RULE_MATCH,
+                    "rule_name": m.rule_name,
+                    "line": m.line,
+                    "snippet": m.snippet,
+                    "severity": m.severity,
+                })).collect::<Vec<_>>(),
+                "event_issues": event_issues.iter().map(|e| serde_json::json!({
+                    "code": finding_codes::EVENT_INCONSISTENCY,
+                    "event_name": e.event_name,
+                    "issue_type": e.issue_type,
+                    "location": e.location,
+                    "message": e.message,
+                })).collect::<Vec<_>>(),
+                "unhandled_results": unhandled_results.iter().map(|r| serde_json::json!({
+                    "code": finding_codes::UNHANDLED_RESULT,
+                    "function_name": r.function_name,
+                    "call_expression": r.call_expression,
+                    "location": r.location,
+                    "message": r.message,
+                })).collect::<Vec<_>>(),
+                "upgrade_risks": upgrade_reports.iter().flat_map(|r| &r.findings).map(|f| serde_json::json!({
+                    "code": finding_codes::UPGRADE_RISK,
+                    "category": f.category,
+                    "function_name": f.function_name,
+                    "location": f.location,
+                    "message": f.message,
+                    "suggestion": f.suggestion,
+                })).collect::<Vec<_>>(),
+                "smt_issues": smt_issues.iter().map(|s| serde_json::json!({
+                    "code": finding_codes::SMT_INVARIANT_VIOLATION,
+                    "function_name": s.function_name,
+                    "description": s.description,
+                    "location": s.location,
+                })).collect::<Vec<_>>(),
+            },
         });
-        println!("{}", serde_json::to_string_pretty(&output).unwrap_or_else(|_| "{}".to_string()));
+        println!("{}", serde_json::to_string_pretty(&report)?);
+
+        if has_critical || has_high {
+            std::process::exit(1);
+        }
+        return Ok(());
+    }
+
+    if collisions.is_empty() {
+        println!("\n{} No storage key collisions found.", "✅".green());
     } else {
         println!("{} Static analysis complete.\n", "✅".green());
 
@@ -129,6 +331,7 @@ pub fn exec(args: AnalyzeArgs) -> anyhow::Result<()> {
                 }
             }
         }
+    }
 
         if !all_auth_gaps.is_empty() {
             println!("\n{} Found potential Authentication Gaps!", "🛑".red());
@@ -144,12 +347,48 @@ pub fn exec(args: AnalyzeArgs) -> anyhow::Result<()> {
         } else {
             println!("\nNo authentication gaps found.");
         }
+    }
 
-        if !all_panic_issues.is_empty() {
-            println!("\n{} Found explicit Panics/Unwraps!", "🛑".red());
-            for issue in all_panic_issues {
+    if !event_issues.is_empty() {
+        println!(
+            "\n{} Found Event Consistency/Optimization issues!",
+            "⚠️".yellow()
+        );
+        for issue in &event_issues {
+            println!(
+                "   {} [{}] Event: {}",
+                "->".red(),
+                finding_codes::EVENT_INCONSISTENCY.bold(),
+                issue.event_name.bold()
+            );
+            println!("      Type: {:?}", issue.issue_type);
+            println!("      Location: {}", issue.location);
+            println!("      Message: {}", issue.message);
+        }
+    }
+
+    if !unhandled_results.is_empty() {
+        println!("\n{} Found Unhandled Result issues!", "⚠️".yellow());
+        for issue in &unhandled_results {
+            println!(
+                "   {} [{}] Function: {}",
+                "->".red(),
+                finding_codes::UNHANDLED_RESULT.bold(),
+                issue.function_name.bold()
+            );
+            println!("      Call: {}", issue.call_expression);
+            println!("      Location: {}", issue.location);
+            println!("      Message: {}", issue.message);
+        }
+    }
+
+    let total_upgrade_findings: usize = upgrade_reports.iter().map(|r| r.findings.len()).sum();
+    if total_upgrade_findings > 0 {
+        println!("\n{} Found Upgrade/Admin Risk issues!", "⚠️".yellow());
+        for report in &upgrade_reports {
+            for finding in &report.findings {
                 println!(
-                    "   {} Function {}: Using {} (Location: {})",
+                    "   {} [{}] Category: {:?}",
                     "->".red(),
                     issue.function_name.bold(),
                     issue.issue_type.yellow().bold(),
@@ -163,10 +402,8 @@ pub fn exec(args: AnalyzeArgs) -> anyhow::Result<()> {
                     }
                 }
             }
-            println!("   {} Tip: Prefer returning Result or Error types for better contract safety.", "💡".blue());
-        } else {
-            println!("\nNo panic/unwrap issues found.");
         }
+    }
 
         if !all_arithmetic_issues.is_empty() {
             println!("\n{} Found unchecked Arithmetic Operations!", "🔢".yellow());
@@ -186,13 +423,8 @@ pub fn exec(args: AnalyzeArgs) -> anyhow::Result<()> {
                     }
                 }
             }
-        } else {
-            println!("\nNo arithmetic overflow risks found.");
         }
-        
-        println!("\nNo upgrade pattern issues found.");
     }
-    
     Ok(())
 }
 
@@ -207,54 +439,4 @@ fn is_soroban_project(path: &Path) -> bool {
         path.to_path_buf()
     };
     cargo_toml_path.exists()
-}
-
-fn analyze_directory(
-    dir: &Path,
-    analyzer: &Analyzer,
-    all_size_warnings: &mut Vec<SizeWarning>,
-    all_unsafe_patterns: &mut Vec<UnsafePattern>,
-    all_auth_gaps: &mut Vec<String>,
-    all_panic_issues: &mut Vec<sanctifier_core::PanicIssue>,
-    all_arithmetic_issues: &mut Vec<ArithmeticIssue>,
-) {
-    if let Ok(entries) = fs::read_dir(dir) {
-        for entry in entries.flatten() {
-            let path = entry.path();
-            if path.is_dir() {
-                analyze_directory(
-                    &path, analyzer, all_size_warnings, all_unsafe_patterns, all_auth_gaps,
-                    all_panic_issues, all_arithmetic_issues,
-                );
-            } else if path.extension().and_then(|s| s.to_str()) == Some("rs") {
-                if let Ok(content) = fs::read_to_string(&path) {
-                    all_size_warnings.extend(analyzer.analyze_ledger_size(&content));
-
-                    let patterns = analyzer.analyze_unsafe_patterns(&content);
-                    for mut p in patterns {
-                        p.snippet = format!("{}: {}", path.display(), p.snippet);
-                        all_unsafe_patterns.push(p);
-                    }
-
-                    let gaps = analyzer.scan_auth_gaps(&content);
-                    for g in gaps {
-                        all_auth_gaps.push(format!("{}: {}", path.display(), g));
-                    }
-
-                    let panics = analyzer.scan_panics(&content);
-                    for p in panics {
-                        let mut p_mod = p.clone();
-                        p_mod.location = format!("{}: {}", path.display(), p.location);
-                        all_panic_issues.push(p_mod);
-                    }
-
-                    let arith = analyzer.scan_arithmetic_overflow(&content);
-                    for mut a in arith {
-                        a.location = format!("{}: {}", path.display(), a.location);
-                        all_arithmetic_issues.push(a);
-                    }
-                }
-            }
-        }
-    }
 }

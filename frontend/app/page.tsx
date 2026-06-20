@@ -1,18 +1,32 @@
 import Link from "next/link";
+import type { Metadata } from "next";
+
+export const metadata: Metadata = {
+  title: "Home | Sanctifier",
+  description: "Welcome to Sanctifier - Your comprehensive Stellar Soroban security analysis and formal verification suite",
+  openGraph: {
+    title: "Home | Sanctifier",
+    description: "Welcome to Sanctifier - Your comprehensive Stellar Soroban security analysis and formal verification suite",
+  },
+};
 
 export default function Home() {
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center bg-zinc-50 dark:bg-zinc-950 font-sans">
-      <main className="flex flex-col items-center gap-8 px-6">
-        <h1 className="text-4xl font-bold text-zinc-900 dark:text-zinc-50">
+    <div className="flex min-h-screen flex-col items-center justify-center font-sans" style={{ backgroundColor: "var(--background)", color: "var(--foreground)" }}>
+      <main id="main-content" className="flex flex-col items-center gap-8 px-6">
+        <h1 className="text-4xl font-bold">
           Sanctifier
         </h1>
-        <p className="text-lg text-zinc-600 dark:text-zinc-400 text-center max-w-md">
+        <p className="text-lg text-center max-w-md" style={{ color: "var(--muted-foreground)" }}>
           Stellar Soroban Security & Formal Verification Suite
         </p>
         <Link
           href="/dashboard"
-          className="rounded-lg bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900 px-6 py-3 font-medium hover:bg-zinc-800 dark:hover:bg-zinc-200 transition-colors"
+          className="rounded-lg px-6 py-3 font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2"
+          style={{
+            backgroundColor: "var(--primary)",
+            color: "var(--primary-foreground)",
+          }}
         >
           Open Security Dashboard
         </Link>

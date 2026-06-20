@@ -1,0 +1,9 @@
+---
+source: tooling/sanctifier-core/tests/gallery_snapshots.rs
+expression: findings
+---
+- rule_name: arithmetic_overflow
+  severity: Warning
+  message: "Unchecked '+' operation could overflow"
+  location: "add_reward:15"
+  suggestion: Use .checked_add(rhs) or .saturating_add(rhs) to handle overflow

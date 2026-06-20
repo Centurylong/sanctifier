@@ -143,22 +143,16 @@ fn main() {
                 eprintln!("{} Error: {:?} is not a valid Soroban project. (Missing Cargo.toml with 'soroban-sdk' dependency)", "❌".red(), path);
                 std::process::exit(1);
             }
-
-            // In JSON mode, send informational lines to stderr so stdout is clean JSON.
-            if is_json {
-                eprintln!(
-                    "{} Sanctifier: Valid Soroban project found at {:?}",
-                    "✨".green(),
-                    path
-                );
-                eprintln!("{} Analyzing contract at {:?}...", "🔍".blue(), path);
+            commands::analyze::exec(args)?;
+        }
+        Commands::Badge(args) => {
+            commands::badge::exec(args)?;
+        }
+        Commands::Report { output } => {
+            if let Some(p) = output {
+                println!("Report saved to {:?}", p);
             } else {
-                println!(
-                    "{} Sanctifier: Valid Soroban project found at {:?}",
-                    "✨".green(),
-                    path
-                );
-                println!("{} Analyzing contract at {:?}...", "🔍".blue(), path);
+                println!("Report printed to stdout.");
             }
 
             let mut config = load_config(path);
@@ -274,7 +268,7 @@ fn main() {
             if is_json {
                 eprintln!("{} Static analysis complete.", "✅".green());
             } else {
-                println!("{} Static analysis complete.", "✅".green());
+                rs_files.push(path.clone());
             }
 
             if format == "json" {
@@ -477,29 +471,9 @@ fn main() {
                     }
                 }
 
-                if !upgrade_report.findings.is_empty()
-                    || !upgrade_report.upgrade_mechanisms.is_empty()
-                    || !upgrade_report.init_functions.is_empty()
-                {
-                    println!("\n{} Upgrade Pattern Analysis", "🔄".yellow());
-                    for f in &upgrade_report.findings {
-                        println!(
-                            "   {} [{}] {} ({})",
-                            "->".yellow(),
-                            format!("{:?}", f.category).to_lowercase(),
-                            f.message,
-                            f.location
-                        );
-                        println!("      {} {}", "💡".blue(), f.suggestion);
-                    }
-                    if !upgrade_report.suggestions.is_empty() {
-                        for s in &upgrade_report.suggestions {
-                            println!("   {} {}", "💡".blue(), s);
-                        }
-                    }
-                } else {
-                    println!("\nNo upgrade pattern issues found.");
-                }
+                let file_label = f.display().to_string();
+                edges.extend(analyzer.scan_invoke_contract_calls(&content, &caller, &file_label));
+            }
 
                 if !all_gas_estimations.is_empty() {
                     println!("\n{} Gas Estimation (Heuristics)", "⛽".cyan());
@@ -540,6 +514,12 @@ fn main() {
                     zk_proof.verifier_contract.bold()
                 );
             }
+            println!(
+                "{} Wrote call graph to {:?} ({} edges)",
+                "✅".green(),
+                output,
+                edges.len()
+            );
         }
         Commands::Report { output } => {
             println!("{} Generating report...", "📄".yellow());
@@ -620,6 +600,8 @@ fn main() {
             }
         }
     }
+
+    Ok(())
 }
 
 fn is_soroban_project(path: &Path) -> bool {
@@ -881,10 +863,14 @@ fn find_config_path(start_path: &Path) -> Option<PathBuf> {
         Some(start_path.to_path_buf())
     };
 
-    while let Some(path) = current {
-        let config_path = path.join(".sanctify.toml");
+    loop {
+        let config_path = current.join(".sanctify.toml");
         if config_path.exists() {
-            return Some(config_path);
+            if let Ok(content) = fs::read_to_string(&config_path) {
+                if let Ok(config) = toml::from_str(&content) {
+                    return config;
+                }
+            }
         }
         current = path.parent().map(|p| p.to_path_buf());
     }

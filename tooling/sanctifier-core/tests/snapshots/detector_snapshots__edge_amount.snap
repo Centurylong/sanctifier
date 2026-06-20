@@ -1,0 +1,24 @@
+---
+source: tooling/sanctifier-core/tests/detector_snapshots.rs
+expression: findings
+---
+- rule_name: edge_amount
+  severity: Warning
+  message: Transfer function missing amount > 0 validation
+  location: "transfer:13"
+  suggestion: "Add validation: if amount <= 0 { panic_with_error!(...) }"
+- rule_name: edge_amount
+  severity: Warning
+  message: Transfer function missing from != to validation (self-transfer check)
+  location: "transfer:13"
+  suggestion: "Add validation: if from == to { panic_with_error!(...) }"
+- rule_name: edge_amount
+  severity: Warning
+  message: Mint function missing amount > 0 validation
+  location: "mint:20"
+  suggestion: "Add validation: if amount <= 0 { panic_with_error!(...) }"
+- rule_name: edge_amount
+  severity: Warning
+  message: Burn function missing amount > 0 validation
+  location: "burn:25"
+  suggestion: "Add validation: if amount <= 0 { panic_with_error!(...) }"

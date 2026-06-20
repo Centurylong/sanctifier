@@ -4,8 +4,7 @@ import { useState, useCallback, useEffect } from "react";
 import type { AnalysisReport, Finding, Severity, SavedReport } from "../types";
 import { transformReport } from "../lib/transform";
 import { exportToPdf } from "../lib/export-pdf";
-import { SeverityFilter } from "../components/SeverityFilter";
-import { FindingsList } from "../components/FindingsList";
+import { FindingsPanel } from "../components/FindingsPanel";
 import { SummaryChart } from "../components/SummaryChart";
 import { KaniMetricsWidget } from "../components/KaniMetricsWidget";
 import { SymbolicGraphWidget } from "../components/SymbolicGraphWidget";
@@ -24,9 +23,12 @@ const SAMPLE_JSON = `{
   "arithmetic_issues": []
 }`;
 
+type Tab = "findings" | "callgraph";
+
 export default function DashboardPage() {
   const [findings, setFindings] = useState<Finding[]>([]);
-  const [severityFilter, setSeverityFilter] = useState<Severity | "all">("all");
+  const [callGraphNodes, setCallGraphNodes] = useState<CallGraphNode[]>([]);
+  const [callGraphEdges, setCallGraphEdges] = useState<CallGraphEdge[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [jsonInput, setJsonInput] = useState("");
   const [reportData, setReportData] = useState<AnalysisReport | null>(null);
@@ -40,8 +42,10 @@ export default function DashboardPage() {
     setSavedReportsCount(listSavedReports().length);
   }, []);
 
-  const loadReport = useCallback(() => {
+  const parseReport = useCallback((text: string) => {
     setError(null);
+    setIsLoading(true);
+    
     try {
       const parsed = JSON.parse(jsonInput || SAMPLE_JSON) as AnalysisReport;
       setFindings(transformReport(parsed));
@@ -51,11 +55,17 @@ export default function DashboardPage() {
       setFindings([]);
       setReportData(null);
     }
-  }, [jsonInput]);
+  }, []);
+
+  const loadReport = useCallback(() => {
+    parseReport(jsonInput);
+  }, [jsonInput, parseReport]);
 
   const handleFileUpload = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
+    
+    setIsLoading(true);
     const reader = new FileReader();
     reader.onload = (ev) => {
       const text = ev.target?.result as string;
@@ -72,7 +82,9 @@ export default function DashboardPage() {
     };
     reader.readAsText(file);
     e.target.value = "";
-  }, []);
+  }, [parseReport]);
+
+  const hasData = findings.length > 0;
 
   const runWasmAnalysis = useCallback(async () => {
     setError(null);
@@ -103,10 +115,18 @@ export default function DashboardPage() {
   }, [reportData, findings]);
 
   return (
-    <div className="min-h-screen bg-zinc-50 dark:bg-zinc-950 text-zinc-900 dark:text-zinc-100">
-      <header className="border-b border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 px-6 py-4 flex items-center justify-between">
-        <div className="flex items-center gap-6">
-          <Link href="/" className="font-bold text-lg">
+    <div className="min-h-screen" style={{ backgroundColor: "var(--background)", color: "var(--foreground)" }}>
+      <header 
+        className="border-b px-4 sm:px-6 py-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4"
+        style={{ borderColor: "var(--border)", backgroundColor: "var(--card)" }}
+        role="banner"
+      >
+        <div className="flex items-center gap-4 sm:gap-6">
+          <Link 
+            href="/" 
+            className="font-bold text-lg whitespace-nowrap focus:outline-none focus:ring-2"
+            style={{ color: "var(--foreground)" }}
+          >
             Sanctifier
           </Link>
           <span className="text-zinc-500 dark:text-zinc-400">Security Dashboard</span>
@@ -122,37 +142,66 @@ export default function DashboardPage() {
             )}
           </Link>
         </div>
-        <ThemeToggle />
+        <nav className="flex items-center gap-4" aria-label="Main navigation">
+          <Link
+            href="/terminal"
+            className="text-sm font-medium transition-colors focus:outline-none focus:ring-2"
+            style={{ color: "var(--muted-foreground)" }}
+          >
+            Live Terminal
+          </Link>
+          <ThemeToggle />
+        </nav>
       </header>
 
-      <main className="max-w-6xl mx-auto px-6 py-8 space-y-8">
-        <section className="rounded-lg border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 p-6">
+      <main id="main-content" className="max-w-6xl mx-auto px-4 sm:px-6 py-8 space-y-8">
+        <section 
+          className="rounded-lg border p-6"
+          style={{ borderColor: "var(--border)", backgroundColor: "var(--card)" }}
+        >
           <h2 className="text-lg font-semibold mb-4">Load Analysis Report</h2>
-          <p className="text-sm text-zinc-600 dark:text-zinc-400 mb-4">
-            Paste JSON from <code className="bg-zinc-100 dark:bg-zinc-800 px-1 rounded">sanctifier analyze --format json</code> or upload a file.
+          <p className="text-sm mb-4" style={{ color: "var(--muted-foreground)" }}>
+            Paste JSON from{" "}
+            <code 
+              className="px-1 rounded font-mono text-xs"
+              style={{ backgroundColor: "var(--muted)" }}
+            >
+              sanctifier analyze --format json
+            </code>{" "}
+            or upload a file.
           </p>
-          <div className="flex flex-wrap gap-4">
-            <label className="cursor-pointer rounded-lg border border-zinc-300 dark:border-zinc-600 px-4 py-2 text-sm hover:bg-zinc-100 dark:hover:bg-zinc-800">
+          <div className="flex flex-wrap gap-2 sm:gap-4">
+            <label 
+              className="flex-1 sm:flex-none text-center cursor-pointer rounded-lg border px-4 py-2 text-sm transition-colors focus-within:ring-2"
+              style={{ borderColor: "var(--border)" }}
+            >
               Upload JSON
               <input
                 type="file"
                 accept=".json"
                 className="hidden"
                 onChange={handleFileUpload}
+                aria-label="Upload JSON file"
               />
             </label>
             <button
               onClick={loadReport}
-              className="rounded-lg bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900 px-4 py-2 text-sm font-medium hover:bg-zinc-800 dark:hover:bg-zinc-200"
+              disabled={isLoading}
+              className="flex-1 sm:flex-none rounded-lg px-4 py-2 text-sm font-medium transition-colors disabled:opacity-50 focus:outline-none focus:ring-2"
+              style={{
+                backgroundColor: "var(--primary)",
+                color: "var(--primary-foreground)",
+              }}
             >
-              Parse JSON
+              {isLoading ? "Parsing..." : "Parse JSON"}
             </button>
             <button
               onClick={() => {
                 exportToPdf(findings);
               }}
-              disabled={findings.length === 0}
-              className="rounded-lg border border-zinc-300 dark:border-zinc-600 px-4 py-2 text-sm disabled:opacity-50 hover:bg-zinc-100 dark:hover:bg-zinc-800"
+              disabled={!hasData || isLoading}
+              className="flex-1 sm:flex-none rounded-lg border px-4 py-2 text-sm transition-colors disabled:opacity-50 focus:outline-none focus:ring-2"
+              style={{ borderColor: "var(--border)" }}
             >
               Export PDF
             </button>
@@ -173,13 +222,26 @@ export default function DashboardPage() {
             </p>
           )}
           {error && (
-            <p className="mt-2 text-sm text-red-600 dark:text-red-400">{error}</p>
+            <div
+              role="alert"
+              aria-live="polite"
+              className="mt-2 text-sm p-2 rounded"
+              style={{ color: "var(--destructive)" }}
+            >
+              {error}
+            </div>
           )}
           <textarea
             value={jsonInput}
             onChange={(e) => setJsonInput(e.target.value)}
             placeholder={SAMPLE_JSON}
-            className="mt-4 w-full h-32 rounded-lg border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-950 p-3 font-mono text-sm focus:ring-2 focus:ring-zinc-400 dark:focus:ring-zinc-600 outline-none"
+            className="mt-4 w-full h-32 rounded-lg border p-3 font-mono text-sm focus:ring-2 outline-none transition-colors"
+            style={{
+              borderColor: "var(--border)",
+              backgroundColor: "var(--background)",
+              color: "var(--foreground)",
+            }}
+            aria-label="JSON input"
           />
         </section>
 
