@@ -1,0 +1,78 @@
+# Path-based PR labeler configuration (actions/labeler@v5).
+# Labels referenced here already exist in the repository.
+# See .github/workflows/labeler.yml for the workflow that applies these.
+
+"area: ci/cd":
+  - changed-files:
+      - any-glob-to-any-file:
+          - ".github/workflows/**"
+          - ".github/labeler.yml"
+
+"area: infra":
+  - changed-files:
+      - any-glob-to-any-file:
+          - "Dockerfile"
+          - ".dockerignore"
+          - "scripts/**"
+          - ".github/dependabot.yml"
+
+"area: contracts":
+  - changed-files:
+      - any-glob-to-any-file:
+          - "contracts/**"
+          - "my-contract/**"
+
+"area: core-engine":
+  - changed-files:
+      - any-glob-to-any-file:
+          - "tooling/sanctifier-core/**"
+          - "tooling/sanctify-macros/**"
+
+"area: cli":
+  - changed-files:
+      - any-glob-to-any-file:
+          - "tooling/sanctifier-cli/**"
+
+"area: wasm":
+  - changed-files:
+      - any-glob-to-any-file:
+          - "tooling/sanctifier-wasm/**"
+
+"area: frontend":
+  - changed-files:
+      - any-glob-to-any-file:
+          - "frontend/**"
+          - "packages/**"
+
+"area: docs":
+  - changed-files:
+      - any-glob-to-any-file:
+          - "**/*.md"
+          - "docs/**"
+
+"area: testing":
+  - changed-files:
+      - any-glob-to-any-file:
+          - "**/tests/**"
+          - "**/benches/**"
+
+dependencies:
+  - changed-files:
+      - any-glob-to-any-file:
+          - "**/Cargo.toml"
+          - "Cargo.lock"
+          - "**/package.json"
+          - "**/package-lock.json"
+
+rust:
+  - changed-files:
+      - any-glob-to-any-file:
+          - "**/*.rs"
+
+javascript:
+  - changed-files:
+      - any-glob-to-any-file:
+          - "**/*.js"
+          - "**/*.jsx"
+          - "**/*.ts"
+          - "**/*.tsx"

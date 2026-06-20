@@ -1,0 +1,9 @@
+---
+source: tooling/sanctifier-core/tests/gallery_snapshots.rs
+expression: findings
+---
+- rule_name: auth_gap
+  severity: Warning
+  message: "Function 'initialize' performs storage mutation without authentication"
+  location: initialize
+  suggestion: Add require_auth() or require_auth_for_args() before storage operations

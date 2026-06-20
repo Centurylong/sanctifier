@@ -456,8 +456,11 @@ impl Analyzer {
 
     #[cfg(feature = "smt")]
     fn verify_smt_invariants_impl(&self) -> Vec<smt::SmtInvariantIssue> {
-        // In a full implementation, this would dynamically parse the AST to extract invariants.
-        // For now, we return an empty vector to avoid false positives in general analysis.
+        // The abstract Z3 model checks hardcoded token invariants, not the source
+        // under analysis. Running it here produces false positives on every contract
+        // (BalanceNonNegative and NoUnauthorizedMint are VIOLATED by design in the
+        // abstract model). Invariant proving belongs exclusively to `sanctifier prove`,
+        // which invokes SmtProver directly. Return empty to keep `analyze` clean.
         Vec::new()
     }
 

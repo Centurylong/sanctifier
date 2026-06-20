@@ -54,6 +54,17 @@ jobs:
           cargo build -p sanctifier-core --all-features
           cd tooling/sanctifier-cli && cargo build
 
+      - name: CLI reference is up to date
+        # Regenerates docs/cli.md from the clap command definitions and fails if
+        # it differs from the committed copy, so the CLI reference can never drift
+        # from the parser. Regenerate locally with:
+        #   cargo run -p sanctifier-cli -- generate-docs > docs/cli.md
+        run: |
+          cargo run -p sanctifier-cli --manifest-path tooling/sanctifier-cli/Cargo.toml \
+            -- generate-docs > docs/cli.md
+          git diff --exit-code -- docs/cli.md \
+            || { echo "::error::docs/cli.md is stale. Run: cargo run -p sanctifier-cli -- generate-docs > docs/cli.md"; exit 1; }
+
       - name: Run All Tests
         run: |
           cargo test -p sanctifier-core --all-features
@@ -89,3 +100,10 @@ jobs:
         run: |
           cargo build -p reentrancy-guard
           cargo build -p protected-vault
+
+      - name: Verify SMT proof — supply_conserved
+        run: |
+          cd tooling/sanctifier-cli
+          ./target/release/sanctifier prove \
+            --invariant supply_conserved \
+            --no-save
