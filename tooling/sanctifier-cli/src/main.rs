@@ -92,6 +92,8 @@ pub enum Commands {
     Init(commands::init::InitArgs),
     /// Update the sanctifier binary to the latest Sanctifier binary
     Update,
+    /// Prove token contract invariants using the SMT solver
+    Prove(commands::prove::ProveArgs),
     /// Translate Soroban contract into a Kani-verifiable harness
     Kani {
         /// Path to the .rs file to translate
@@ -138,6 +140,9 @@ fn main() -> anyhow::Result<()> {
         }
         Commands::Update => {
             commands::update::exec()?;
+        }
+        Commands::Prove(args) => {
+            commands::prove::exec(args)?;
         }
         Commands::Kani { path, output } => {
             if path.extension().and_then(|s| s.to_str()) != Some("rs") {

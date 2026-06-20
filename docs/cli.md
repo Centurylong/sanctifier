@@ -10,6 +10,7 @@ This document contains the help content for the `sanctifier` command-line progra
 * [`sanctifier report`↴](#sanctifier-report)
 * [`sanctifier init`↴](#sanctifier-init)
 * [`sanctifier update`↴](#sanctifier-update)
+* [`sanctifier prove`↴](#sanctifier-prove)
 * [`sanctifier kani`↴](#sanctifier-kani)
 * [`sanctifier fix`↴](#sanctifier-fix)
 * [`sanctifier generate-docs`↴](#sanctifier-generate-docs)
@@ -27,6 +28,7 @@ Stellar Soroban Security & Formal Verification Suite
 * `report` — Generate a summary report
 * `init` — Initialize a new Sanctifier project
 * `update` — Update the sanctifier binary to the latest Sanctifier binary
+* `prove` — Prove token contract invariants using the SMT solver
 * `kani` — Translate Soroban contract into a Kani-verifiable harness
 * `fix` — Automatically fix basic vulnerabilities and code issues
 * `generate-docs` — Print the CLI reference as Markdown (used to keep docs/cli.md up to date)
@@ -107,6 +109,24 @@ Initialize a new Sanctifier project
 Update the sanctifier binary to the latest Sanctifier binary
 
 **Usage:** `sanctifier update`
+
+
+
+## `sanctifier prove`
+
+Prove token contract invariants using the SMT solver
+
+**Usage:** `sanctifier prove [OPTIONS] --invariant <INVARIANT>`
+
+###### **Options:**
+
+* `-p`, `--path <PATH>` — Path to the contract directory or file to verify
+
+  Default value: `.`
+* `--invariant <INVARIANT>` — Invariant to prove: balance_non_negative | supply_conserved | no_unauthorized_mint | all
+* `--output-dir <OUTPUT_DIR>` — Directory to write proof certificates (default: <path>/.sanctifier/proofs)
+* `--no-save` — Skip saving proof certificates to disk (useful for CI smoke checks)
+* `--json` — Emit results as JSON
 
 
 

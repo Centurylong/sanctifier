@@ -94,7 +94,7 @@ jobs:
           fail_ci_if_error: false
 
       - name: Build Release CLI
-        run: cd tooling/sanctifier-cli && cargo build --release
+        run: cargo build -p sanctifier-cli --release
 
       - name: Build reentrancy-guard and protected-vault
         run: |
@@ -104,6 +104,6 @@ jobs:
       - name: Verify SMT proof — supply_conserved
         run: |
           cd tooling/sanctifier-cli
-          ./target/release/sanctifier prove \
+          ../../target/release/sanctifier prove \
             --invariant supply_conserved \
             --no-save
