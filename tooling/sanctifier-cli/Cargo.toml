@@ -1,6 +1,3 @@
-[workspace]
-members = ["."]
-
 [package]
 name = "sanctifier-cli"
 version = "0.1.0"

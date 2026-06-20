@@ -1,5 +1,6 @@
 [workspace]
 members = [
+    "tooling/sanctifier-cli",
     "tooling/sanctifier-core",
     "tooling/sanctifier-wasm",
     "tooling/sanctifier-sdk",
@@ -19,6 +20,9 @@ soroban-sdk = "20.0.0"
 
 [workspace.lints.rust]
 unexpected_cfgs = "allow"
+
+[workspace.lints.clippy]
+all = "warn"
 
 [profile.release]
 opt-level = "z"
