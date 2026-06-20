@@ -9,6 +9,7 @@ This document contains the help content for the `sanctifier` command-line progra
 * [`sanctifier badge`↴](#sanctifier-badge)
 * [`sanctifier report`↴](#sanctifier-report)
 * [`sanctifier init`↴](#sanctifier-init)
+* [`sanctifier update`↴](#sanctifier-update)
 * [`sanctifier kani`↴](#sanctifier-kani)
 * [`sanctifier fix`↴](#sanctifier-fix)
 * [`sanctifier generate-docs`↴](#sanctifier-generate-docs)
@@ -25,6 +26,7 @@ Stellar Soroban Security & Formal Verification Suite
 * `badge` — Generate a security badge from a JSON report
 * `report` — Generate a summary report
 * `init` — Initialize a new Sanctifier project
+* `update` — Update the sanctifier binary to the latest Sanctifier binary
 * `kani` — Translate Soroban contract into a Kani-verifiable harness
 * `fix` — Automatically fix basic vulnerabilities and code issues
 * `generate-docs` — Print the CLI reference as Markdown (used to keep docs/cli.md up to date)
@@ -92,7 +94,19 @@ Generate a summary report
 
 Initialize a new Sanctifier project
 
-**Usage:** `sanctifier init`
+**Usage:** `sanctifier init [OPTIONS]`
+
+###### **Options:**
+
+* `-f`, `--force` — Force overwrite existing configuration file
+
+
+
+## `sanctifier update`
+
+Update the sanctifier binary to the latest Sanctifier binary
+
+**Usage:** `sanctifier update`
 
 
 

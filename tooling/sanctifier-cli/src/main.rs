@@ -89,7 +89,9 @@ pub enum Commands {
         output: Option<PathBuf>,
     },
     /// Initialize a new Sanctifier project
-    Init,
+    Init(commands::init::InitArgs),
+    /// Update the sanctifier binary to the latest Sanctifier binary
+    Update,
     /// Translate Soroban contract into a Kani-verifiable harness
     Kani {
         /// Path to the .rs file to translate
@@ -131,8 +133,11 @@ fn main() -> anyhow::Result<()> {
                 println!("Report printed to stdout.");
             }
         }
-        Commands::Init => {
-            println!("{} Initializing Sanctifier project...", "✨".green());
+        Commands::Init(args) => {
+            commands::init::exec(args, None)?;
+        }
+        Commands::Update => {
+            commands::update::exec()?;
         }
         Commands::Kani { path, output } => {
             if path.extension().and_then(|s| s.to_str()) != Some("rs") {

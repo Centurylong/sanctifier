@@ -201,6 +201,8 @@ pub fn exec(args: AnalyzeArgs) -> anyhow::Result<()> {
         "╚══════════════════════════════════════════════════════════════╝".cyan()
     );
 
+    println!("\nNo storage key collisions found.");
+
     if all_size_warnings.is_empty() {
         println!("\nNo ledger size issues found.");
     } else {
