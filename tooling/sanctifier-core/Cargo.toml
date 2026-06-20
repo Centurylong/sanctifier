@@ -5,25 +5,24 @@ edition = "2021"
 description = "Core analysis logic for Sanctifier"
 license = "MIT"
 
-[lints]
-workspace = true
+[features]
+default = ["smt"]
+smt = ["dep:z3"]
 
 [dependencies]
-soroban-sdk = "20.0.0" # Target latest Soroban SDK
-
-syn = { version = "2.0", features = ["full", "extra-traits", "visit", "visit-mut", "fold"] }
+soroban-sdk = "20.5.0" # Target latest Soroban SDK
+syn = { version = "2.0", features = ["full", "extra-traits", "visit"] }
 quote = "1.0"
 proc-macro2 = { version = "1.0", features = ["span-locations"] }
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 thiserror = "1.0"
 regex = "1.10.3"
-sha2 = "0.10.8"
-z3 = "0.12"
+z3 = { version = "0.12.1", optional = true }
 
 [dev-dependencies]
-insta = { version = "1.39", features = ["yaml"] }
-criterion = { version = "0.5", features = ["html_reports"] }
+criterion = "0.5.1"
+insta = { version = "1.40", features = ["yaml"] }
 
 [[bench]]
 name = "benchmark"

@@ -1,26 +1,25 @@
-pub mod gas_estimator;
-pub mod invariant;
-pub mod kani_bridge;
-pub mod reentrancy;
-pub mod rules;
-pub mod scoring;
-pub mod smt;
-pub mod symbolic;
-pub mod zk_proof;
-
 use serde::{Deserialize, Serialize};
-use std::collections::HashSet;
 use std::panic::catch_unwind;
+pub mod finding_codes;
+pub mod gas_estimator;
+pub mod gas_report;
+pub mod invariant;
+pub mod patcher;
+pub mod rules;
+#[cfg(feature = "smt")]
+pub mod smt;
+mod storage_collision;
+use std::collections::HashSet;
 use syn::spanned::Spanned;
 use syn::visit::{self, Visit};
 use syn::{parse_str, Fields, File, Item, Meta, Type};
 
-#[cfg(not(target_arch = "wasm32"))]
-use soroban_sdk::Env;
-use thiserror::Error;
+pub use rules::{Rule, RuleRegistry, RuleViolation, Severity};
 
-const DEFAULT_APPROACHING_THRESHOLD: f64 = 0.8;
+// Redundant imports removed
+use crate::rules::arithmetic_overflow::ArithVisitor;
 
+const DEFAULT_STRICT_THRESHOLD: f64 = 0.9;
 fn with_panic_guard<F, R>(f: F) -> R
 where
     F: FnOnce() -> R + std::panic::UnwindSafe,
@@ -32,7 +31,7 @@ where
 // ── Existing types ────────────────────────────────────────────────────────────
 
 /// Severity of a ledger size warning.
-#[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
+#[derive(Debug, Serialize, Clone, PartialEq)]
 pub enum SizeWarningLevel {
     /// Size exceeds the ledger entry limit (e.g. 64KB).
     ExceedsLimit,
@@ -40,7 +39,7 @@ pub enum SizeWarningLevel {
     ApproachingLimit,
 }
 
-#[derive(Debug, Serialize, Deserialize, Clone)]
+#[derive(Debug, Serialize, Clone)]
 pub struct SizeWarning {
     pub struct_name: String,
     pub estimated_size: usize,
@@ -48,7 +47,7 @@ pub struct SizeWarning {
     pub level: SizeWarningLevel,
 }
 
-#[derive(Debug, Serialize, Deserialize, Clone)]
+#[derive(Debug, Serialize, Clone)]
 pub struct PanicIssue {
     pub function_name: String,
     pub issue_type: String, // "panic!", "unwrap", "expect"
@@ -57,14 +56,14 @@ pub struct PanicIssue {
 
 // ── UnsafePattern types (visitor-based panic/unwrap scanning) ─────────────────
 
-#[derive(Debug, Serialize, Deserialize, Clone)]
+#[derive(Debug, Serialize, Clone)]
 pub enum PatternType {
     Panic,
     Unwrap,
     Expect,
 }
 
-#[derive(Debug, Serialize, Deserialize, Clone)]
+#[derive(Debug, Serialize, Clone)]
 pub struct UnsafePattern {
     pub pattern_type: PatternType,
     pub line: usize,
@@ -73,7 +72,7 @@ pub struct UnsafePattern {
 
 // ── Upgrade analysis types ────────────────────────────────────────────────────
 
-#[derive(Debug, Serialize, Deserialize, Clone)]
+#[derive(Debug, Serialize, Clone)]
 pub struct UpgradeFinding {
     pub category: UpgradeCategory,
     pub function_name: Option<String>,
@@ -82,7 +81,7 @@ pub struct UpgradeFinding {
     pub suggestion: String,
 }
 
-#[derive(Debug, Serialize, Deserialize, Clone)]
+#[derive(Debug, Serialize, Clone)]
 #[serde(rename_all = "snake_case")]
 pub enum UpgradeCategory {
     AdminControl,
@@ -93,7 +92,7 @@ pub enum UpgradeCategory {
 }
 
 /// Upgrade safety report.
-#[derive(Debug, Serialize, Deserialize, Clone, Default)]
+#[derive(Debug, Serialize, Clone, Default)]
 pub struct UpgradeReport {
     pub findings: Vec<UpgradeFinding>,
     pub upgrade_mechanisms: Vec<String>,
@@ -114,14 +113,52 @@ impl UpgradeReport {
     }
 }
 
+struct UnhandledResultVisitor {
+    issues: Vec<UnhandledResultIssue>,
+    current_fn: Option<String>,
+    is_public_fn: bool,
+}
+
+struct UnsafeVisitor {
+    patterns: Vec<UnsafePattern>,
+}
+
+impl<'ast> Visit<'ast> for UnsafeVisitor {
+    fn visit_expr_method_call(&mut self, node: &'ast syn::ExprMethodCall) {
+        let method_name = node.method.to_string();
+        if method_name == "unwrap" || method_name == "expect" {
+            let pattern_type = if method_name == "unwrap" {
+                PatternType::Unwrap
+            } else {
+                PatternType::Expect
+            };
+            let line = node.span().start().line;
+            self.patterns.push(UnsafePattern {
+                pattern_type,
+                line,
+                snippet: quote::quote!(#node).to_string(),
+            });
+        }
+        visit::visit_expr_method_call(self, node);
+    }
+
+    fn visit_macro(&mut self, node: &'ast syn::Macro) {
+        if node.path.is_ident("panic") {
+            let line = node.span().start().line;
+            self.patterns.push(UnsafePattern {
+                pattern_type: PatternType::Panic,
+                line,
+                snippet: quote::quote!(#node).to_string(),
+            });
+        }
+        visit::visit_macro(self, node);
+    }
+}
+
 #[allow(dead_code)]
 fn has_attr(attrs: &[syn::Attribute], name: &str) -> bool {
     attrs.iter().any(|attr| {
-        if let Meta::Path(path) = &attr.meta {
-            path.is_ident(name) || path.segments.iter().any(|s| s.ident == name)
-        } else {
-            false
-        }
+        matches!(&attr.meta, Meta::Path(path) if path.is_ident(name) || path.segments.iter().any(|s| s.ident == name))
     })
 }
 
@@ -147,7 +184,7 @@ fn is_init_fn(name: &str) -> bool {
 // ── ArithmeticIssue (NEW) ─────────────────────────────────────────────────────
 
 /// Represents an unchecked arithmetic operation that could overflow or underflow.
-#[derive(Debug, Serialize, Deserialize, Clone)]
+#[derive(Debug, Serialize, Clone)]
 pub struct ArithmeticIssue {
     /// Contract function in which the operation was found.
     pub function_name: String,
@@ -159,10 +196,18 @@ pub struct ArithmeticIssue {
     pub location: String,
 }
 
-// ── EventIssue (NEW) ──────────────────────────────────────────────────────────
+// ── StorageCollisionIssue (NEW) ──────────────────────────────────────────────
 
-/// Severity of a event consistency issue.
-#[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
+/// Represents a potential storage key collision.
+#[derive(Debug, Serialize, Clone)]
+pub struct StorageCollisionIssue {
+    pub key_value: String,
+    pub key_type: String,
+    pub location: String,
+    pub message: String,
+}
+
+#[derive(Debug, Serialize, Clone, PartialEq)]
 pub enum EventIssueType {
     /// Topics count varies for the same event name.
     InconsistentSchema,
@@ -170,7 +215,7 @@ pub enum EventIssueType {
     OptimizableTopic,
 }
 
-#[derive(Debug, Serialize, Deserialize, Clone)]
+#[derive(Debug, Serialize, Clone)]
 pub struct EventIssue {
     pub function_name: String,
     pub event_name: String,
@@ -179,72 +224,40 @@ pub struct EventIssue {
     pub location: String,
 }
 
-// ── Deprecated API Issue (NEW) ──────────────────────────────────────────────────
-
-/// Represents usage of a deprecated Soroban host function.
-#[derive(Debug, Serialize, Deserialize, Clone)]
-pub struct DeprecatedApiIssue {
+#[derive(Debug, Serialize, Clone)]
+pub struct UnhandledResultIssue {
     pub function_name: String,
-    pub deprecated_api: String,
-    pub location: String,
-}
-
-// ── Auto-Fix Types (NEW) ──────────────────────────────────────────────────────
-
-#[derive(Debug, Serialize, Deserialize, Clone)]
-pub struct CodeFix {
-    pub file: String,
-    pub line: usize,
-    pub column: usize,
-    pub end_line: usize,
-    pub end_column: usize,
-    pub replacement: String,
-    pub description: String,
-    pub fix_type: FixType,
-}
-
-#[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
-pub enum FixType {
-    AddAuth,
-    PrefixUnused,
-}
-
-#[derive(Debug, Serialize, Deserialize, Clone)]
-pub struct UnusedVariableIssue {
-    pub name: String,
-    pub function_name: String,
-    pub location: String,
-    pub line: usize,
-    pub col: usize,
-}
-
-// ── Storage Collision Issue (NEW) ──────────────────────────────────────────
-
-/// Represents a potential collision between storage types (e.g. Instance and Persistent)
-/// using the same keys, which can lead to unpredictable behavior.
-#[derive(Debug, Serialize, Deserialize, Clone)]
-pub struct StorageCollisionIssue {
-    pub function_name: String,
-    pub key: String,
-    pub storage_types: Vec<String>, // ["Instance", "Persistent"]
+    pub call_expression: String,
+    pub message: String,
     pub location: String,
 }
 
 // ── Configuration ─────────────────────────────────────────────────────────────
+#[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Default)]
+#[serde(rename_all = "snake_case")]
+pub enum RuleSeverity {
+    Info,
+    #[default]
+    Warning,
+    Error,
+}
 
 /// User-defined regex-based rule. Defined in .sanctify.toml under [[custom_rules]].
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct CustomRule {
     pub name: String,
     pub pattern: String,
+    #[serde(default)]
+    pub severity: RuleSeverity,
 }
 
 /// A match from a custom regex rule.
-#[derive(Debug, Serialize, Deserialize, Clone)]
+#[derive(Debug, Serialize, Clone)]
 pub struct CustomRuleMatch {
     pub rule_name: String,
     pub line: usize,
     pub snippet: String,
+    pub severity: RuleSeverity,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -261,10 +274,6 @@ pub struct SanctifyConfig {
     pub strict_mode: bool,
     #[serde(default)]
     pub custom_rules: Vec<CustomRule>,
-    #[serde(default)]
-    pub exclude: Vec<String>,
-    #[serde(default)]
-    pub kani_unwind: Option<u32>,
 }
 
 fn default_ignore_paths() -> Vec<String> {
@@ -278,7 +287,6 @@ fn default_enabled_rules() -> Vec<String> {
         "arithmetic".to_string(),
         "ledger_size".to_string(),
         "events".to_string(),
-        "storage_collisions".to_string(),
     ]
 }
 
@@ -299,20 +307,12 @@ impl Default for SanctifyConfig {
             approaching_threshold: default_approaching_threshold(),
             strict_mode: false,
             custom_rules: vec![],
-            exclude: vec![],
-            kani_unwind: None,
         }
     }
 }
 
 fn has_contracttype(attrs: &[syn::Attribute]) -> bool {
-    attrs.iter().any(|attr| {
-        if let Meta::Path(path) = &attr.meta {
-            path.is_ident("contracttype") || path.segments.iter().any(|s| s.ident == "contracttype")
-        } else {
-            false
-        }
-    })
+    has_attr(attrs, "contracttype")
 }
 
 fn classify_size(
@@ -335,91 +335,133 @@ fn classify_size(
 
 pub struct Analyzer {
     pub config: SanctifyConfig,
+    rule_registry: RuleRegistry,
 }
 
 impl Analyzer {
     pub fn new(config: SanctifyConfig) -> Self {
-        Self { config }
+        Self {
+            config,
+            rule_registry: RuleRegistry::default(),
+        }
+    }
+
+    pub fn with_rules(config: SanctifyConfig, registry: RuleRegistry) -> Self {
+        Self {
+            config,
+            rule_registry: registry,
+        }
+    }
+
+    pub fn run_rules(&self, source: &str) -> Vec<RuleViolation> {
+        self.rule_registry.run_all(source)
+    }
+
+    pub fn run_fixes(&self, source: &str) -> Vec<rules::Patch> {
+        self.rule_registry
+            .rules
+            .iter()
+            .flat_map(|rule| rule.fix(source))
+            .collect()
+    }
+
+    pub fn run_rule(&self, source: &str, name: &str) -> Vec<RuleViolation> {
+        self.rule_registry.run_by_name(source, name)
+    }
+
+    pub fn available_rules(&self) -> Vec<&str> {
+        self.rule_registry.available_rules()
+    }
+
+    pub fn analyze_upgrade_patterns(&self, source: &str) -> UpgradeReport {
+        with_panic_guard(|| self.analyze_upgrade_patterns_impl(source))
+    }
+
+    fn analyze_upgrade_patterns_impl(&self, source: &str) -> UpgradeReport {
+        let file = match parse_str::<File>(source) {
+            Ok(f) => f,
+            Err(_) => return UpgradeReport::empty(),
+        };
+
+        let mut report = UpgradeReport::empty();
+
+        for item in &file.items {
+            match item {
+                Item::Struct(s) if has_contracttype(&s.attrs) => {
+                    report.storage_types.push(s.ident.to_string());
+                }
+                Item::Enum(e) if has_contracttype(&e.attrs) => {
+                    report.storage_types.push(e.ident.to_string());
+                }
+                Item::Impl(i) => {
+                    for impl_item in &i.items {
+                        if let syn::ImplItem::Fn(f) = impl_item {
+                            if let syn::Visibility::Public(_) = f.vis {
+                                let fn_name = f.sig.ident.to_string();
+                                if is_init_fn(&fn_name) {
+                                    report.init_functions.push(fn_name.clone());
+                                }
+                                if is_upgrade_or_admin_fn(&fn_name) {
+                                    report.upgrade_mechanisms.push(fn_name.clone());
+                                }
+                            }
+                        }
+                    }
+                }
+                _ => {}
+            }
+        }
+
+        if !report.upgrade_mechanisms.is_empty() {
+            report.findings.push(UpgradeFinding {
+                category: UpgradeCategory::Governance,
+                function_name: report.upgrade_mechanisms.first().cloned(),
+                location: report
+                    .upgrade_mechanisms
+                    .first()
+                    .cloned()
+                    .unwrap_or_else(|| "<unknown>".to_string()),
+                message: "Upgrade/admin mechanism detected".to_string(),
+                suggestion: "Ensure upgrade/admin functions are properly access-controlled (e.g. require_auth) and consider timelocks/governance.".to_string(),
+            });
+        }
+
+        report
     }
 
     pub fn scan_auth_gaps(&self, source: &str) -> Vec<String> {
         with_panic_guard(|| self.scan_auth_gaps_impl(source))
     }
 
-    pub fn scan_unused_variables(&self, source: &str) -> Vec<UnusedVariableIssue> {
-        with_panic_guard(|| self.scan_unused_variables_impl(source))
+    /// Scan `source` for `#[sanctify::invariant(...)]` attributes and return
+    /// one `InvariantDecl` per invariant found.
+    ///
+    /// `file_label` is embedded in each declaration's `location` field and
+    /// should be the file path (or any stable identifier) for error messages.
+    ///
+    /// Returns an empty `Vec` when `source` fails to parse as valid Rust.
+    /// Panics inside the visitor are caught and turned into an empty result.
+    pub fn scan_invariant_attrs(
+        &self,
+        source: &str,
+        file_label: &str,
+    ) -> Vec<invariant::InvariantDecl> {
+        with_panic_guard(|| invariant::scan_invariant_attrs(source, file_label))
     }
 
-    pub fn suggest_fixes(&self, source: &str) -> Vec<CodeFix> {
-        with_panic_guard(|| self.suggest_fixes_impl(source))
+    #[cfg(feature = "smt")]
+    pub fn verify_smt_invariants(&self, _source: &str) -> Vec<smt::SmtInvariantIssue> {
+        with_panic_guard(|| self.verify_smt_invariants_impl())
     }
 
-    pub fn analyze_symbolic_paths(&self, source: &str) -> Vec<symbolic::SymbolicGraph> {
-        with_panic_guard(|| self.analyze_symbolic_paths_impl(source))
-    }
-
-    fn analyze_symbolic_paths_impl(&self, source: &str) -> Vec<symbolic::SymbolicGraph> {
-        let file = match parse_str::<File>(source) {
-            Ok(f) => f,
-            Err(_) => return vec![],
-        };
-
-        let mut graphs = Vec::new();
-        for item in &file.items {
-            if let Item::Impl(i) = item {
-                for impl_item in &i.items {
-                    if let syn::ImplItem::Fn(f) = impl_item {
-                        if let syn::Visibility::Public(_) = f.vis {
-                            // Only generate graphs for public functions
-                            graphs.push(symbolic::SymbolicAnalyzer::analyze_function(f));
-                        }
-                    }
-                }
-            }
-        }
-
-        graphs
-    }
-
-    pub fn scan_storage_collisions(&self, source: &str) -> Vec<StorageCollisionIssue> {
-        with_panic_guard(|| self.scan_storage_collisions_impl(source))
-    }
-
-    fn scan_storage_collisions_impl(&self, source: &str) -> Vec<StorageCollisionIssue> {
-        let file = match parse_str::<File>(source) {
-            Ok(f) => f,
-            Err(_) => return vec![],
-        };
-
-        let mut visitor = StorageVisitor {
-            current_fn: None,
-            instance_keys: HashSet::new(),
-            persistent_keys: HashSet::new(),
-            temporary_keys: HashSet::new(),
-            key_locations: std::collections::HashMap::new(),
-        };
-        visitor.visit_file(&file);
-
-        // Find overlaps
-        let mut final_issues = Vec::new();
-
-        // Instance vs Persistent
-        for key in &visitor.instance_keys {
-            if visitor.persistent_keys.contains(key) {
-                final_issues.push(StorageCollisionIssue {
-                    function_name: "Workspace".to_string(), // Or specific fn if we track it better
-                    key: key.clone(),
-                    storage_types: vec!["Instance".to_string(), "Persistent".to_string()],
-                    location: visitor
-                        .key_locations
-                        .get(&(key.clone(), "Instance".to_string()))
-                        .cloned()
-                        .unwrap_or_default(),
-                });
-            }
-        }
-
-        final_issues
+    #[cfg(feature = "smt")]
+    fn verify_smt_invariants_impl(&self) -> Vec<smt::SmtInvariantIssue> {
+        // The abstract Z3 model checks hardcoded token invariants, not the source
+        // under analysis. Running it here produces false positives on every contract
+        // (BalanceNonNegative and NoUnauthorizedMint are VIOLATED by design in the
+        // abstract model). Invariant proving belongs exclusively to `sanctifier prove`,
+        // which invokes SmtProver directly. Return empty to keep `analyze` clean.
+        Vec::new()
     }
 
     pub fn scan_gas_estimation(&self, source: &str) -> Vec<gas_estimator::GasEstimationReport> {
@@ -441,24 +483,20 @@ impl Analyzer {
 
         for item in &file.items {
             if let Item::Impl(i) = item {
-                // 1. Identify all functions in this impl that perform auth (directly or indirectly)
-                let auth_fns = self.identify_auth_functions(i);
-
                 for impl_item in &i.items {
                     if let syn::ImplItem::Fn(f) = impl_item {
                         if let syn::Visibility::Public(_) = f.vis {
                             let fn_name = f.sig.ident.to_string();
                             let mut has_mutation = false;
+                            let mut has_read = false;
                             let mut has_auth = false;
-
-                            self.check_fn_auth_and_mutation(
+                            self.check_fn_body(
                                 &f.block,
-                                &auth_fns,
                                 &mut has_mutation,
+                                &mut has_read,
                                 &mut has_auth,
                             );
-
-                            if has_mutation && !has_auth {
+                            if has_mutation && !has_read && !has_auth {
                                 gaps.push(fn_name);
                             }
                         }
@@ -467,104 +505,6 @@ impl Analyzer {
             }
         }
         gaps
-    }
-
-    // ── Deprecated API detection ──────────────────────────────────────────────
-
-    /// Returns all usages of deprecated Soroban host functions inside contract impl functions.
-    pub fn scan_deprecated_apis(&self, source: &str) -> Vec<DeprecatedApiIssue> {
-        with_panic_guard(|| self.scan_deprecated_apis_impl(source))
-    }
-
-    fn scan_deprecated_apis_impl(&self, source: &str) -> Vec<DeprecatedApiIssue> {
-        let file = match parse_str::<File>(source) {
-            Ok(f) => f,
-            Err(_) => return vec![],
-        };
-
-        let mut issues = Vec::new();
-        for item in &file.items {
-            if let Item::Impl(i) = item {
-                for impl_item in &i.items {
-                    if let syn::ImplItem::Fn(f) = impl_item {
-                        let fn_name = f.sig.ident.to_string();
-                        self.check_fn_deprecated_apis(&f.block, &fn_name, &mut issues);
-                    }
-                }
-            }
-        }
-
-        issues
-    }
-
-    fn check_fn_deprecated_apis(
-        &self,
-        block: &syn::Block,
-        fn_name: &str,
-        issues: &mut Vec<DeprecatedApiIssue>,
-    ) {
-        for stmt in &block.stmts {
-            match stmt {
-                syn::Stmt::Expr(expr, _) => self.check_expr_deprecated_apis(expr, fn_name, issues),
-                syn::Stmt::Local(local) => {
-                    if let Some(init) = &local.init {
-                        self.check_expr_deprecated_apis(&init.expr, fn_name, issues);
-                    }
-                }
-                _ => {}
-            }
-        }
-    }
-
-    fn check_expr_deprecated_apis(
-        &self,
-        expr: &syn::Expr,
-        fn_name: &str,
-        issues: &mut Vec<DeprecatedApiIssue>,
-    ) {
-        match expr {
-            syn::Expr::MethodCall(m) => {
-                let method_name = m.method.to_string();
-                if matches!(
-                    method_name.as_str(),
-                    "put_contract_data"
-                        | "get_contract_data"
-                        | "has_contract_data"
-                        | "remove_contract_data"
-                        | "get_contract_id"
-                ) {
-                    issues.push(DeprecatedApiIssue {
-                        function_name: fn_name.to_string(),
-                        deprecated_api: method_name.clone(),
-                        location: fn_name.to_string(),
-                    });
-                }
-                self.check_expr_deprecated_apis(&m.receiver, fn_name, issues);
-                for arg in &m.args {
-                    self.check_expr_deprecated_apis(arg, fn_name, issues);
-                }
-            }
-            syn::Expr::Call(c) => {
-                for arg in &c.args {
-                    self.check_expr_deprecated_apis(arg, fn_name, issues);
-                }
-            }
-            syn::Expr::Block(b) => self.check_fn_deprecated_apis(&b.block, fn_name, issues),
-            syn::Expr::If(i) => {
-                self.check_expr_deprecated_apis(&i.cond, fn_name, issues);
-                self.check_fn_deprecated_apis(&i.then_branch, fn_name, issues);
-                if let Some((_, else_expr)) = &i.else_branch {
-                    self.check_expr_deprecated_apis(else_expr, fn_name, issues);
-                }
-            }
-            syn::Expr::Match(m) => {
-                self.check_expr_deprecated_apis(&m.expr, fn_name, issues);
-                for arm in &m.arms {
-                    self.check_expr_deprecated_apis(&arm.body, fn_name, issues);
-                }
-            }
-            _ => {}
-        }
     }
 
     // ── Panic / unwrap / expect detection ────────────────────────────────────
@@ -621,14 +561,12 @@ impl Analyzer {
 
     fn check_expr_panics(&self, expr: &syn::Expr, fn_name: &str, issues: &mut Vec<PanicIssue>) {
         match expr {
-            syn::Expr::Macro(m) => {
-                if m.mac.path.is_ident("panic") {
-                    issues.push(PanicIssue {
-                        function_name: fn_name.to_string(),
-                        issue_type: "panic!".to_string(),
-                        location: fn_name.to_string(),
-                    });
-                }
+            syn::Expr::Macro(m) if m.mac.path.is_ident("panic") => {
+                issues.push(PanicIssue {
+                    function_name: fn_name.to_string(),
+                    issue_type: "panic!".to_string(),
+                    location: fn_name.to_string(),
+                });
             }
             syn::Expr::MethodCall(m) => {
                 let method_name = m.method.to_string();
@@ -667,140 +605,26 @@ impl Analyzer {
         }
     }
 
-    /// Identifies all functions within an impl block that call require_auth,
-    /// either directly or by calling another function that does.
-    fn identify_auth_functions(&self, i: &syn::ItemImpl) -> HashSet<String> {
-        let mut auth_fns = HashSet::new();
-        let mut changed = true;
+    // ── Mutation / auth helpers ───────────────────────────────────────────────
 
-        // Fixed-point iteration to handle nested calls
-        while changed {
-            changed = false;
-            for impl_item in &i.items {
-                if let syn::ImplItem::Fn(f) = impl_item {
-                    let fn_name = f.sig.ident.to_string();
-                    if auth_fns.contains(&fn_name) {
-                        continue;
-                    }
-
-                    if self.check_if_fn_calls_auth(&f.block, &auth_fns) {
-                        auth_fns.insert(fn_name);
-                        changed = true;
-                    }
-                }
-            }
-        }
-        auth_fns
-    }
-
-    fn check_if_fn_calls_auth(&self, block: &syn::Block, known_auth_fns: &HashSet<String>) -> bool {
-        for stmt in &block.stmts {
-            if self.check_expr_for_auth(stmt, known_auth_fns) {
-                return true;
-            }
-        }
-        false
-    }
-
-    fn check_expr_for_auth(&self, stmt: &syn::Stmt, known_auth_fns: &HashSet<String>) -> bool {
-        match stmt {
-            syn::Stmt::Expr(expr, _) => self.check_expr_inner_for_auth(expr, known_auth_fns),
-            syn::Stmt::Local(local) => {
-                if let Some(init) = &local.init {
-                    self.check_expr_inner_for_auth(&init.expr, known_auth_fns)
-                } else {
-                    false
-                }
-            }
-            syn::Stmt::Macro(m) => {
-                m.mac.path.is_ident("require_auth") || m.mac.path.is_ident("require_auth_for_args")
-            }
-            _ => false,
-        }
-    }
-
-    fn check_expr_inner_for_auth(
-        &self,
-        expr: &syn::Expr,
-        known_auth_fns: &HashSet<String>,
-    ) -> bool {
-        match expr {
-            syn::Expr::Call(c) => {
-                if let syn::Expr::Path(p) = &*c.func {
-                    if let Some(segment) = p.path.segments.last() {
-                        let ident = segment.ident.to_string();
-                        if ident == "require_auth"
-                            || ident == "require_auth_for_args"
-                            || known_auth_fns.contains(&ident)
-                        {
-                            return true;
-                        }
-                    }
-                }
-                c.args
-                    .iter()
-                    .any(|arg| self.check_expr_inner_for_auth(arg, known_auth_fns))
-            }
-            syn::Expr::MethodCall(m) => {
-                let method_name = m.method.to_string();
-                if method_name == "require_auth"
-                    || method_name == "require_auth_for_args"
-                    || known_auth_fns.contains(&method_name)
-                {
-                    return true;
-                }
-                if self.check_expr_inner_for_auth(&m.receiver, known_auth_fns) {
-                    return true;
-                }
-                m.args
-                    .iter()
-                    .any(|arg| self.check_expr_inner_for_auth(arg, known_auth_fns))
-            }
-            syn::Expr::Block(b) => b
-                .block
-                .stmts
-                .iter()
-                .any(|s| self.check_expr_for_auth(s, known_auth_fns)),
-            syn::Expr::If(i) => {
-                self.check_expr_inner_for_auth(&i.cond, known_auth_fns)
-                    || i.then_branch
-                        .stmts
-                        .iter()
-                        .any(|s| self.check_expr_for_auth(s, known_auth_fns))
-                    || i.else_branch
-                        .as_ref()
-                        .is_some_and(|(_, e)| self.check_expr_inner_for_auth(e, known_auth_fns))
-            }
-            syn::Expr::Match(m) => {
-                self.check_expr_inner_for_auth(&m.expr, known_auth_fns)
-                    || m.arms
-                        .iter()
-                        .any(|arm| self.check_expr_inner_for_auth(&arm.body, known_auth_fns))
-            }
-            _ => false,
-        }
-    }
-
-    fn check_fn_auth_and_mutation(
+    fn check_fn_body(
         &self,
         block: &syn::Block,
-        auth_fns: &HashSet<String>,
         has_mutation: &mut bool,
+        has_read: &mut bool,
         has_auth: &mut bool,
     ) {
         for stmt in &block.stmts {
             match stmt {
-                syn::Stmt::Expr(expr, _) => {
-                    self.check_expr_v2(expr, auth_fns, has_mutation, has_auth)
-                }
+                syn::Stmt::Expr(expr, _) => self.check_expr(expr, has_mutation, has_read, has_auth),
                 syn::Stmt::Local(local) => {
                     if let Some(init) = &local.init {
-                        self.check_expr_v2(&init.expr, auth_fns, has_mutation, has_auth);
+                        self.check_expr(&init.expr, has_mutation, has_read, has_auth);
                     }
                 }
                 syn::Stmt::Macro(m)
-                    if m.mac.path.is_ident("require_auth")
-                        || m.mac.path.is_ident("require_auth_for_args") =>
+                    if (m.mac.path.is_ident("require_auth")
+                        || m.mac.path.is_ident("require_auth_for_args")) =>
                 {
                     *has_auth = true;
                 }
@@ -809,11 +633,11 @@ impl Analyzer {
         }
     }
 
-    fn check_expr_v2(
+    fn check_expr(
         &self,
         expr: &syn::Expr,
-        auth_fns: &HashSet<String>,
         has_mutation: &mut bool,
+        has_read: &mut bool,
         has_auth: &mut bool,
     ) {
         match expr {
@@ -821,21 +645,19 @@ impl Analyzer {
                 if let syn::Expr::Path(p) = &*c.func {
                     if let Some(segment) = p.path.segments.last() {
                         let ident = segment.ident.to_string();
-                        if ident == "require_auth"
-                            || ident == "require_auth_for_args"
-                            || auth_fns.contains(&ident)
-                        {
+                        if ident == "require_auth" || ident == "require_auth_for_args" {
                             *has_auth = true;
                         }
                     }
                 }
                 for arg in &c.args {
-                    self.check_expr_v2(arg, auth_fns, has_mutation, has_auth);
+                    self.check_expr(arg, has_mutation, has_read, has_auth);
                 }
             }
             syn::Expr::MethodCall(m) => {
                 let method_name = m.method.to_string();
                 if method_name == "set" || method_name == "update" || method_name == "remove" {
+                    // Heuristic: check if receiver chain contains "storage"
                     let receiver_str = quote::quote!(#m.receiver).to_string();
                     if receiver_str.contains("storage")
                         || receiver_str.contains("persistent")
@@ -845,31 +667,36 @@ impl Analyzer {
                         *has_mutation = true;
                     }
                 }
-                if method_name == "require_auth"
-                    || method_name == "require_auth_for_args"
-                    || auth_fns.contains(&method_name)
-                {
+                if method_name == "get" {
+                    let receiver_str = quote::quote!(#m.receiver).to_string();
+                    if receiver_str.contains("storage")
+                        || receiver_str.contains("persistent")
+                        || receiver_str.contains("temporary")
+                        || receiver_str.contains("instance")
+                    {
+                        *has_read = true;
+                    }
+                }
+                if method_name == "require_auth" || method_name == "require_auth_for_args" {
                     *has_auth = true;
                 }
-                self.check_expr_v2(&m.receiver, auth_fns, has_mutation, has_auth);
+                self.check_expr(&m.receiver, has_mutation, has_read, has_auth);
                 for arg in &m.args {
-                    self.check_expr_v2(arg, auth_fns, has_mutation, has_auth);
+                    self.check_expr(arg, has_mutation, has_read, has_auth);
                 }
             }
-            syn::Expr::Block(b) => {
-                self.check_fn_auth_and_mutation(&b.block, auth_fns, has_mutation, has_auth)
-            }
+            syn::Expr::Block(b) => self.check_fn_body(&b.block, has_mutation, has_read, has_auth),
             syn::Expr::If(i) => {
-                self.check_expr_v2(&i.cond, auth_fns, has_mutation, has_auth);
-                self.check_fn_auth_and_mutation(&i.then_branch, auth_fns, has_mutation, has_auth);
+                self.check_expr(&i.cond, has_mutation, has_read, has_auth);
+                self.check_fn_body(&i.then_branch, has_mutation, has_read, has_auth);
                 if let Some((_, else_expr)) = &i.else_branch {
-                    self.check_expr_v2(else_expr, auth_fns, has_mutation, has_auth);
+                    self.check_expr(else_expr, has_mutation, has_read, has_auth);
                 }
             }
             syn::Expr::Match(m) => {
-                self.check_expr_v2(&m.expr, auth_fns, has_mutation, has_auth);
+                self.check_expr(&m.expr, has_mutation, has_read, has_auth);
                 for arm in &m.arms {
-                    self.check_expr_v2(&arm.body, auth_fns, has_mutation, has_auth);
+                    self.check_expr(&arm.body, has_mutation, has_read, has_auth);
                 }
             }
             _ => {}
@@ -882,135 +709,6 @@ impl Analyzer {
         false
     }
 
-    fn scan_unused_variables_impl(&self, source: &str) -> Vec<UnusedVariableIssue> {
-        let file = match parse_str::<File>(source) {
-            Ok(f) => f,
-            Err(_) => return vec![],
-        };
-
-        let mut issues = Vec::new();
-        for item in &file.items {
-            if let Item::Impl(i) = item {
-                for impl_item in &i.items {
-                    if let syn::ImplItem::Fn(f) = impl_item {
-                        let mut visitor = UnusedVariableVisitor::new(f.sig.ident.to_string());
-                        visitor.visit_impl_item_fn(f);
-                        issues.extend(visitor.report_unused());
-                    }
-                }
-            }
-        }
-        issues
-    }
-
-    fn suggest_fixes_impl(&self, source: &str) -> Vec<CodeFix> {
-        let mut fixes = Vec::new();
-
-        // 1. Unused variables
-        let unused = self.scan_unused_variables(source);
-        for u in unused {
-            fixes.push(CodeFix {
-                file: "".to_string(), // Filled by CLI
-                line: u.line,
-                column: u.col,
-                end_line: u.line,
-                end_column: u.col + u.name.len(),
-                replacement: format!("_{}", u.name),
-                description: format!("Prefix unused variable `{}` with `_`", u.name),
-                fix_type: FixType::PrefixUnused,
-            });
-        }
-
-        // 2. Auth gaps
-        let file = match parse_str::<File>(source) {
-            Ok(f) => f,
-            Err(_) => return fixes,
-        };
-
-        for item in &file.items {
-            if let Item::Impl(i) = item {
-                let auth_fns = self.identify_auth_functions(i);
-                for impl_item in &i.items {
-                    if let syn::ImplItem::Fn(f) = impl_item {
-                        if let syn::Visibility::Public(_) = f.vis {
-                            let mut has_mutation = false;
-                            let mut has_auth = false;
-                            self.check_fn_auth_and_mutation(
-                                &f.block,
-                                &auth_fns,
-                                &mut has_mutation,
-                                &mut has_auth,
-                            );
-
-                            if has_mutation && !has_auth {
-                                // Find an Address parameter to call require_auth on
-                                let mut address_param = None;
-                                for arg in &f.sig.inputs {
-                                    if let syn::FnArg::Typed(pat_type) = arg {
-                                        if let Type::Path(tp) = &*pat_type.ty {
-                                            if tp.path.is_ident("Address") {
-                                                if let syn::Pat::Ident(id) = &*pat_type.pat {
-                                                    address_param = Some(id.ident.to_string());
-                                                    break;
-                                                }
-                                            }
-                                        }
-                                    }
-                                }
-
-                                if let Some(param) = address_param {
-                                    let span = f.block.brace_token.span.open();
-                                    let start = span.start();
-                                    fixes.push(CodeFix {
-                                        file: "".to_string(),
-                                        line: start.line,
-                                        column: start.column + 1,
-                                        end_line: start.line,
-                                        end_column: start.column + 1,
-                                        replacement: format!("\n        {}.require_auth();", param),
-                                        description: format!(
-                                            "Add missing `require_auth()` for `{}`",
-                                            param
-                                        ),
-                                        fix_type: FixType::AddAuth,
-                                    });
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        }
-
-        fixes.sort_by(|a, b| b.line.cmp(&a.line).then(b.column.cmp(&a.column)));
-
-        // Filter out PrefixUnused for variables where we also added AddAuth
-        let auth_params: HashSet<String> = fixes
-            .iter()
-            .filter(|f| f.fix_type == FixType::AddAuth)
-            .map(|f| {
-                // Description is "Add missing `require_auth()` for `NAME`"
-                let parts: Vec<&str> = f.description.split('`').collect();
-                if parts.len() >= 4 {
-                    parts[3].to_string()
-                } else {
-                    "".to_string()
-                }
-            })
-            .collect();
-
-        fixes.retain(|f| {
-            if f.fix_type == FixType::PrefixUnused {
-                let name = f.description.split('`').nth(1).unwrap_or("");
-                !auth_params.contains(name)
-            } else {
-                true
-            }
-        });
-
-        fixes
-    }
-
     // ── Ledger size analysis ──────────────────────────────────────────────────
 
     /// Analyzes `#[contracttype]` structs and enums, estimates serialized size,
@@ -1020,62 +718,45 @@ impl Analyzer {
     }
 
     fn analyze_ledger_size_impl(&self, source: &str) -> Vec<SizeWarning> {
-        let limit = self.config.ledger_limit;
-        let _approaching = (limit as f64 * DEFAULT_APPROACHING_THRESHOLD) as usize;
-        let _strict = self.config.strict_mode;
-        let _strict_threshold = limit / 2;
-
         let file = match parse_str::<File>(source) {
             Ok(f) => f,
             Err(_) => return vec![],
         };
 
-        let mut warnings = Vec::new();
         let limit = self.config.ledger_limit;
-        let approaching = (limit as f64 * self.config.approaching_threshold) as usize;
+        let approaching = self.config.approaching_threshold;
         let strict = self.config.strict_mode;
-        let strict_threshold = (limit as f64 * 0.5) as usize;
+        // Use 90% as strict threshold heuristic
+        let strict_threshold = (limit as f64 * DEFAULT_STRICT_THRESHOLD) as usize;
 
-        let approaching_count = approaching; // For clarify_size call below
+        let mut warnings = Vec::new();
 
         for item in &file.items {
             match item {
-                Item::Struct(s) => {
-                    if has_contracttype(&s.attrs) {
-                        let size = self.estimate_struct_size(s);
-                        if let Some(level) = classify_size(
-                            size,
+                Item::Struct(s) if has_contracttype(&s.attrs) => {
+                    let size = self.estimate_struct_size(s);
+                    if let Some(level) =
+                        classify_size(size, limit, approaching, strict, strict_threshold)
+                    {
+                        warnings.push(SizeWarning {
+                            struct_name: s.ident.to_string(),
+                            estimated_size: size,
                             limit,
-                            approaching_count as f64,
-                            strict,
-                            strict_threshold,
-                        ) {
-                            warnings.push(SizeWarning {
-                                struct_name: s.ident.to_string(),
-                                estimated_size: size,
-                                limit,
-                                level,
-                            });
-                        }
+                            level,
+                        });
                     }
                 }
-                Item::Enum(e) => {
-                    if has_contracttype(&e.attrs) {
-                        let size = self.estimate_enum_size(e);
-                        if let Some(level) = classify_size(
-                            size,
+                Item::Enum(e) if has_contracttype(&e.attrs) => {
+                    let size = self.estimate_enum_size(e);
+                    if let Some(level) =
+                        classify_size(size, limit, approaching, strict, strict_threshold)
+                    {
+                        warnings.push(SizeWarning {
+                            struct_name: e.ident.to_string(),
+                            estimated_size: size,
                             limit,
-                            approaching_count as f64,
-                            strict,
-                            strict_threshold,
-                        ) {
-                            warnings.push(SizeWarning {
-                                struct_name: e.ident.to_string(),
-                                estimated_size: size,
-                                limit,
-                                level,
-                            });
-                        }
+                            level,
+                        });
                     }
                 }
                 Item::Impl(_) | Item::Macro(_) => {}
@@ -1086,80 +767,130 @@ impl Analyzer {
         warnings
     }
 
-    // ── Upgrade analysis ─────────────────────────────────────────────────────
+    // ── Event Consistency and Optimization ──────────────────────────────────────
 
-    pub fn analyze_upgrade_patterns(&self, source: &str) -> UpgradeReport {
-        with_panic_guard(|| self.analyze_upgrade_patterns_impl(source))
-    }
-
-    fn analyze_upgrade_patterns_impl(&self, source: &str) -> UpgradeReport {
-        let file = match parse_str::<File>(source) {
-            Ok(f) => f,
-            Err(_) => return UpgradeReport::empty(),
-        };
-
-        let mut report = UpgradeReport::empty();
-        for item in &file.items {
-            if let Item::Impl(i) = item {
-                for impl_item in &i.items {
-                    if let syn::ImplItem::Fn(f) = impl_item {
-                        let fn_name = f.sig.ident.to_string();
-                        if is_upgrade_or_admin_fn(&fn_name) {
-                            report.upgrade_mechanisms.push(fn_name.clone());
-                        }
-                        if is_init_fn(&fn_name) {
-                            report.init_functions.push(fn_name.clone());
-                        }
-                    }
-                }
-            }
-            if let Item::Enum(e) = item {
-                if has_contracttype(&e.attrs) {
-                    report.storage_types.push(e.ident.to_string());
+    fn extract_topics(line: &str) -> String {
+        if let Some(start_paren) = line.find('(') {
+            let after_publish = &line[start_paren + 1..];
+            if let Some(end_paren) = after_publish.rfind(')') {
+                let topics_content = &after_publish[..end_paren];
+                if topics_content.contains(',') || topics_content.starts_with('(') {
+                    return topics_content.to_string();
                 }
             }
         }
-
-        // Heuristic for Governance finding as expected by test
-        report.findings.push(UpgradeFinding {
-            category: UpgradeCategory::Governance,
-            function_name: None,
-            location: "Contract".to_string(),
-            message: "Governance review recommended.".to_string(),
-            suggestion: "Ensure multi-sig or DAO control for upgrades.".to_string(),
-        });
-
-        report
+        if let Some(vec_start) = line.find("vec![") {
+            let after_vec = &line[vec_start + 5..];
+            if let Some(end_bracket) = after_vec.find(']') {
+                return after_vec[..end_bracket].to_string();
+            }
+        }
+        String::new()
     }
 
-    // ── Event Consistency and Optimization (NEW) ─────────────────────────────
+    fn extract_event_name(line: &str) -> Option<String> {
+        if let Some(start) = line.find('(') {
+            let content = &line[start..];
+            if let Some(name_end) = content.find(',') {
+                let name_part = &content[1..name_end];
+                let clean_name = name_part.trim().trim_matches('"');
+                if !clean_name.is_empty() {
+                    return Some(clean_name.to_string());
+                }
+            } else if let Some(end_paren) = content.find(')') {
+                let name_part = &content[1..end_paren];
+                let clean_name = name_part.trim().trim_matches('"');
+                if !clean_name.is_empty() {
+                    return Some(clean_name.to_string());
+                }
+            }
+        }
+        None
+    }
 
-    // Scans for `env.events().publish(topics, data)` and checks:
-    // 1. Consistency of topic counts for the same event name.
-    // 2. Opportunities to use `symbol_short!` for gas savings.
-    /*
+    /// Scans for `env.events().publish(topics, data)` and checks:
+    /// 1. Consistency of topic counts for the same event name.
+    /// 2. Opportunities to use `symbol_short!` for gas savings.
     pub fn scan_events(&self, source: &str) -> Vec<EventIssue> {
         with_panic_guard(|| self.scan_events_impl(source))
     }
 
     fn scan_events_impl(&self, source: &str) -> Vec<EventIssue> {
-        let file = match parse_str::<File>(source) {
-            Ok(f) => f,
-            Err(_) => return vec![],
-        };
+        let mut issues = Vec::new();
+        let mut event_schemas: std::collections::HashMap<String, Vec<usize>> =
+            std::collections::HashMap::new();
+        let mut issue_locations: std::collections::HashSet<String> =
+            std::collections::HashSet::new();
 
-        let mut visitor = EventVisitor {
-            issues: Vec::new(),
-            current_fn: None,
-            event_schemas: std::collections::HashMap::new(),
-        };
-        visitor.visit_file(&file);
-        visitor.issues
-    } */
+        for (line_num, line) in source.lines().enumerate() {
+            let line = line.trim();
+
+            if line.contains("env.events().publish(") || line.contains("env.events().emit(") {
+                let topics_str = Self::extract_topics(line);
+                let topic_count = if topics_str.is_empty() {
+                    0
+                } else {
+                    topics_str.matches(',').count() + 1
+                };
+
+                let event_name = Self::extract_event_name(line)
+                    .unwrap_or_else(|| format!("unknown_{}", line_num));
+
+                let location = format!("line {}", line_num + 1);
+                let _location_key = format!("{}:{}", event_name, topic_count);
+
+                if let Some(previous_counts) = event_schemas.get(&event_name) {
+                    for &prev_count in previous_counts {
+                        if prev_count != topic_count {
+                            let issue_key = format!("{}:{}:inconsistent", event_name, line_num + 1);
+                            if !issue_locations.contains(&issue_key) {
+                                issue_locations.insert(issue_key);
+                                issues.push(EventIssue {
+                                    function_name: "unknown".to_string(), // scan_events_impl is regex-based, function context is limited
+                                    event_name: event_name.clone(),
+                                    issue_type: EventIssueType::InconsistentSchema,
+                                    message: format!(
+                                        "Event '{}' has inconsistent topic count. Previous: {}, Current: {}",
+                                        event_name, prev_count, topic_count
+                                    ),
+                                    location: location.clone(),
+                                });
+                            }
+                        }
+                    }
+                }
+
+                event_schemas
+                    .entry(event_name.clone())
+                    .or_default()
+                    .push(topic_count);
+
+                if !line.contains("symbol_short!") && topic_count > 0 {
+                    let has_string_topic = line.contains("\"") || line.contains("String");
+                    if has_string_topic {
+                        let issue_key = format!("{}:{}:gas_optimization", event_name, line_num + 1);
+                        if !issue_locations.contains(&issue_key) {
+                            issue_locations.insert(issue_key);
+                            issues.push(EventIssue {
+                                function_name: "unknown".to_string(),
+                                event_name,
+                                issue_type: EventIssueType::OptimizableTopic,
+                                message: "Consider using symbol_short! for short topic names to save gas.".to_string(),
+                                location: format!("line {}", line_num + 1),
+                            });
+                        }
+                    }
+                }
+            }
+        }
+
+        issues
+    }
+
     // ── Unsafe-pattern visitor ────────────────────────────────────────────────
 
-    /// Visitor-based scan for `panic!`, `.unwrap()`, `.expect()` with line numbers
-    /// derived from proc-macro2 span locations.
+    /// Visitor-based scan for `panic!`, `.unwrap()`, `.expect()` with line
+    /// numbers derived from proc-macro2 span locations.
     pub fn analyze_unsafe_patterns(&self, source: &str) -> Vec<UnsafePattern> {
         with_panic_guard(|| self.analyze_unsafe_patterns_impl(source))
     }
@@ -1200,33 +931,7 @@ impl Analyzer {
             issues: Vec::new(),
             current_fn: None,
             seen: HashSet::new(),
-            u128_bindings: HashSet::new(),
         };
-        visitor.visit_file(&file);
-        visitor.issues
-    }
-
-    // ── Reentrancy risk detection ──────────────────────────────────────────────
-
-    /// Scans contract impl functions for potential state-based reentrancy risks.
-    ///
-    /// Soroban's host blocks classical cross-contract reentrancy, but complex
-    /// multi-step workflows can still be vulnerable if:
-    /// - A function mutates state AND performs external calls
-    /// - No `ReentrancyGuardian` nonce check is present
-    ///
-    /// Returns a list of [`reentrancy::ReentrancyIssue`] for further reporting.
-    pub fn scan_reentrancy_risks(&self, source: &str) -> Vec<reentrancy::ReentrancyIssue> {
-        with_panic_guard(|| self.scan_reentrancy_risks_impl(source))
-    }
-
-    fn scan_reentrancy_risks_impl(&self, source: &str) -> Vec<reentrancy::ReentrancyIssue> {
-        use syn::visit::Visit;
-        let file = match parse_str::<File>(source) {
-            Ok(f) => f,
-            Err(_) => return vec![],
-        };
-        let mut visitor = reentrancy::ReentrancyVisitor::new();
         visitor.visit_file(&file);
         visitor.issues
     }
@@ -1248,11 +953,80 @@ impl Analyzer {
                         rule_name: rule.name.clone(),
                         line: line_num,
                         snippet: line.trim().to_string(),
+                        severity: rule.severity.clone(),
                     });
                 }
             }
         }
         matches
+    }
+
+    pub fn scan_invoke_contract_calls(
+        &self,
+        source: &str,
+        caller: &str,
+        file_path: &str,
+    ) -> Vec<ContractCallEdge> {
+        with_panic_guard(|| self.scan_invoke_contract_calls_impl(source, caller, file_path))
+    }
+
+    fn scan_invoke_contract_calls_impl(
+        &self,
+        source: &str,
+        caller: &str,
+        file_path: &str,
+    ) -> Vec<ContractCallEdge> {
+        let file = match parse_str::<File>(source) {
+            Ok(f) => f,
+            Err(_) => return vec![],
+        };
+
+        let mut visitor = InvokeContractVisitor {
+            edges: Vec::new(),
+            caller: caller.to_string(),
+            file_path: file_path.to_string(),
+        };
+        visitor.visit_file(&file);
+        visitor.edges
+    }
+
+    // ── Storage key collision detection (NEW) ─────────────────────────────────
+
+    /// Scans for potential storage key collisions by analyzing constants,
+    /// Symbol::new calls, and symbol_short! macros.
+    pub fn scan_storage_collisions(&self, source: &str) -> Vec<StorageCollisionIssue> {
+        with_panic_guard(|| self.scan_storage_collisions_impl(source))
+    }
+
+    fn scan_storage_collisions_impl(&self, source: &str) -> Vec<StorageCollisionIssue> {
+        let file = match parse_str::<File>(source) {
+            Ok(f) => f,
+            Err(_) => return vec![],
+        };
+
+        let mut visitor = storage_collision::StorageVisitor::new();
+        visitor.visit_file(&file);
+        visitor.final_check();
+        visitor.collisions
+    }
+
+    pub fn scan_unhandled_results(&self, source: &str) -> Vec<UnhandledResultIssue> {
+        with_panic_guard(|| self.scan_unhandled_results_impl(source))
+    }
+
+    fn scan_unhandled_results_impl(&self, source: &str) -> Vec<UnhandledResultIssue> {
+        let file = match parse_str::<File>(source) {
+            Ok(f) => f,
+            Err(_) => return vec![],
+        };
+
+        let mut visitor = UnhandledResultVisitor {
+            issues: Vec::new(),
+            current_fn: None,
+            is_public_fn: false,
+        };
+        visitor.visit_file(&file);
+        visitor.issues
     }
 
     // ── Size estimation helpers ───────────────────────────────────────────────
@@ -1365,439 +1139,319 @@ impl Analyzer {
     }
 }
 
-// ── UnsafeVisitor ─────────────────────────────────────────────────────────────
-
-struct UnsafeVisitor {
-    patterns: Vec<UnsafePattern>,
+#[derive(Debug, Clone, Serialize)]
+pub struct ContractCallEdge {
+    pub caller: String,
+    pub callee: String,
+    pub file: String,
+    pub line: usize,
+    pub contract_id_expr: String,
+    pub function_expr: Option<String>,
 }
 
-impl<'ast> Visit<'ast> for UnsafeVisitor {
-    fn visit_expr_method_call(&mut self, i: &'ast syn::ExprMethodCall) {
-        let method_name = i.method.to_string();
-        if method_name == "unwrap" || method_name == "expect" {
-            let pattern_type = if method_name == "unwrap" {
-                PatternType::Unwrap
-            } else {
-                PatternType::Expect
-            };
-            self.patterns.push(UnsafePattern {
-                pattern_type,
-                snippet: quote::quote!(#i).to_string(),
-                line: 0, // Simplified for now
+pub fn callgraph_to_dot(edges: &[ContractCallEdge]) -> String {
+    use std::collections::BTreeMap;
+
+    let mut per_pair: BTreeMap<(String, String), Vec<&ContractCallEdge>> = BTreeMap::new();
+    for e in edges {
+        per_pair
+            .entry((e.caller.clone(), e.callee.clone()))
+            .or_default()
+            .push(e);
+    }
+
+    let mut out = String::new();
+    out.push_str("digraph ContractCallGraph {\n");
+    out.push_str("  rankdir=LR;\n");
+    out.push_str("  node [shape=box, fontname=\"Helvetica\"];\n");
+
+    for ((caller, callee), calls) in per_pair {
+        let mut label = String::new();
+        for (idx, c) in calls.iter().enumerate() {
+            if idx > 0 {
+                label.push_str("\\n");
+            }
+            label.push_str(&format!("{}:{}", c.file, c.line));
+            if let Some(fx) = &c.function_expr {
+                label.push_str(&format!(" [{}]", fx));
+            }
+        }
+
+        out.push_str(&format!(
+            "  \"{}\" -> \"{}\" [label=\"{}\"];\n",
+            escape_dot(&caller),
+            escape_dot(&callee),
+            escape_dot(&label)
+        ));
+    }
+
+    out.push_str("}\n");
+    out
+}
+
+fn escape_dot(s: &str) -> String {
+    s.replace('\\', "\\\\").replace('"', "\\\"")
+}
+
+struct InvokeContractVisitor {
+    edges: Vec<ContractCallEdge>,
+    caller: String,
+    file_path: String,
+}
+
+impl<'ast> Visit<'ast> for InvokeContractVisitor {
+    fn visit_expr_method_call(&mut self, node: &'ast syn::ExprMethodCall) {
+        if node.method == "invoke_contract" {
+            let contract_id_expr = node
+                .args
+                .first()
+                .map(|e| quote::quote!(#e).to_string())
+                .unwrap_or_else(|| "<missing>".to_string());
+
+            let function_expr = node
+                .args
+                .iter()
+                .nth(1)
+                .map(|e| quote::quote!(#e).to_string());
+
+            let callee = simplify_expr_string(&contract_id_expr);
+            let line = node.span().start().line;
+
+            self.edges.push(ContractCallEdge {
+                caller: self.caller.clone(),
+                callee,
+                file: self.file_path.clone(),
+                line,
+                contract_id_expr,
+                function_expr: function_expr.map(|s| simplify_expr_string(&s)),
             });
         }
-        visit::visit_expr_method_call(self, i);
-    }
 
-    fn visit_expr_macro(&mut self, i: &'ast syn::ExprMacro) {
-        if i.mac.path.is_ident("panic") {
-            self.patterns.push(UnsafePattern {
-                pattern_type: PatternType::Panic,
-                snippet: quote::quote!(#i).to_string(),
-                line: 0,
-            });
-        }
-        visit::visit_expr_macro(self, i);
+        visit::visit_expr_method_call(self, node);
     }
 }
 
-// ── SanctifiedGuard (runtime monitoring) ───────────────────────────────────────
-#[cfg(not(target_arch = "wasm32"))]
-/// Error type for SanctifiedGuard runtime invariant violations.
-#[derive(Debug, Error)]
-pub enum Error {
-    #[error("invariant violation: {0}")]
-    InvariantViolation(String),
+fn simplify_expr_string(s: &str) -> String {
+    s.split_whitespace().collect::<Vec<_>>().join(" ")
 }
 
-#[cfg(not(target_arch = "wasm32"))]
-/// Trait for runtime monitoring. Implement this to enforce invariants
-/// on your contract state. The foundation for runtime monitoring.
-pub trait SanctifiedGuard {
-    /// Verifies that contract invariants hold in the current environment.
-    /// Returns `Ok(())` if all invariants hold, or `Err` with a violation message.
-    fn check_invariant(&self, env: &Env) -> Result<(), Error>;
-}
+// ── EventVisitor (stubs/helpers moved) ──────────────────────────────────────
 
-// ── ArithVisitor ──────────────────────────────────────────────────────────────
-
-struct ArithVisitor {
-    issues: Vec<ArithmeticIssue>,
-    /// Name of the function currently being visited.
-    current_fn: Option<String>,
-    /// De-duplicates issues: one per (function_name, operator) pair.
-    seen: HashSet<(String, String)>,
-    /// Variables in the current function known to be `u128`.
-    u128_bindings: HashSet<String>,
-}
-
-impl ArithVisitor {
-    /// Returns `(operator_str, suggestion_text)` for overflow-prone binary ops,
-    /// or `None` for operators that cannot overflow (comparisons, bitwise, etc).
-    fn classify_op(op: &syn::BinOp) -> Option<(&'static str, &'static str)> {
-        match op {
-            syn::BinOp::Add(_) => Some((
-                "+",
-                "Use `.checked_add(rhs)` or `.saturating_add(rhs)` to handle overflow",
-            )),
-            syn::BinOp::Sub(_) => Some((
-                "-",
-                "Use `.checked_sub(rhs)` or `.saturating_sub(rhs)` to handle underflow",
-            )),
-            syn::BinOp::Mul(_) => Some((
-                "*",
-                "Use `.checked_mul(rhs)` or `.saturating_mul(rhs)` to handle overflow",
-            )),
-            syn::BinOp::AddAssign(_) => Some((
-                "+=",
-                "Replace `a += b` with `a = a.checked_add(b).expect(\"overflow\")`",
-            )),
-            syn::BinOp::SubAssign(_) => Some((
-                "-=",
-                "Replace `a -= b` with `a = a.checked_sub(b).expect(\"underflow\")`",
-            )),
-            syn::BinOp::MulAssign(_) => Some((
-                "*=",
-                "Replace `a *= b` with `a = a.checked_mul(b).expect(\"overflow\")`",
-            )),
-            _ => None,
-        }
-    }
-
-    fn suggestion_for_u128(op_str: &str) -> Option<&'static str> {
-        match op_str {
-            "+" => Some("Use `.checked_add(rhs)` for `u128` arithmetic in Soroban contracts"),
-            "-" => Some("Use `.checked_sub(rhs)` for `u128` arithmetic in Soroban contracts"),
-            "*" => Some("Use `.checked_mul(rhs)` for `u128` arithmetic in Soroban contracts"),
-            _ => None,
-        }
-    }
-
-    fn is_u128_expr(&self, expr: &syn::Expr) -> bool {
-        match expr {
-            syn::Expr::Path(path) => path
-                .path
-                .segments
-                .last()
-                .map(|seg| self.u128_bindings.contains(&seg.ident.to_string()))
-                .unwrap_or(false),
-            syn::Expr::Lit(syn::ExprLit {
-                lit: syn::Lit::Int(lit),
-                ..
-            }) => lit.suffix() == "u128",
-            syn::Expr::Paren(inner) => self.is_u128_expr(&inner.expr),
-            syn::Expr::Group(inner) => self.is_u128_expr(&inner.expr),
-            syn::Expr::Reference(inner) => self.is_u128_expr(&inner.expr),
-            syn::Expr::Field(inner) => self.is_u128_expr(&inner.base),
-            syn::Expr::Unary(inner) => self.is_u128_expr(&inner.expr),
-            syn::Expr::Cast(inner) => is_u128_type(&inner.ty) || self.is_u128_expr(&inner.expr),
-            _ => false,
-        }
-    }
-}
-
-impl<'ast> Visit<'ast> for ArithVisitor {
-    /// Track the current function when descending into an impl method.
+impl<'ast> Visit<'ast> for UnhandledResultVisitor {
     fn visit_impl_item_fn(&mut self, node: &'ast syn::ImplItemFn) {
-        let prev = self.current_fn.take();
-        let prev_bindings = std::mem::take(&mut self.u128_bindings);
-        self.current_fn = Some(node.sig.ident.to_string());
-        self.u128_bindings = collect_u128_params(&node.sig.inputs);
-        visit::visit_impl_item_fn(self, node);
-        self.current_fn = prev;
-        self.u128_bindings = prev_bindings;
-    }
+        let prev_fn = self.current_fn.take();
+        let prev_public = self.is_public_fn;
 
-    /// Also handle top-level `fn` items (helper functions outside impls).
-    fn visit_item_fn(&mut self, node: &'ast syn::ItemFn) {
-        let prev = self.current_fn.take();
-        let prev_bindings = std::mem::take(&mut self.u128_bindings);
         self.current_fn = Some(node.sig.ident.to_string());
-        self.u128_bindings = collect_u128_params(&node.sig.inputs);
-        visit::visit_item_fn(self, node);
-        self.current_fn = prev;
-        self.u128_bindings = prev_bindings;
-    }
+        self.is_public_fn = matches!(node.vis, syn::Visibility::Public(_));
 
-    fn visit_local(&mut self, node: &'ast syn::Local) {
-        if let Some(name) = extract_local_ident_if_u128(node) {
-            self.u128_bindings.insert(name);
+        let fn_returns_result = Self::is_result_returning_fn(&node.sig);
+
+        for stmt in &node.block.stmts {
+            self.check_statement_for_unhandled_result(stmt, fn_returns_result);
         }
-        visit::visit_local(self, node);
+
+        self.current_fn = prev_fn;
+        self.is_public_fn = prev_public;
     }
 
-    fn visit_expr_binary(&mut self, node: &'ast syn::ExprBinary) {
-        if let Some(fn_name) = self.current_fn.clone() {
-            if let Some((op_str, suggestion)) = Self::classify_op(&node.op) {
-                // Skip concatenation of string literals (false positive for `+`)
-                if !is_string_literal(&node.left) && !is_string_literal(&node.right) {
-                    let is_u128_operation =
-                        self.is_u128_expr(&node.left) || self.is_u128_expr(&node.right);
-                    let suggestion_text = Self::suggestion_for_u128(op_str)
-                        .filter(|_| is_u128_operation)
-                        .unwrap_or(suggestion);
-                    let key = (fn_name.clone(), op_str.to_string());
-                    if !self.seen.contains(&key) {
-                        self.seen.insert(key);
-                        // Line number from the left operand's span
-                        let line = node.left.span().start().line;
-                        self.issues.push(ArithmeticIssue {
-                            function_name: fn_name.clone(),
-                            operation: op_str.to_string(),
-                            suggestion: suggestion_text.to_string(),
+    fn visit_item_fn(&mut self, node: &'ast syn::ItemFn) {
+        let prev_fn = self.current_fn.take();
+        let prev_public = self.is_public_fn;
+
+        self.current_fn = Some(node.sig.ident.to_string());
+        self.is_public_fn = matches!(node.vis, syn::Visibility::Public(_));
+
+        let fn_returns_result = Self::is_result_returning_fn(&node.sig);
+
+        for stmt in &node.block.stmts {
+            self.check_statement_for_unhandled_result(stmt, fn_returns_result);
+        }
+
+        self.current_fn = prev_fn;
+        self.is_public_fn = prev_public;
+    }
+}
+
+impl UnhandledResultVisitor {
+    fn check_statement_for_unhandled_result(&mut self, stmt: &syn::Stmt, fn_returns_result: bool) {
+        match stmt {
+            syn::Stmt::Expr(expr, _) => {
+                self.check_expr_for_unhandled_result(expr, fn_returns_result);
+            }
+            syn::Stmt::Local(local) => {
+                if let Some(init) = &local.init {
+                    self.check_expr_for_unhandled_result(&init.expr, fn_returns_result);
+                }
+            }
+            syn::Stmt::Macro(_) => {}
+            _ => {}
+        }
+    }
+
+    fn check_expr_for_unhandled_result(&mut self, expr: &syn::Expr, fn_returns_result: bool) {
+        match expr {
+            syn::Expr::Call(call) => {
+                if Self::is_handled(expr) {
+                    return;
+                }
+                if Self::call_returns_result(call) && !fn_returns_result && self.is_public_fn {
+                    if let Some(fn_name) = &self.current_fn {
+                        let line = expr.span().start().line;
+                        self.issues.push(UnhandledResultIssue {
+                            function_name: fn_name.to_string(),
+                            call_expression: Self::expr_to_string(expr),
+                            message: "Result returned from function call is not handled. Use ?, match, or .unwrap()/.expect() to handle the Result.".to_string(),
                             location: format!("{}:{}", fn_name, line),
                         });
                     }
                 }
+                for arg in &call.args {
+                    self.check_expr_for_unhandled_result(arg, fn_returns_result);
+                }
             }
+            syn::Expr::MethodCall(m) => {
+                if !Self::is_handled(expr) {
+                    self.check_expr_for_unhandled_result(&m.receiver, fn_returns_result);
+                }
+                for arg in &m.args {
+                    self.check_expr_for_unhandled_result(arg, fn_returns_result);
+                }
+            }
+            syn::Expr::Try(e) => {
+                self.check_expr_for_unhandled_result(&e.expr, true);
+            }
+            syn::Expr::Match(m) => {
+                for arm in &m.arms {
+                    self.check_expr_for_unhandled_result(&arm.body, fn_returns_result);
+                }
+            }
+            syn::Expr::If(i) => {
+                self.check_expr_for_unhandled_result(&i.cond, fn_returns_result);
+                self.check_block_for_unhandled_result(&i.then_branch, fn_returns_result);
+                if let Some((_, else_expr)) = &i.else_branch {
+                    self.check_expr_for_unhandled_result(else_expr, fn_returns_result);
+                }
+            }
+            syn::Expr::Block(b) => {
+                self.check_block_for_unhandled_result(&b.block, fn_returns_result);
+            }
+            syn::Expr::Closure(c) => {
+                self.check_expr_for_unhandled_result(&c.body, fn_returns_result);
+            }
+            syn::Expr::Assign(a) => {
+                self.check_expr_for_unhandled_result(&a.right, fn_returns_result);
+            }
+            syn::Expr::Binary(b) => {
+                self.check_expr_for_unhandled_result(&b.left, fn_returns_result);
+                self.check_expr_for_unhandled_result(&b.right, fn_returns_result);
+            }
+            syn::Expr::Tuple(t) => {
+                for elem in &t.elems {
+                    self.check_expr_for_unhandled_result(elem, fn_returns_result);
+                }
+            }
+            syn::Expr::Array(a) => {
+                for elem in &a.elems {
+                    self.check_expr_for_unhandled_result(elem, fn_returns_result);
+                }
+            }
+            syn::Expr::Struct(s) => {
+                for field in &s.fields {
+                    self.check_expr_for_unhandled_result(&field.expr, fn_returns_result);
+                }
+            }
+            syn::Expr::Return(r) => {
+                if let Some(expr) = &r.expr {
+                    self.check_expr_for_unhandled_result(expr, true);
+                }
+            }
+            _ => {}
         }
-        // Continue descending so nested binary ops are also checked
-        visit::visit_expr_binary(self, node);
     }
 
-    fn visit_expr_method_call(&mut self, node: &'ast syn::ExprMethodCall) {
-        if let Some(fn_name) = self.current_fn.clone() {
-            let method_name = node.method.to_string();
-            let risky_methods = [
-                "fixed_mul",
-                "fixed_div",
-                "fixed_mul_floor",
-                "fixed_mul_ceil",
-                "fixed_div_floor",
-                "fixed_div_ceil",
-            ];
+    fn check_block_for_unhandled_result(&mut self, block: &syn::Block, fn_returns_result: bool) {
+        for stmt in &block.stmts {
+            self.check_statement_for_unhandled_result(stmt, fn_returns_result);
+        }
+    }
 
-            if risky_methods.contains(&method_name.as_str()) {
-                let key = (fn_name.clone(), method_name.clone());
-                if !self.seen.contains(&key) {
-                    self.seen.insert(key);
-                    let line = node.span().start().line;
-                    self.issues.push(ArithmeticIssue {
-                        function_name: fn_name,
-                        operation: method_name.clone(),
-                        suggestion: format!(
-                            "Ensure boundaries are checked before calling `{}` to avoid panics",
-                            method_name
-                        ),
-                        location: format!("{}:{}", method_name, line),
-                    });
+    fn call_returns_result(call: &syn::ExprCall) -> bool {
+        if let syn::Expr::Path(p) = &*call.func {
+            if let Some(seg) = p.path.segments.last() {
+                let name = seg.ident.to_string();
+                return !matches!(name.as_str(), "Ok" | "Err" | "Some" | "None" | "panic");
+            }
+        }
+        false
+    }
+
+    fn is_result_returning_fn(sig: &syn::Signature) -> bool {
+        if let syn::ReturnType::Type(_, ty) = &sig.output {
+            if let syn::Type::Path(tp) = &**ty {
+                if let Some(seg) = tp.path.segments.last() {
+                    return seg.ident == "Result";
                 }
             }
         }
-        visit::visit_expr_method_call(self, node);
-    }
-}
-
-// ── StorageVisitor ──────────────────────────────────────────────────────────
-
-// ── UnusedVariableVisitor ──────────────────────────────────────────────────
-
-struct UnusedVariableVisitor {
-    fn_name: String,
-    defined: HashSet<(String, usize, usize)>, // (name, line, col)
-    used: HashSet<String>,
-}
-
-impl UnusedVariableVisitor {
-    fn new(fn_name: String) -> Self {
-        Self {
-            fn_name,
-            defined: HashSet::new(),
-            used: HashSet::new(),
-        }
+        false
     }
 
-    fn report_unused(self) -> Vec<UnusedVariableIssue> {
-        let mut issues = Vec::new();
-        for (name, line, col) in self.defined {
-            if !self.used.contains(&name)
-                && !name.starts_with('_')
-                && name != "env"
-                && name != "self"
-            {
-                issues.push(UnusedVariableIssue {
-                    name: name.clone(),
-                    function_name: self.fn_name.clone(),
-                    location: format!("{}:{}", line, col),
-                    line,
-                    col,
-                });
+    fn is_handled(expr: &syn::Expr) -> bool {
+        match expr {
+            syn::Expr::Try(_) => true,
+            syn::Expr::Match(_) => true,
+            syn::Expr::MethodCall(m) => {
+                let method = m.method.to_string();
+                matches!(
+                    method.as_str(),
+                    "unwrap"
+                        | "expect"
+                        | "unwrap_or"
+                        | "unwrap_or_else"
+                        | "unwrap_or_default"
+                        | "ok"
+                        | "err"
+                        | "is_ok"
+                        | "is_err"
+                        | "map"
+                        | "map_err"
+                        | "and_then"
+                        | "or_else"
+                        | "unwrap_unchecked"
+                        | "expect_unchecked"
+                )
             }
-        }
-        issues
-    }
-}
-
-impl<'ast> Visit<'ast> for UnusedVariableVisitor {
-    fn visit_pat_ident(&mut self, i: &'ast syn::PatIdent) {
-        let name = i.ident.to_string();
-        let span = i.ident.span().start();
-        self.defined.insert((name, span.line, span.column));
-        visit::visit_pat_ident(self, i);
-    }
-
-    fn visit_expr_path(&mut self, i: &'ast syn::ExprPath) {
-        if let Some(ident) = i.path.get_ident() {
-            self.used.insert(ident.to_string());
-        }
-        visit::visit_expr_path(self, i);
-    }
-
-    fn visit_field_pat(&mut self, i: &'ast syn::FieldPat) {
-        // Handle field shorthand like { x }
-        if let syn::Pat::Ident(id) = &*i.pat {
-            if i.member == syn::Member::Named(id.ident.clone()) {
-                self.used.insert(id.ident.to_string());
-            }
-        }
-        visit::visit_field_pat(self, i);
-    }
-}
-
-// ── StorageVisitor ──────────────────────────────────────────────────────────
-
-struct StorageVisitor {
-    current_fn: Option<String>,
-    instance_keys: HashSet<String>,
-    persistent_keys: HashSet<String>,
-    temporary_keys: HashSet<String>,
-    // Mapping of (key, storage_type) -> location string
-    key_locations: std::collections::HashMap<(String, String), String>,
-}
-
-impl<'ast> Visit<'ast> for StorageVisitor {
-    fn visit_impl_item_fn(&mut self, node: &'ast syn::ImplItemFn) {
-        let prev = self.current_fn.take();
-        self.current_fn = Some(node.sig.ident.to_string());
-        visit::visit_impl_item_fn(self, node);
-        self.current_fn = prev;
-    }
-
-    fn visit_expr_method_call(&mut self, node: &'ast syn::ExprMethodCall) {
-        let method_name = node.method.to_string();
-        if method_name == "set" || method_name == "get" || method_name == "has" {
-            let receiver_str = quote::quote!(#node.receiver).to_string();
-            let storage_type = if receiver_str.contains("instance") {
-                Some("Instance")
-            } else if receiver_str.contains("persistent") {
-                Some("Persistent")
-            } else if receiver_str.contains("temporary") {
-                Some("Temporary")
-            } else {
-                None
-            };
-
-            if let Some(st) = storage_type {
-                if let Some(first_arg) = node.args.first() {
-                    let key_str = quote::quote!(#first_arg).to_string();
-                    let loc = self
-                        .current_fn
-                        .as_ref()
-                        .map(|f| format!("{}:{}", f, first_arg.span().start().line))
-                        .unwrap_or_default();
-
-                    match st {
-                        "Instance" => {
-                            self.instance_keys.insert(key_str.clone());
-                            self.key_locations.insert((key_str, st.to_string()), loc);
+            syn::Expr::Assign(a) => Self::is_handled(&a.right),
+            syn::Expr::Call(c) => {
+                if let syn::Expr::Path(p) = &*c.func {
+                    if let Some(seg) = p.path.segments.last() {
+                        if seg.ident == "Ok" || seg.ident == "Err" {
+                            return true;
                         }
-                        "Persistent" => {
-                            self.persistent_keys.insert(key_str.clone());
-                            self.key_locations.insert((key_str, st.to_string()), loc);
-                        }
-                        "Temporary" => {
-                            self.temporary_keys.insert(key_str.clone());
-                            self.key_locations.insert((key_str, st.to_string()), loc);
-                        }
-                        _ => {}
                     }
                 }
+                false
             }
-        }
-        visit::visit_expr_method_call(self, node);
-    }
-}
-
-fn is_string_literal(expr: &syn::Expr) -> bool {
-    matches!(
-        expr,
-        syn::Expr::Lit(syn::ExprLit {
-            lit: syn::Lit::Str(_),
-            ..
-        })
-    )
-}
-
-fn is_u128_type(ty: &syn::Type) -> bool {
-    match ty {
-        syn::Type::Path(tp) => tp
-            .path
-            .segments
-            .last()
-            .map(|seg| seg.ident == "u128")
-            .unwrap_or(false),
-        syn::Type::Reference(r) => is_u128_type(&r.elem),
-        syn::Type::Group(g) => is_u128_type(&g.elem),
-        syn::Type::Paren(p) => is_u128_type(&p.elem),
-        _ => false,
-    }
-}
-
-fn pat_ident_name(pat: &syn::Pat) -> Option<String> {
-    match pat {
-        syn::Pat::Ident(id) => Some(id.ident.to_string()),
-        syn::Pat::Type(pt) => pat_ident_name(&pt.pat),
-        _ => None,
-    }
-}
-
-fn collect_u128_params(
-    inputs: &syn::punctuated::Punctuated<syn::FnArg, syn::token::Comma>,
-) -> HashSet<String> {
-    let mut names = HashSet::new();
-    for input in inputs {
-        if let syn::FnArg::Typed(pt) = input {
-            if is_u128_type(&pt.ty) {
-                if let Some(name) = pat_ident_name(&pt.pat) {
-                    names.insert(name);
-                }
-            }
+            _ => false,
         }
     }
-    names
-}
 
-fn extract_local_ident_if_u128(local: &syn::Local) -> Option<String> {
-    match &local.pat {
-        syn::Pat::Type(pt) => {
-            if is_u128_type(&pt.ty) {
-                return pat_ident_name(&pt.pat);
-            }
-            None
+    fn expr_to_string(expr: &syn::Expr) -> String {
+        let s = quote::quote!(#expr).to_string();
+        if s.len() > 80 {
+            format!("{}...", &s[..77])
+        } else {
+            s
         }
-        syn::Pat::Ident(_) => {
-            if let Some(init) = &local.init {
-                if let syn::Expr::Lit(syn::ExprLit {
-                    lit: syn::Lit::Int(lit),
-                    ..
-                }) = init.expr.as_ref()
-                {
-                    if lit.suffix() == "u128" {
-                        return pat_ident_name(&local.pat);
-                    }
-                }
-            }
-            None
-        }
-        _ => None,
     }
 }
+
+// ── Tests ─────────────────────────────────────────────────────────────────────
 
 #[cfg(test)]
 mod tests {
     use super::*;
-
-    // ── Tests ─────────────────────────────────────────────────────────────────────
 
     #[test]
     fn test_analyze_with_macros() {
@@ -1852,11 +1506,9 @@ mod tests {
     /*
         #[test]
         fn test_ledger_size_enum_and_approaching() {
-            let config = SanctifyConfig {
-                ledger_limit: 100,
-                approaching_threshold: 0.5,
-                ..Default::default()
-            };
+            let mut config = SanctifyConfig::default();
+            config.ledger_limit = 100;
+            config.approaching_threshold = 0.5;
             let analyzer = Analyzer::new(config);
             let source = r#"
                 #[contracttype]
@@ -2155,262 +1807,727 @@ mod tests {
         // Location should include function name
         assert!(issues[0].location.starts_with("risky:"));
     }
+    #[test]
+    fn test_custom_rules_with_severity() {
+        let config = SanctifyConfig {
+            custom_rules: vec![
+                CustomRule {
+                    name: "no_unsafe".to_string(),
+                    pattern: "unsafe".to_string(),
+                    severity: RuleSeverity::Error,
+                },
+                CustomRule {
+                    name: "todo_comment".to_string(),
+                    pattern: "TODO".to_string(),
+                    severity: RuleSeverity::Info,
+                },
+            ],
+            ..Default::default()
+        };
+        let analyzer = Analyzer::new(config);
+        let source = r#"
+            pub fn my_fn() {
+                // TODO: implement this
+                unsafe {
+                    let x = 1;
+                }
+            }
+        "#;
+        let matches = analyzer.analyze_custom_rules(source, &analyzer.config.custom_rules);
+        assert_eq!(matches.len(), 2);
+
+        let todo_match = matches
+            .iter()
+            .find(|m| m.rule_name == "todo_comment")
+            .unwrap();
+        assert_eq!(todo_match.severity, RuleSeverity::Info);
+
+        let unsafe_match = matches.iter().find(|m| m.rule_name == "no_unsafe").unwrap();
+        assert_eq!(unsafe_match.severity, RuleSeverity::Error);
+    }
 
     #[test]
-    fn test_scan_arithmetic_overflow_u128_ops_in_soroban_contracts() {
+    fn test_unhandled_result_basic() {
         let analyzer = Analyzer::new(SanctifyConfig::default());
+        let source = r#"
+            fn internal_fn() -> Result<u32, Error> {
+                Ok(42)
+            }
+
+            #[contractimpl]
+            impl MyContract {
+                pub fn public_fn(env: Env) -> u32 {
+                    internal_fn()
+                }
+            }
+        "#;
+        let issues = analyzer.scan_unhandled_results(source);
+        assert_eq!(issues.len(), 1);
+        assert!(issues[0].message.contains("not handled"));
+    }
+
+    #[test]
+    fn test_unhandled_result_with_try_operator() {
+        let analyzer = Analyzer::new(SanctifyConfig::default());
+        let source = r#"
+            fn internal_fn() -> Result<u32, Error> {
+                Ok(42)
+            }
+
+            #[contractimpl]
+            impl MyContract {
+                pub fn public_fn(env: Env) -> Result<u32, Error> {
+                    internal_fn()
+                }
+            }
+        "#;
+        let issues = analyzer.scan_unhandled_results(source);
+        assert_eq!(issues.len(), 0, "{:?}", issues);
+    }
+
+    #[test]
+    fn test_unhandled_result_with_unwrap() {
+        let analyzer = Analyzer::new(SanctifyConfig::default());
+        let source = r#"
+            fn internal_fn() -> Result<u32, Error> {
+                Ok(42)
+            }
+
+            #[contractimpl]
+            impl MyContract {
+                pub fn public_fn(env: Env) -> u32 {
+                    internal_fn().unwrap()
+                }
+            }
+        "#;
+        let issues = analyzer.scan_unhandled_results(source);
+        assert_eq!(issues.len(), 0, "{:?}", issues);
+    }
+
+    #[test]
+    fn test_unhandled_result_with_expect() {
+        let analyzer = Analyzer::new(SanctifyConfig::default());
+        let source = r#"
+            fn internal_fn() -> Result<u32, Error> {
+                Ok(42)
+            }
+
+            #[contractimpl]
+            impl MyContract {
+                pub fn public_fn(env: Env) -> u32 {
+                    internal_fn().expect("should succeed")
+                }
+            }
+        "#;
+        let issues = analyzer.scan_unhandled_results(source);
+        assert_eq!(issues.len(), 0, "{:?}", issues);
+    }
+
+    #[test]
+    fn test_unhandled_result_with_match() {
+        let analyzer = Analyzer::new(SanctifyConfig::default());
+        let source = r#"
+            fn internal_fn() -> Result<u32, Error> {
+                Ok(42)
+            }
+
+            #[contractimpl]
+            impl MyContract {
+                pub fn public_fn(env: Env) -> u32 {
+                    match internal_fn() {
+                        Ok(v) => v,
+                        Err(_) => 0,
+                    }
+                }
+            }
+        "#;
+        let issues = analyzer.scan_unhandled_results(source);
+        assert_eq!(issues.len(), 0, "{:?}", issues);
+    }
+
+    #[test]
+    fn test_unhandled_result_with_map() {
+        let analyzer = Analyzer::new(SanctifyConfig::default());
+        let source = r#"
+            fn internal_fn() -> Result<u32, Error> {
+                Ok(42)
+            }
+
+            #[contractimpl]
+            impl MyContract {
+                pub fn public_fn(env: Env) {
+                    internal_fn().map(|v| v + 1);
+                }
+            }
+        "#;
+        let issues = analyzer.scan_unhandled_results(source);
+        assert_eq!(issues.len(), 0, "{:?}", issues);
+    }
+
+    #[test]
+    fn test_unhandled_result_private_fn() {
+        let analyzer = Analyzer::new(SanctifyConfig::default());
+        let source = r#"
+            fn internal_fn() -> Result<u32, Error> {
+                Ok(42)
+            }
+
+            impl MyContract {
+                fn private_fn(env: Env) -> u32 {
+                    internal_fn()
+                }
+            }
+        "#;
+        let issues = analyzer.scan_unhandled_results(source);
+        assert_eq!(issues.len(), 0, "{:?}", issues);
+    }
+
+    #[test]
+    fn test_unhandled_result_multiple_calls() {
+        let analyzer = Analyzer::new(SanctifyConfig::default());
+        let source = r#"
+            fn fn_a() -> Result<u32, Error> { Ok(1) }
+            fn fn_b() -> Result<u32, Error> { Ok(2) }
+
+            #[contractimpl]
+            impl MyContract {
+                pub fn public_fn(env: Env) {
+                    fn_a();
+                    fn_b().unwrap();
+                }
+            }
+        "#;
+        let issues = analyzer.scan_unhandled_results(source);
+        assert_eq!(issues.len(), 1);
+        assert!(issues[0].call_expression.contains("fn_a"));
+    }
+
+    #[test]
+    fn test_unhandled_result_nested_calls() {
+        let analyzer = Analyzer::new(SanctifyConfig::default());
+        let source = r#"
+            fn inner() -> Result<u32, Error> { Ok(42) }
+
+            #[contractimpl]
+            impl MyContract {
+                pub fn public_fn(env: Env) {
+                    let x = inner();
+                }
+            }
+        "#;
+        let issues = analyzer.scan_unhandled_results(source);
+        assert_eq!(issues.len(), 1);
+    }
+
+    #[test]
+    fn test_unhandled_result_ok_err_wrapped() {
+        let analyzer = Analyzer::new(SanctifyConfig::default());
+        let source = r#"
+            fn internal_fn() -> Result<u32, Error> {
+                Ok(42)
+            }
+
+            #[contractimpl]
+            impl MyContract {
+                pub fn public_fn(env: Env) -> Result<u32, Error> {
+                    Ok(internal_fn()?)
+                }
+            }
+        "#;
+        let issues = analyzer.scan_unhandled_results(source);
+        assert_eq!(issues.len(), 0, "{:?}", issues);
+    }
+
+    #[test]
+    fn test_unhandled_result_with_unwrap_or() {
+        let analyzer = Analyzer::new(SanctifyConfig::default());
+        let source = r#"
+            fn internal_fn() -> Result<u32, Error> {
+                Ok(42)
+            }
+
+            #[contractimpl]
+            impl MyContract {
+                pub fn public_fn(env: Env) -> u32 {
+                    internal_fn().unwrap_or(0)
+                }
+            }
+        "#;
+        let issues = analyzer.scan_unhandled_results(source);
+        assert_eq!(issues.len(), 0, "{:?}", issues);
+    }
+
+    #[test]
+    fn test_unhandled_result_empty_source() {
+        let analyzer = Analyzer::new(SanctifyConfig::default());
+        let source = "";
+        let issues = analyzer.scan_unhandled_results(source);
+        assert_eq!(issues.len(), 0, "{:?}", issues);
+    }
+
+    #[test]
+    fn test_unhandled_result_invalid_syntax() {
+        let analyzer = Analyzer::new(SanctifyConfig::default());
+        let source = "this is not valid rust";
+        let issues = analyzer.scan_unhandled_results(source);
+        assert_eq!(issues.len(), 0, "{:?}", issues);
+    }
+
+    #[test]
+    fn test_gas_estimator_simple_function() {
+        let source = r#"
+            #[contractimpl]
+            impl MyContract {
+                pub fn simple(env: Env) -> u32 {
+                    42
+                }
+            }
+        "#;
+        let reports = crate::gas_estimator::GasEstimator::new().estimate_contract(source);
+        assert_eq!(reports.len(), 1);
+        assert_eq!(reports[0].function_name, "simple");
+        assert_eq!(reports[0].estimated_instructions, 50);
+    }
+
+    #[test]
+    fn test_gas_estimator_binary_operations() {
+        let source = r#"
+            #[contractimpl]
+            impl MyContract {
+                pub fn add(env: Env, a: u32, b: u32) -> u32 {
+                    a + b
+                }
+            }
+        "#;
+        let reports = crate::gas_estimator::GasEstimator::new().estimate_contract(source);
+        assert_eq!(reports.len(), 1);
+        assert!(reports[0].estimated_instructions > 50);
+    }
+
+    #[test]
+    fn test_gas_estimator_function_call() {
+        let source = r#"
+            #[contractimpl]
+            impl MyContract {
+                pub fn caller(env: Env) {
+                    helper();
+                }
+            }
+        "#;
+        let reports = crate::gas_estimator::GasEstimator::new().estimate_contract(source);
+        assert_eq!(reports.len(), 1);
+        assert!(reports[0].estimated_instructions >= 70);
+    }
+
+    #[test]
+    fn test_gas_estimator_storage_operations() {
+        let source = r#"
+            #[contractimpl]
+            impl MyContract {
+                pub fn store(env: Env, key: Symbol, val: u32) {
+                    env.storage().persistent().set(&key, &val);
+                }
+            }
+        "#;
+        let reports = crate::gas_estimator::GasEstimator::new().estimate_contract(source);
+        assert_eq!(reports.len(), 1);
+        assert!(reports[0].estimated_instructions >= 1050);
+    }
+
+    #[test]
+    fn test_gas_estimator_multiple_storage_ops() {
+        let source = r#"
+            #[contractimpl]
+            impl MyContract {
+                pub fn multi_store(env: Env, key: Symbol, val: u32) {
+                    env.storage().persistent().set(&key, &val);
+                    let exists = env.storage().persistent().has(&key);
+                    env.storage().persistent().remove(&key);
+                }
+            }
+        "#;
+        let reports = crate::gas_estimator::GasEstimator::new().estimate_contract(source);
+        assert_eq!(reports.len(), 1);
+        assert!(reports[0].estimated_instructions >= 3050);
+    }
+
+    #[test]
+    fn test_gas_estimator_require_auth() {
+        let source = r#"
+            #[contractimpl]
+            impl MyContract {
+                pub fn secured(env: Env, addr: Address) {
+                    addr.require_auth();
+                }
+            }
+        "#;
+        let reports = crate::gas_estimator::GasEstimator::new().estimate_contract(source);
+        assert_eq!(reports.len(), 1);
+        assert!(reports[0].estimated_instructions >= 550);
+    }
+
+    #[test]
+    fn test_gas_estimator_for_loop() {
+        let source = r#"
+            #[contractimpl]
+            impl MyContract {
+                pub fn iterate(env: Env, n: u32) {
+                    for i in 0..n {
+                        let x = i + 1;
+                    }
+                }
+            }
+        "#;
+        let reports = crate::gas_estimator::GasEstimator::new().estimate_contract(source);
+        assert_eq!(reports.len(), 1);
+        assert!(reports[0].estimated_instructions > 100);
+    }
+
+    #[test]
+    fn test_gas_estimator_while_loop() {
+        let source = r#"
+            #[contractimpl]
+            impl MyContract {
+                pub fn while_loop(env: Env, mut count: u32) {
+                    while count > 0 {
+                        count -= 1;
+                    }
+                }
+            }
+        "#;
+        let reports = crate::gas_estimator::GasEstimator::new().estimate_contract(source);
+        assert_eq!(reports.len(), 1);
+        assert!(reports[0].estimated_instructions > 100);
+    }
+
+    #[test]
+    fn test_gas_estimator_nested_loops() {
+        let source = r#"
+            #[contractimpl]
+            impl MyContract {
+                pub fn nested(env: Env, n: u32) {
+                    for i in 0..n {
+                        for j in 0..n {
+                            let _ = i + j;
+                        }
+                    }
+                }
+            }
+        "#;
+        let reports = crate::gas_estimator::GasEstimator::new().estimate_contract(source);
+        assert_eq!(reports.len(), 1);
+        assert!(reports[0].estimated_instructions > 500);
+    }
+
+    #[test]
+    fn test_gas_estimator_local_variables() {
+        let source = r#"
+            #[contractimpl]
+            impl MyContract {
+                pub fn locals(env: Env) {
+                    let a: u32 = 1;
+                    let b: u64 = 2;
+                    let c: u128 = 3;
+                }
+            }
+        "#;
+        let reports = crate::gas_estimator::GasEstimator::new().estimate_contract(source);
+        assert_eq!(reports.len(), 1);
+        assert!(reports[0].estimated_memory_bytes > 32);
+    }
+
+    #[test]
+    fn test_gas_estimator_vec_macro() {
+        let source = r#"
+            #[contractimpl]
+            impl MyContract {
+                pub fn with_vec(env: Env) {
+                    let v = vec![&env, 1, 2, 3];
+                }
+            }
+        "#;
+        let reports = crate::gas_estimator::GasEstimator::new().estimate_contract(source);
+        assert_eq!(reports.len(), 1);
+        assert!(reports[0].estimated_memory_bytes >= 160);
+    }
+
+    #[test]
+    fn test_gas_estimator_symbol_macro() {
+        let source = r#"
+            #[contractimpl]
+            impl MyContract {
+                pub fn with_symbol(env: Env) {
+                    let s = symbol_short!("key");
+                }
+            }
+        "#;
+        let reports = crate::gas_estimator::GasEstimator::new().estimate_contract(source);
+        assert_eq!(reports.len(), 1);
+        assert!(reports[0].estimated_instructions >= 60);
+    }
+
+    #[test]
+    fn test_gas_estimator_multiple_functions() {
+        let source = r#"
+            #[contractimpl]
+            impl MyContract {
+                pub fn func_a(env: Env) -> u32 {
+                    1
+                }
+
+                pub fn func_b(env: Env) -> u32 {
+                    2
+                }
+
+                fn private_func(env: Env) -> u32 {
+                    3
+                }
+            }
+        "#;
+        let reports = crate::gas_estimator::GasEstimator::new().estimate_contract(source);
+        assert_eq!(reports.len(), 2);
+        let names: Vec<&str> = reports.iter().map(|r| r.function_name.as_str()).collect();
+        assert!(names.contains(&"func_a"));
+        assert!(names.contains(&"func_b"));
+    }
+
+    #[test]
+    fn test_gas_estimator_complex_function() {
         let source = r#"
             #[contractimpl]
             impl Token {
-                pub fn settle(env: Env, total: u128, amount: u128) -> u128 {
-                    let fee = 1u128;
-                    (total - amount) + (amount * fee)
+                pub fn transfer(env: Env, from: Address, to: Address, amount: i128) {
+                    from.require_auth();
+                    to.require_auth();
+                    let balance_from: i128 = env.storage().persistent().get(&from).unwrap_or(0);
+                    let balance_to: i128 = env.storage().persistent().get(&to).unwrap_or(0);
+                    env.storage().persistent().set(&from, &(balance_from - amount));
+                    env.storage().persistent().set(&to, &(balance_to + amount));
                 }
             }
         "#;
-
-        let issues = analyzer.scan_arithmetic_overflow(source);
-        assert_eq!(issues.len(), 3);
-
-        let add = issues
-            .iter()
-            .find(|i| i.operation == "+")
-            .expect("missing + issue");
-        let sub = issues
-            .iter()
-            .find(|i| i.operation == "-")
-            .expect("missing - issue");
-        let mul = issues
-            .iter()
-            .find(|i| i.operation == "*")
-            .expect("missing * issue");
-
-        assert!(add.suggestion.contains("checked_add"));
-        assert!(sub.suggestion.contains("checked_sub"));
-        assert!(mul.suggestion.contains("checked_mul"));
+        let reports = crate::gas_estimator::GasEstimator::new().estimate_contract(source);
+        assert_eq!(reports.len(), 1);
+        assert!(reports[0].estimated_instructions > 3000);
     }
 
     #[test]
-    fn test_scan_arithmetic_overflow_u128_checked_methods_not_flagged() {
-        let analyzer = Analyzer::new(SanctifyConfig::default());
+    fn test_gas_estimator_empty_source() {
+        let source = "";
+        let reports = crate::gas_estimator::GasEstimator::new().estimate_contract(source);
+        assert!(reports.is_empty());
+    }
+
+    #[test]
+    fn test_gas_estimator_invalid_syntax() {
+        let source = "this is not valid rust code";
+        let reports = crate::gas_estimator::GasEstimator::new().estimate_contract(source);
+        assert!(reports.is_empty());
+    }
+
+    #[test]
+    fn test_gas_estimator_no_impl_block() {
         let source = r#"
-            #[contractimpl]
-            impl Token {
-                pub fn safe_settle(env: Env, total: u128, amount: u128) -> Option<u128> {
-                    let remaining = total.checked_sub(amount)?;
-                    remaining.checked_add(amount.checked_mul(1u128)?)
+            pub fn standalone() -> u32 {
+                42
+            }
+        "#;
+        let reports = crate::gas_estimator::GasEstimator::new().estimate_contract(source);
+        assert!(reports.is_empty());
+    }
+
+    #[test]
+    fn test_gas_estimator_impl_without_pub() {
+        let source = r#"
+            impl MyContract {
+                fn private(env: Env) -> u32 {
+                    42
                 }
             }
         "#;
-
-        let issues = analyzer.scan_arithmetic_overflow(source);
-        assert!(
-            issues.is_empty(),
-            "Expected no issues for checked u128 arithmetic, got: {:?}",
-            issues
-        );
+        let reports = crate::gas_estimator::GasEstimator::new().estimate_contract(source);
+        assert!(reports.is_empty());
     }
 
-    /*
-        #[test]
-        fn test_scan_events_consistency_and_optimization() {
-            let analyzer = Analyzer::new(SanctifyConfig::default());
-            let source = r#"
-                #[contractimpl]
-                impl MyContract {
-                    pub fn emit_events(env: Env) {
-                        // Consistent
-                        env.events().publish(("event1", 1), 100);
-                        env.events().publish(("event1", 2), 200);
+    #[test]
+    fn test_gas_estimator_memory_estimation() {
+        let source = r#"
+            #[contractimpl]
+            impl MyContract {
+                pub fn memory_test(env: Env) {
+                    let small: u32 = 1;
+                    let medium: u64 = 2;
+                    let large: u128 = 3;
+                    let addr: Address = Address::from_str(&env, "GAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA");
+                    let bytes: Bytes = Bytes::new(&env);
+                }
+            }
+        "#;
+        let reports = crate::gas_estimator::GasEstimator::new().estimate_contract(source);
+        assert_eq!(reports.len(), 1);
+        assert!(reports[0].estimated_memory_bytes > 100);
+    }
 
-                        // Inconsistent
-                        env.events().publish(("event2", 1), 100);
-                        env.events().publish(("event2", 1, 2), 200);
-
-                        // Optimization opportunity
-                        env.events().publish(("long_event_name", "short"), 300);
+    #[test]
+    fn test_gas_estimator_conditional_logic() {
+        let source = r#"
+            #[contractimpl]
+            impl MyContract {
+                pub fn conditional(env: Env, val: u32) -> u32 {
+                    if val > 10 {
+                        val + 1
+                    } else {
+                        val - 1
                     }
                 }
-            "#;
-            let issues = analyzer.scan_events(source);
+            }
+        "#;
+        let reports = crate::gas_estimator::GasEstimator::new().estimate_contract(source);
+        assert_eq!(reports.len(), 1);
+        assert!(reports[0].estimated_instructions > 50);
+    }
 
-            // One inconsistency for event2
-            assert!(issues.iter().any(|i| i.issue_type == EventIssueType::InconsistentSchema && i.event_name == "event2"));
-            // Optimization for "short"
-            assert!(issues.iter().any(|i| i.issue_type == EventIssueType::OptimizableTopic && i.message.contains("\"short\"")));
-            // Optimization for "event1"
-            assert!(issues.iter().any(|i| i.issue_type == EventIssueType::OptimizableTopic && i.message.contains("\"event1\"")));
-        }
-    */
     #[test]
-    fn test_scan_deprecated_apis() {
-        let analyzer = Analyzer::new(SanctifyConfig::default());
+    fn test_gas_estimator_match_expression() {
         let source = r#"
             #[contractimpl]
             impl MyContract {
-                pub fn legacy_storage(env: Env) {
-                    env.put_contract_data(&Symbol::new(&env, "key"), &123);
-                    let val: i32 = env.get_contract_data(&Symbol::new(&env, "key")).unwrap();
-                    if env.has_contract_data(&Symbol::new(&env, "key")) {
-                        env.remove_contract_data(&Symbol::new(&env, "key"));
+                pub fn match_test(env: Env, action: u32) -> u32 {
+                    match action {
+                        0 => 1,
+                        1 => 2,
+                        _ => 0,
                     }
-                    let id = env.get_contract_id();
-                }
-
-                pub fn modern_storage(env: Env) {
-                    env.storage().instance().set(&Symbol::new(&env, "key"), &123);
-                    let val: i32 = env.storage().instance().get(&Symbol::new(&env, "key")).unwrap();
                 }
             }
         "#;
-        let issues = analyzer.scan_deprecated_apis(source);
-        assert_eq!(issues.len(), 5);
-        let funcs: Vec<String> = issues.iter().map(|i| i.deprecated_api.clone()).collect();
-        assert!(funcs.contains(&"put_contract_data".to_string()));
-        assert!(funcs.contains(&"get_contract_data".to_string()));
-        assert!(funcs.contains(&"has_contract_data".to_string()));
-        assert!(funcs.contains(&"remove_contract_data".to_string()));
-        assert!(funcs.contains(&"get_contract_id".to_string()));
-
-        assert!(issues.iter().all(|i| i.function_name == "legacy_storage"));
+        let reports = crate::gas_estimator::GasEstimator::new().estimate_contract(source);
+        assert_eq!(reports.len(), 1);
+        assert_eq!(reports[0].function_name, "match_test");
+        assert!(reports[0].estimated_instructions >= 50);
     }
 
     #[test]
-    fn test_scan_auth_gaps_indirect() {
+    fn test_gas_estimator_known_soroban_limits() {
+        let source = r#"
+            #[contractimpl]
+            impl HeavyContract {
+                pub fn heavy_storage(env: Env) {
+                    env.storage().persistent().set(&Symbol::new(&env, "key1"), &1u64);
+                    env.storage().persistent().set(&Symbol::new(&env, "key2"), &2u64);
+                    env.storage().persistent().set(&Symbol::new(&env, "key3"), &3u64);
+                    env.storage().persistent().set(&Symbol::new(&env, "key4"), &4u64);
+                    env.storage().persistent().set(&Symbol::new(&env, "key5"), &5u64);
+                }
+            }
+        "#;
+        let reports = crate::gas_estimator::GasEstimator::new().estimate_contract(source);
+        assert_eq!(reports.len(), 1);
+        assert!(reports[0].estimated_instructions >= 5000);
+    }
+
+    #[test]
+    fn test_rule_registry_default_rules() {
+        let registry = RuleRegistry::default();
+        let rules = registry.available_rules();
+        assert!(rules.contains(&"auth_gap"));
+        assert!(rules.contains(&"ledger_size"));
+        assert!(rules.contains(&"panic_detection"));
+        assert!(rules.contains(&"arithmetic_overflow"));
+        assert!(rules.contains(&"unhandled_result"));
+    }
+
+    #[test]
+    fn test_rule_run_all() {
+        let registry = RuleRegistry::default();
+        let source = r#"
+            #[contractimpl]
+            impl MyContract {
+                pub fn unsafe_fn(env: Env) {
+                    panic!("Something went wrong");
+                }
+            }
+        "#;
+        let violations = registry.run_all(source);
+        assert!(!violations.is_empty());
+    }
+
+    #[test]
+    fn test_rule_run_by_name() {
+        let registry = RuleRegistry::default();
+        let source = r#"
+            #[contractimpl]
+            impl MyContract {
+                pub fn risky(env: Env, a: u64, b: u64) -> u64 {
+                    a + b
+                }
+            }
+        "#;
+        let violations = registry.run_by_name(source, "arithmetic_overflow");
+        assert_eq!(violations.len(), 1);
+        assert_eq!(violations[0].rule_name, "arithmetic_overflow");
+    }
+
+    #[test]
+    fn test_analyzer_run_rules() {
         let analyzer = Analyzer::new(SanctifyConfig::default());
         let source = r#"
             #[contractimpl]
             impl MyContract {
-                fn helper_auth(env: Env) {
-                    env.require_auth();
-                }
-
-                fn helper_no_auth(env: Env) {
-                    // No auth here
-                }
-
-                pub fn safe_indirect(env: Env, val: u32) {
-                    Self::helper_auth(env.clone());
-                    env.storage().instance().set(&DataKey::Val, &val);
-                }
-
-                pub fn unsafe_indirect(env: Env, val: u32) {
-                    Self::helper_no_auth(env.clone());
-                    env.storage().instance().set(&DataKey::Val, &val);
-                }
-
-                pub fn deep_safe(env: Env, val: u32) {
-                    Self::deep_helper(env.clone());
-                    env.storage().instance().set(&DataKey::Val, &val);
-                }
-
-                fn deep_helper(env: Env) {
-                    Self::helper_auth(env);
+                pub fn add(env: Env, a: u64, b: u64) -> u64 {
+                    a + b
                 }
             }
         "#;
-        let gaps = analyzer.scan_auth_gaps(source);
-        // Only unsafe_indirect should be flagged.
-        // deep_safe and safe_indirect should be fine.
-        assert!(gaps.contains(&"unsafe_indirect".to_string()));
-        assert!(!gaps.contains(&"safe_indirect".to_string()));
-        assert!(!gaps.contains(&"deep_safe".to_string()));
-        assert_eq!(gaps.len(), 1);
+        let violations = analyzer.run_rules(source);
+        assert!(!violations.is_empty());
     }
 
     #[test]
-    fn test_scan_storage_collisions() {
-        let analyzer = Analyzer::new(SanctifyConfig::default());
-        let src = r#"
-            #![no_std]
-            use soroban_sdk::{contract, contractimpl, Env, Symbol};
-            #[contract]
-            pub struct TestContract;
-            #[contractimpl]
-            impl TestContract {
-                pub fn collision(env: Env) {
-                    let key = Symbol::new(&env, "admin");
-                    env.storage().instance().set(&key, &123);
-                    env.storage().persistent().set(&key, &456);
-                }
-            }
-        "#;
-        let issues = analyzer.scan_storage_collisions(src);
-        assert!(!issues.is_empty());
-        // In the quote-generated string, "& key" results in "key"
-        assert!(issues[0].key.contains("key"));
-        assert!(issues[0].storage_types.contains(&"Instance".to_string()));
-        assert!(issues[0].storage_types.contains(&"Persistent".to_string()));
-    }
-
-    #[test]
-    fn test_scan_unused_variables() {
+    fn test_storage_collision_detects_within_same_storage_type() {
         let analyzer = Analyzer::new(SanctifyConfig::default());
         let source = r#"
             #[contractimpl]
             impl MyContract {
-                pub fn unused_var(env: Env, used: u32, unused: u32) -> u32 {
-                    let local_used = used + 1;
-                    let local_unused = 10;
-                    local_used
+                pub fn write_a(env: Env) {
+                    env.storage().persistent().set(&"USER", &1u32);
+                }
+
+                pub fn write_b(env: Env) {
+                    env.storage().persistent().set(&"USER", &2u32);
                 }
             }
         "#;
-        let issues = analyzer.scan_unused_variables(source);
-        assert_eq!(issues.len(), 2);
-        let names: Vec<String> = issues.iter().map(|i| i.name.clone()).collect();
-        assert!(names.contains(&"unused".to_string()));
-        assert!(names.contains(&"local_unused".to_string()));
-        assert!(!names.contains(&"used".to_string()));
-        assert!(!names.contains(&"local_used".to_string()));
+
+        let collisions = analyzer.scan_storage_collisions(source);
+        assert_eq!(collisions.len(), 2);
+        assert!(collisions.iter().all(|c| c.key_value == "USER"));
+        assert!(collisions
+            .iter()
+            .all(|c| c.message.contains("persistent storage key collision")));
     }
 
     #[test]
-    fn test_suggest_fixes() {
+    fn test_storage_collision_ignores_cross_storage_type_key_reuse() {
         let analyzer = Analyzer::new(SanctifyConfig::default());
         let source = r#"
             #[contractimpl]
             impl MyContract {
-                pub fn missing_auth(env: Env, user: Address, val: u32) {
-                    env.storage().instance().set(&DataKey::Val, &val);
+                pub fn set_persistent(env: Env) {
+                    env.storage().persistent().set(&"SESSION", &1u32);
                 }
 
-                pub fn unused(env: Env, x: u32) -> u32 {
-                    let y = 10;
-                    5
-                }
-            }
-        "#;
-        let fixes = analyzer.suggest_fixes(source);
-        // 1 fix for missing_auth (AddAuth)
-        // (Unused 'user' fix is filtered out because it's used in AddAuth)
-        // 2 fixes for unused (PrefixUnused for x and y)
-        assert_eq!(fixes.len(), 3);
-
-        let types: Vec<FixType> = fixes.iter().map(|f| f.fix_type.clone()).collect();
-        assert!(types.contains(&FixType::AddAuth));
-        assert!(types.contains(&FixType::PrefixUnused));
-    }
-
-    #[test]
-    fn test_scan_arithmetic_custom_library() {
-        let analyzer = Analyzer::new(SanctifyConfig::default());
-        let source = r#"
-            #[contractimpl]
-            impl Vault {
-                pub fn calc_shares(env: Env, amount: i128, rate: i128) -> i128 {
-                    amount.fixed_mul(rate)
+                pub fn set_temporary(env: Env) {
+                    env.storage().temporary().set(&"SESSION", &2u32);
                 }
 
-                pub fn calc_assets(env: Env, shares: i128, rate: i128) -> i128 {
-                    shares.fixed_div(rate)
+                pub fn set_instance(env: Env) {
+                    env.storage().instance().set(&"SESSION", &3u32);
                 }
             }
         "#;
-        let issues = analyzer.scan_arithmetic_overflow(source);
-        assert_eq!(issues.len(), 2);
-        let ops: Vec<String> = issues.iter().map(|i| i.operation.clone()).collect();
-        assert!(ops.contains(&"fixed_mul".to_string()));
-        assert!(ops.contains(&"fixed_div".to_string()));
+
+        let collisions = analyzer.scan_storage_collisions(source);
+        assert!(collisions.is_empty());
     }
 }

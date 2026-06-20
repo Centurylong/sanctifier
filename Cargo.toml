@@ -1,9 +1,7 @@
 [workspace]
 members = [
-    "tooling/sanctifier-cli",
     "tooling/sanctifier-core",
-    "tooling/sanctifier-wasm",
-    "tooling/sanctifier-sdk",
+    "tooling/sanctify-macros",
     "contracts/vulnerable-contract",
     "contracts/token-with-bugs",
     "contracts/amm-pool",
@@ -11,23 +9,17 @@ members = [
     "contracts/protected-vault",
     "contracts/runtime-guard-wrapper",
     "contracts/kani-poc",
-    "contracts/reentrancy-guardian",
+    "contracts/token-invariants",
 ]
 resolver = "2"
 
 [workspace.dependencies]
-soroban-sdk = "20.0.0"
+soroban-sdk = { version = "20.5.0" }
 
-[workspace.lints.rust]
-unexpected_cfgs = "allow"
-
-[workspace.lints.clippy]
-all = "warn"
+[workspace.package]
+rust-version = "1.78"
 
 [profile.release]
 opt-level = "z"
 lto = true
 codegen-units = 1
-
-
-

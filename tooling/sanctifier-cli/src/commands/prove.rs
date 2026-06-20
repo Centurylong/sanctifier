@@ -6,6 +6,7 @@ use serde::Serialize;
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::time::{SystemTime, UNIX_EPOCH};
+use z3::{Config, Context};
 
 #[derive(Args)]
 pub struct ProveArgs {
@@ -45,8 +46,8 @@ struct ProofCertificate {
 pub fn exec(args: ProveArgs) -> anyhow::Result<()> {
     let invariants = resolve_invariants(&args.invariant)?;
 
-    let cfg = z3::Config::new();
-    let ctx = z3::Context::new(&cfg);
+    let cfg = Config::new();
+    let ctx = Context::new(&cfg);
     let prover = SmtProver::new(&ctx);
 
     let contract_path = args

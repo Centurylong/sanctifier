@@ -94,39 +94,21 @@ Then run:
 cargo kani --package kani-poc-contract
 ```
 
-## Configuration and Loop Unwinding
+## SMT Solver Latency Benchmarking
 
-For contracts with loops, Kani often requires a specified unwinding limit to complete verification. Sanctifier allows you to configure this globally for all generated Kani harnesses using the `.sanctify.toml` configuration file.
-
-### Setting Loop Unwind Limit
-
-Add the `kani_unwind` field to your `.sanctify.toml` file:
-
-```toml
-# .sanctify.toml
-kani_unwind = 10
-```
-
-When this is set, all generated Kani harnesses will include the `#[kani::unwind(N)]` attribute. This is particularly useful for bounded model checking where deep loops would otherwise cause state-space explosion or termination issues.
-
-### Generating Kani Harnesses
-
-Use the Sanctifier CLI to generate Kani-compatible Rust code:
+To compare proof strategy cost in CI/local testing, Sanctifier now includes an ignored benchmark test in `sanctifier-core`:
 
 ```bash
-sanctifier kani contract.rs --output kani_harness.rs
+cargo test -p sanctifier-core --test smt_latency_benchmark -- --ignored
 ```
 
-If `kani_unwind` is set in `.sanctify.toml`, the output will look like:
+This runs a set of SMT proof strategies repeatedly and writes `target/smt-latency-report.json` with:
+- per-strategy min/avg/max latency (microseconds)
+- p95 latency
+- a sortable summary for identifying the most expensive strategy
 
-```rust
-#[cfg(kani)]
-#[kani::proof]
-#[kani::unwind(10)]
-pub fn kani_harness_my_function() {
-    // ... generated harness logic ...
-}
-```
+## Tutorial Videos
 
-This allows you to verify complex loops without manually editing the generated harnesses.
+For a step-by-step walkthrough format, including how to read reports and write your first harness, see:
 
+- [`docs/formal-verification-video-series.md`](./formal-verification-video-series.md)

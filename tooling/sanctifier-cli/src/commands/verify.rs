@@ -1,7 +1,9 @@
 use clap::Args;
 use colored::Colorize;
-use sanctifier_core::invariant::{scan_invariant_attrs, InvariantDecl, InvariantVerifyResult};
-use sanctifier_core::SanctifyConfig;
+use sanctifier_core::{
+    invariant::{InvariantDecl, InvariantVerifyResult, SmtInvariantVerifier},
+    Analyzer, SanctifyConfig,
+};
 use std::path::{Path, PathBuf};
 
 #[derive(Args)]
@@ -48,6 +50,7 @@ pub(crate) fn collect_rs_files(dir: &Path, ignore: &[String], out: &mut Vec<Path
 /// Scan `path` (file or directory) and return all invariant declarations found.
 pub(crate) fn discover_invariants(path: &Path) -> Vec<InvariantDecl> {
     let config = SanctifyConfig::default();
+    let analyzer = Analyzer::new(config.clone());
 
     let mut rs_files: Vec<PathBuf> = Vec::new();
     if path.is_dir() {
@@ -63,21 +66,26 @@ pub(crate) fn discover_invariants(path: &Path) -> Vec<InvariantDecl> {
             Err(_) => continue,
         };
         let label = file.display().to_string();
-        let decls = scan_invariant_attrs(&source, &label);
+        let decls = analyzer.scan_invariant_attrs(&source, &label);
         all_decls.extend(decls);
     }
     all_decls
 }
 
 /// Run the SMT verifier over all discovered invariants and return paired results.
-/// Returns `Unsupported` for all invariants when the `smt` feature is not enabled.
+///
+/// Returns `(InvariantDecl, InvariantVerifyResult)` for every invariant found.
+/// When the `smt` feature is absent the function returns `Unsupported` for
+/// everything so the CLI can still print a meaningful message.
 pub(crate) fn run_verification(
     decls: Vec<InvariantDecl>,
 ) -> Vec<(InvariantDecl, InvariantVerifyResult)> {
-    decls
-        .into_iter()
-        .map(|d| (d, InvariantVerifyResult::Unsupported))
-        .collect()
+    if decls.is_empty() {
+        return vec![];
+    }
+
+    let verifier = SmtInvariantVerifier::new();
+    verifier.verify_all(&decls)
 }
 
 pub fn exec(args: VerifyArgs) -> anyhow::Result<()> {

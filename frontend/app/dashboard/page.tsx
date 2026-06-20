@@ -1,19 +1,19 @@
 "use client";
 
-import { useState, useCallback, useEffect } from "react";
-import type { AnalysisReport, Finding, Severity, SavedReport } from "../types";
-import { transformReport } from "../lib/transform";
+import { useState, useCallback, Suspense } from "react";
+import type { AnalysisReport, CallGraphNode, CallGraphEdge, Finding } from "../types";
+import { transformReport, extractCallGraph } from "../lib/transform";
 import { exportToPdf } from "../lib/export-pdf";
 import { FindingsPanel } from "../components/FindingsPanel";
 import { SummaryChart } from "../components/SummaryChart";
-import { KaniMetricsWidget } from "../components/KaniMetricsWidget";
-import { SymbolicGraphWidget } from "../components/SymbolicGraphWidget";
+import { SanctityScore } from "../components/SanctityScore";
+import { ScoreTrendChart } from "../components/ScoreTrendChart";
+import { CallGraph } from "../components/CallGraph";
 import { ThemeToggle } from "../components/ThemeToggle";
-import { LoadingSpinner } from "../components/LoadingSpinner";
-import { SanctityScoreWidget } from "../components/SanctityScoreWidget";
+import { ErrorBoundary } from "../components/ErrorBoundary";
+import { DashboardSkeleton } from "../components/LoadingSkeleton";
 import Link from "next/link";
-import { analyzeSourceInBrowser } from "../lib/wasm";
-import { saveReport, listSavedReports } from "../lib/reports-store";
+import type { Metadata } from "next";
 
 const SAMPLE_JSON = `{
   "size_warnings": [],
@@ -31,29 +31,32 @@ export default function DashboardPage() {
   const [callGraphEdges, setCallGraphEdges] = useState<CallGraphEdge[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [jsonInput, setJsonInput] = useState("");
-  const [reportData, setReportData] = useState<AnalysisReport | null>(null);
-  const [rustSource, setRustSource] = useState<string>("");
-  const [wasmBusy, setWasmBusy] = useState(false);
-  const [savedReport, setSavedReport] = useState<SavedReport | null>(null);
-  const [savedReportsCount, setSavedReportsCount] = useState(0);
-
-  // Track how many saved reports exist so the nav badge stays current
-  useEffect(() => {
-    setSavedReportsCount(listSavedReports().length);
-  }, []);
+  const [activeTab, setActiveTab] = useState<Tab>("findings");
+  const [isLoading, setIsLoading] = useState(false);
 
   const parseReport = useCallback((text: string) => {
     setError(null);
     setIsLoading(true);
     
     try {
-      const parsed = JSON.parse(jsonInput || SAMPLE_JSON) as AnalysisReport;
-      setFindings(transformReport(parsed));
-      setReportData(parsed);
+      const parsed = JSON.parse(text || SAMPLE_JSON) as AnalysisReport;
+
+      // Handle new CI/CD format with nested "findings" key
+      const report = (parsed as Record<string, unknown>).findings
+        ? ((parsed as Record<string, unknown>).findings as AnalysisReport)
+        : parsed;
+
+      setFindings(transformReport(report));
+      const { nodes, edges } = extractCallGraph(report);
+      setCallGraphNodes(nodes);
+      setCallGraphEdges(edges);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Invalid JSON");
       setFindings([]);
-      setReportData(null);
+      setCallGraphNodes([]);
+      setCallGraphEdges([]);
+    } finally {
+      setIsLoading(false);
     }
   }, []);
 
@@ -70,49 +73,17 @@ export default function DashboardPage() {
     reader.onload = (ev) => {
       const text = ev.target?.result as string;
       setJsonInput(text);
-      setError(null);
-      try {
-        const parsed = JSON.parse(text) as AnalysisReport;
-        setFindings(transformReport(parsed));
-        setReportData(parsed);
-      } catch (err) {
-        setError(err instanceof Error ? err.message : "Invalid JSON");
-        setReportData(null);
-      }
+      parseReport(text);
+    };
+    reader.onerror = () => {
+      setError("Failed to read file");
+      setIsLoading(false);
     };
     reader.readAsText(file);
     e.target.value = "";
   }, [parseReport]);
 
   const hasData = findings.length > 0;
-
-  const runWasmAnalysis = useCallback(async () => {
-    setError(null);
-    setWasmBusy(true);
-
-    // Yield control back to the browser to allow the spinner to paint
-    await new Promise((resolve) => setTimeout(resolve, 50));
-
-    try {
-      const report = await analyzeSourceInBrowser(rustSource);
-      setReportData(report);
-      setFindings(transformReport(report));
-    } catch (e) {
-      const msg = e instanceof Error ? e.message : String(e);
-      setError(
-        `WASM module not found or failed to load. Build it with: wasm-pack build tooling/sanctifier-wasm --release --target web --out-dir frontend/public/wasm. Details: ${msg}`
-      );
-    } finally {
-      setWasmBusy(false);
-    }
-  }, [rustSource]);
-
-  const handleSaveReport = useCallback(() => {
-    if (!reportData || findings.length === 0) return;
-    const entry = saveReport(findings, reportData);
-    setSavedReport(entry);
-    setSavedReportsCount(listSavedReports().length);
-  }, [reportData, findings]);
 
   return (
     <div className="min-h-screen" style={{ backgroundColor: "var(--background)", color: "var(--foreground)" }}>
@@ -129,18 +100,9 @@ export default function DashboardPage() {
           >
             Sanctifier
           </Link>
-          <span className="text-zinc-500 dark:text-zinc-400">Security Dashboard</span>
-          <Link
-            href="/diff"
-            className="flex items-center gap-1.5 text-sm text-zinc-500 dark:text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 transition-colors"
-          >
-            Scan Diff
-            {savedReportsCount >= 2 && (
-              <span className="rounded-full bg-zinc-200 dark:bg-zinc-700 text-zinc-700 dark:text-zinc-300 text-[10px] font-bold px-1.5 py-0.5 leading-none">
-                {savedReportsCount}
-              </span>
-            )}
-          </Link>
+          <span className="text-sm sm:text-base" style={{ color: "var(--muted-foreground)" }}>
+            Security Dashboard
+          </span>
         </div>
         <nav className="flex items-center gap-4" aria-label="Main navigation">
           <Link
@@ -205,22 +167,7 @@ export default function DashboardPage() {
             >
               Export PDF
             </button>
-            <button
-              onClick={handleSaveReport}
-              disabled={findings.length === 0}
-              className="rounded-lg border border-zinc-300 dark:border-zinc-600 px-4 py-2 text-sm disabled:opacity-50 hover:bg-zinc-100 dark:hover:bg-zinc-800"
-            >
-              Save Report
-            </button>
           </div>
-          {savedReport && (
-            <p className="mt-2 text-sm text-emerald-600 dark:text-emerald-400">
-              ✓ Report saved as &ldquo;{savedReport.label}&rdquo;.{" "}
-              <Link href="/diff" className="underline hover:opacity-75">
-                Compare reports →
-              </Link>
-            </p>
-          )}
           {error && (
             <div
               role="alert"
@@ -245,75 +192,97 @@ export default function DashboardPage() {
           />
         </section>
 
-        <section className="rounded-lg border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 p-6">
-          <h2 className="text-lg font-semibold mb-4">Analyze Rust Source (Runs in Your Browser)</h2>
-          <p className="text-sm text-zinc-600 dark:text-zinc-400 mb-4">
-            Paste Soroban contract Rust code and run the Sanctifier engine compiled to WebAssembly locally.
-          </p>
-          <textarea
-            value={rustSource}
-            onChange={(e) => setRustSource(e.target.value)}
-            placeholder={"// Paste your Soroban contract here"}
-            className="mt-2 w-full h-40 rounded-lg border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-950 p-3 font-mono text-sm focus:ring-2 focus:ring-zinc-400 dark:focus:ring-zinc-600 outline-none"
-          />
-          <div className="mt-3 flex items-center gap-4">
-            <button
-              onClick={runWasmAnalysis}
-              disabled={wasmBusy || rustSource.trim().length === 0}
-              className="rounded-lg bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900 px-4 py-2 text-sm font-medium disabled:opacity-50 hover:bg-zinc-800 dark:hover:bg-zinc-200"
-            >
-              Run in Browser (WASM)
-            </button>
-            {wasmBusy && (
-              <div className="flex items-center gap-2 text-sm text-zinc-600 dark:text-zinc-400">
-                <LoadingSpinner size="sm" />
-                <span>Running analysis...</span>
-              </div>
-            )}
-          </div>
-        </section>
+        {isLoading && <DashboardSkeleton />}
 
-        {(findings.length > 0 || reportData?.kani_metrics || (reportData?.symbolic_paths && reportData.symbolic_paths.length > 0) || reportData?.sanctity_score) && (
-          <>
-            {reportData?.sanctity_score && (
-              <section>
-                <SanctityScoreWidget score={reportData.sanctity_score} />
-              </section>
-            )}
-
-            {reportData?.kani_metrics && (
-              <section>
-                <KaniMetricsWidget metrics={reportData.kani_metrics} />
-              </section>
-            )}
-
-
-            {reportData?.symbolic_paths && reportData.symbolic_paths.length > 0 && (
-              <section>
-                <SymbolicGraphWidget graphs={reportData.symbolic_paths} />
-              </section>
-            )}
-
-            {findings.length > 0 && (
-              <section>
+        {!isLoading && hasData && (
+          <ErrorBoundary>
+            <>
+              <section className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <SanctityScore findings={findings} />
                 <SummaryChart findings={findings} />
               </section>
-            )}
 
-            <section>
-              <h2 className="text-lg font-semibold mb-4">Filter by Severity</h2>
-              <SeverityFilter selected={severityFilter} onChange={setSeverityFilter} />
-            </section>
+              {/* Historical trend. Reads from an in-memory adapter today and
+                  will swap to the persisted source from the shareable
+                  permalink work without touching this call site. */}
+              <ScoreTrendChart contractId="demo-healthy" />
 
-            <section>
-              <h2 className="text-lg font-semibold mb-4">Findings</h2>
-              <FindingsList findings={findings} severityFilter={severityFilter} />
-            </section>
-          </>
+              {/* Tab navigation */}
+              <div 
+                className="flex gap-2 border-b"
+                style={{ borderColor: "var(--border)" }}
+                role="tablist"
+                aria-label="Report sections"
+              >
+                <button
+                  role="tab"
+                  aria-selected={activeTab === "findings"}
+                  aria-controls="findings-panel"
+                  id="findings-tab"
+                  onClick={() => setActiveTab("findings")}
+                  className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors focus:outline-none focus:ring-2`}
+                  style={{
+                    borderColor: activeTab === "findings" ? "var(--primary)" : "transparent",
+                    color: activeTab === "findings" ? "var(--foreground)" : "var(--muted-foreground)",
+                  }}
+                >
+                  Findings
+                </button>
+                <button
+                  role="tab"
+                  aria-selected={activeTab === "callgraph"}
+                  aria-controls="callgraph-panel"
+                  id="callgraph-tab"
+                  onClick={() => setActiveTab("callgraph")}
+                  className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors focus:outline-none focus:ring-2`}
+                  style={{
+                    borderColor: activeTab === "callgraph" ? "var(--primary)" : "transparent",
+                    color: activeTab === "callgraph" ? "var(--foreground)" : "var(--muted-foreground)",
+                  }}
+                >
+                  Call Graph
+                </button>
+              </div>
+
+              {activeTab === "findings" && (
+                <div
+                  role="tabpanel"
+                  id="findings-panel"
+                  aria-labelledby="findings-tab"
+                >
+                  <section>
+                    <h2 className="text-lg font-semibold mb-4">Findings</h2>
+                    <Suspense
+                      fallback={
+                        <p
+                          className="py-8 text-center"
+                          style={{ color: "var(--muted-foreground)" }}
+                        >
+                          Loading findings…
+                        </p>
+                      }
+                    >
+                      <FindingsPanel findings={findings} />
+                    </Suspense>
+                  </section>
+                </div>
+              )}
+
+              {activeTab === "callgraph" && (
+                <section
+                  role="tabpanel"
+                  id="callgraph-panel"
+                  aria-labelledby="callgraph-tab"
+                >
+                  <CallGraph nodes={callGraphNodes} edges={callGraphEdges} />
+                </section>
+              )}
+            </>
+          </ErrorBoundary>
         )}
 
-        {findings.length === 0 && !reportData?.kani_metrics && (!reportData?.symbolic_paths || reportData.symbolic_paths.length === 0) && !error && (
-          <p className="text-center text-zinc-500 dark:text-zinc-400 py-12">
+        {!isLoading && !hasData && !error && (
+          <p className="text-center py-12" style={{ color: "var(--muted-foreground)" }}>
             Load a report to view findings.
           </p>
         )}

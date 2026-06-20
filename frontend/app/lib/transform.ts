@@ -1,13 +1,5 @@
 import type { AnalysisReport, CallGraphEdge, CallGraphNode, Finding, Severity } from "../types";
 
-/**
- * Produce a stable fingerprint for a finding based on its content.
- * This is deterministic across sessions, allowing diff comparisons.
- */
-function makeFingerprint(category: string, title: string, location: string): string {
-  return `${category}::${title}::${location}`;
-}
-
 function toFinding(
   id: string,
   severity: Severity,
@@ -19,7 +11,6 @@ function toFinding(
 ): Finding {
   return {
     id,
-    fingerprint: makeFingerprint(category, title, location),
     severity,
     category,
     title,

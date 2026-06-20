@@ -6,7 +6,7 @@ use tempfile::tempdir;
 
 #[test]
 fn test_cli_help() {
-    let mut cmd = Command::new(assert_cmd::cargo::cargo_bin!("sanctifier"));
+    let mut cmd = Command::cargo_bin("sanctifier").unwrap();
     cmd.arg("--help")
         .assert()
         .success()
@@ -15,7 +15,7 @@ fn test_cli_help() {
 
 #[test]
 fn test_analyze_valid_contract() {
-    let mut cmd = Command::new(assert_cmd::cargo::cargo_bin!("sanctifier"));
+    let mut cmd = Command::cargo_bin("sanctifier").unwrap();
     let fixture_path = env::current_dir()
         .unwrap()
         .join("tests/fixtures/valid_contract.rs");
@@ -33,7 +33,7 @@ fn test_analyze_valid_contract() {
 
 #[test]
 fn test_analyze_vulnerable_contract() {
-    let mut cmd = Command::new(assert_cmd::cargo::cargo_bin!("sanctifier"));
+    let mut cmd = Command::cargo_bin("sanctifier").unwrap();
     let fixture_path = env::current_dir()
         .unwrap()
         .join("tests/fixtures/vulnerable_contract.rs");
@@ -53,7 +53,7 @@ fn test_analyze_vulnerable_contract() {
 
 #[test]
 fn test_analyze_json_output() {
-    let mut cmd = Command::new(assert_cmd::cargo::cargo_bin!("sanctifier"));
+    let mut cmd = Command::cargo_bin("sanctifier").unwrap();
     let fixture_path = env::current_dir()
         .unwrap()
         .join("tests/fixtures/valid_contract.rs");
@@ -72,7 +72,7 @@ fn test_analyze_json_output() {
 
 #[test]
 fn test_analyze_empty_macro_heavy() {
-    let mut cmd = Command::new(assert_cmd::cargo::cargo_bin!("sanctifier"));
+    let mut cmd = Command::cargo_bin("sanctifier").unwrap();
     let fixture_path = env::current_dir()
         .unwrap()
         .join("tests/fixtures/macro_heavy.rs");

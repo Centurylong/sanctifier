@@ -1,72 +1,12 @@
-pub mod commands;
-mod llm;
-pub mod rules;
-
 use clap::{Parser, Subcommand};
 use colored::*;
-use sanctifier_core::gas_estimator::GasEstimationReport;
-use sanctifier_core::zk_proof::ZkProofSummary;
-use sanctifier_core::{
-    Analyzer, ArithmeticIssue, CustomRuleMatch, DeprecatedApiIssue, FixType, SanctifyConfig,
-    SizeWarning, UnsafePattern, UpgradeReport,
-};
-use serde::{Deserialize, Serialize};
-use sha2::{Digest, Sha256};
-use std::collections::HashMap;
+use sanctifier_core::{callgraph_to_dot, Analyzer, SanctifyConfig};
 use std::fs;
 use std::path::{Path, PathBuf};
 
-#[derive(Serialize, Deserialize, Default, Clone)]
-pub struct CachedAnalysis {
-    pub hash: String,
-    pub size_warnings: Vec<SizeWarning>,
-    pub unsafe_patterns: Vec<UnsafePattern>,
-    pub auth_gaps: Vec<String>,
-    pub panic_issues: Vec<sanctifier_core::PanicIssue>,
-    pub arithmetic_issues: Vec<ArithmeticIssue>,
-    pub deprecated_api_issues: Vec<DeprecatedApiIssue>,
-    pub custom_rule_matches: Vec<CustomRuleMatch>,
-    pub gas_estimations: Vec<GasEstimationReport>,
-    pub reentrancy_issues: Vec<sanctifier_core::reentrancy::ReentrancyIssue>,
-}
-
-#[derive(Serialize, Deserialize, Default)]
-pub struct AnalysisCache {
-    pub files: HashMap<String, CachedAnalysis>,
-}
-
-impl AnalysisCache {
-    fn load(path: &Path) -> Self {
-        let cache_path = path.join(".sanctifier_cache.json");
-        if let Ok(content) = fs::read_to_string(cache_path) {
-            serde_json::from_str(&content).unwrap_or_default()
-        } else {
-            Self::default()
-        }
-    }
-
-    fn save(&self, path: &Path) {
-        let cache_path = path.join(".sanctifier_cache.json");
-        if let Ok(content) = serde_json::to_string_pretty(self) {
-            let _ = fs::write(cache_path, content);
-        }
-    }
-}
-
-fn compute_hash(content: &str) -> String {
-    let mut hasher = Sha256::new();
-    hasher.update(content.as_bytes());
-    format!("{:x}", hasher.finalize())
-}
-
-/// Metrics for Kani formal verification results
-#[derive(Serialize)]
-pub struct KaniVerificationMetrics {
-    pub total_assertions: usize,
-    pub proven: usize,
-    pub failed: usize,
-    pub unreachable: usize,
-}
+mod branding;
+mod commands;
+pub mod vulndb;
 
 #[derive(Parser)]
 #[command(name = "sanctifier")]
@@ -80,40 +20,39 @@ struct Cli {
 pub enum Commands {
     /// Analyze a Soroban contract for vulnerabilities
     Analyze(commands::analyze::AnalyzeArgs),
-    /// Generate a security badge from a JSON report
+    /// Generate a dynamic Sanctifier status badge
     Badge(commands::badge::BadgeArgs),
-    /// Generate a summary report
+    /// Generate a security report
     Report {
-        /// Optional path to save the generated report
-        #[arg(short, long, value_name = "OUTPUT")]
-        output: Option<PathBuf>,
+        /// Output file path
+        #[arg(short, long)]
+        output: Option<std::path::PathBuf>,
     },
-    /// Initialize a new Sanctifier project
+    /// Initialize Sanctifier in a new project
     Init(commands::init::InitArgs),
-    /// Update the sanctifier binary to the latest Sanctifier binary
+    /// Generate a Graphviz DOT call graph of cross-contract calls (env.invoke_contract)
+    Callgraph {
+        /// Path to a contract directory, workspace directory, or a single .rs file
+        #[arg(default_value = ".")]
+        path: PathBuf,
+
+        /// Output DOT file path
+        #[arg(short, long, default_value = "callgraph.dot")]
+        output: PathBuf,
+    },
+    /// Check for and download the latest Sanctifier binary
     Update,
-    /// Prove token contract invariants using the SMT solver
+    /// Verify #[sanctify::invariant] declarations across a contract or workspace
+    Verify(commands::verify::VerifyArgs),
+    /// Run SMT-based formal verification on Soroban token contract invariants
     Prove(commands::prove::ProveArgs),
-    /// Translate Soroban contract into a Kani-verifiable harness
-    Kani {
-        /// Path to the .rs file to translate
-        path: PathBuf,
-        /// Optional path to save the generated harness
-        #[arg(short, long)]
-        output: Option<PathBuf>,
-    },
-    /// Automatically fix basic vulnerabilities and code issues
-    Fix {
-        /// Path to the Soroban contract or project directory
-        path: PathBuf,
-        /// Apply fixes without confirmation
-        #[arg(short, long)]
-        yes: bool,
-        /// Show what would be changed without modifying files
-        #[arg(short, long)]
-        dry_run: bool,
-    },
-    /// Print the CLI reference as Markdown (used to keep docs/cli.md up to date)
+    /// (internal) Regenerate the Markdown CLI reference from the clap definitions.
+    ///
+    /// Prints the reference to stdout. Hidden from `--help`; used by the docs
+    /// staleness check in CI to guarantee `docs/cli.md` never drifts from the
+    /// parser. Regenerate locally with:
+    ///   `cargo run -q -p sanctifier-cli -- generate-docs > docs/cli.md`
+    #[command(hide = true)]
     GenerateDocs,
 }
 
@@ -122,13 +61,15 @@ fn main() -> anyhow::Result<()> {
 
     match cli.command {
         Commands::Analyze(args) => {
+            if args.format != "json" {
+                branding::print_logo();
+            }
             commands::analyze::exec(args)?;
         }
         Commands::Badge(args) => {
             commands::badge::exec(args)?;
         }
         Commands::Report { output } => {
-            println!("{} Generating report...", "📄".yellow());
             if let Some(p) = output {
                 println!("Report saved to {:?}", p);
             } else {
@@ -138,81 +79,73 @@ fn main() -> anyhow::Result<()> {
         Commands::Init(args) => {
             commands::init::exec(args, None)?;
         }
+        Commands::Callgraph { path, output } => {
+            let config = load_config(&path);
+            let analyzer = Analyzer::new(config.clone());
+
+            let mut rs_files: Vec<PathBuf> = Vec::new();
+            if path.is_dir() {
+                collect_rs_files(&path, &config, &mut rs_files);
+            } else {
+                rs_files.push(path.clone());
+            }
+
+            let mut edges = Vec::new();
+            for f in rs_files {
+                if f.extension().and_then(|s| s.to_str()) != Some("rs") {
+                    continue;
+                }
+
+                let content = match fs::read_to_string(&f) {
+                    Ok(c) => c,
+                    Err(_) => continue,
+                };
+
+                let caller = infer_contract_name(&content).unwrap_or_else(|| {
+                    f.file_stem()
+                        .and_then(|s| s.to_str())
+                        .unwrap_or("<unknown>")
+                        .to_string()
+                });
+
+                let file_label = f.display().to_string();
+                edges.extend(analyzer.scan_invoke_contract_calls(&content, &caller, &file_label));
+            }
+
+            let dot = callgraph_to_dot(&edges);
+            if let Err(e) = fs::write(&output, dot) {
+                eprintln!("{} Failed to write DOT file: {}", "❌".red(), e);
+                std::process::exit(1);
+            }
+            println!(
+                "{} Wrote call graph to {:?} ({} edges)",
+                "✅".green(),
+                output,
+                edges.len()
+            );
+        }
         Commands::Update => {
             commands::update::exec()?;
+        }
+        Commands::Verify(args) => {
+            commands::verify::exec(args)?;
         }
         Commands::Prove(args) => {
             commands::prove::exec(args)?;
         }
-        Commands::Kani { path, output } => {
-            if path.extension().and_then(|s| s.to_str()) != Some("rs") {
-                eprintln!(
-                    "{} Error: Kani bridge currently only supports single .rs files.",
-                    "❌".red()
-                );
-                std::process::exit(1);
-            }
-            if let Ok(content) = fs::read_to_string(&path) {
-                let config = load_config(&path);
-                match sanctifier_core::kani_bridge::KaniBridge::translate_for_kani(
-                    &content,
-                    config.kani_unwind,
-                ) {
-                    Ok(harness) => {
-                        if let Some(out_path) = output {
-                            if let Err(e) = std::fs::write(&out_path, harness) {
-                                eprintln!("{} Failed to write Kani harness: {}", "❌".red(), e);
-                            } else {
-                                println!(
-                                    "{} Generated Kani harness at {:?}",
-                                    "✅".green(),
-                                    out_path
-                                );
-                            }
-                        } else {
-                            println!("{}", harness);
-                        }
-                    }
-                    Err(e) => {
-                        eprintln!("{} Error generating Kani harness: {}", "❌".red(), e);
-                        std::process::exit(1);
-                    }
-                }
-            } else {
-                eprintln!("{} Error reading file {:?}", "❌".red(), path);
-                std::process::exit(1);
-            }
-        }
-        Commands::Fix { path, yes, dry_run } => {
-            println!(
-                "{} Sanctifier Fix: Scanning for automatic patches...",
-                "✨".green()
-            );
-            let config = load_config(&path);
-            let analyzer = Analyzer::new(config.clone());
-            let mut total_fixes = 0;
-
-            if path.is_dir() {
-                fix_directory(&path, &analyzer, &config, yes, dry_run, &mut total_fixes);
-            } else if path.extension().and_then(|s| s.to_str()) == Some("rs") {
-                fix_file(&path, &analyzer, yes, dry_run, &mut total_fixes);
-            }
-
-            if dry_run {
-                println!(
-                    "\n{} Dry run complete. {} potential fixes identified.",
-                    "✅".green(),
-                    total_fixes
-                );
-            } else {
-                println!(
-                    "\n{} Fix complete. {} patches applied.",
-                    "✅".green(),
-                    total_fixes
-                );
-            }
-        }
         Commands::GenerateDocs => {
+            // Render the full command tree to Markdown straight from the clap
+            // definitions so the committed `docs/cli.md` can never describe a
+            // flag the parser doesn't have. The CI staleness check regenerates
+            // this and fails on any diff.
+            print!(
+                "<!-- \
+                 DO NOT EDIT THIS FILE BY HAND. It is generated from the clap \
+                 command definitions in tooling/sanctifier-cli/src by \
+                 `cargo run -p sanctifier-cli -- generate-docs > docs/cli.md` and \
+                 verified in CI. Edit the `#[command]`/`#[arg]` doc comments instead. \
+                 -->\n\n"
+            );
             print!("{}", clap_markdown::help_markdown::<Cli>());
         }
     }
@@ -220,244 +153,77 @@ fn main() -> anyhow::Result<()> {
     Ok(())
 }
 
-fn load_config(path: &Path) -> SanctifyConfig {
-    if let Some(p) = find_config_path(path) {
-        if let Ok(content) = fs::read_to_string(&p) {
-            if let Ok(cfg) = toml::from_str::<SanctifyConfig>(&content) {
-                return cfg;
+fn collect_rs_files(dir: &Path, config: &SanctifyConfig, out: &mut Vec<PathBuf>) {
+    let entries = match fs::read_dir(dir) {
+        Ok(e) => e,
+        Err(_) => return,
+    };
+
+    for entry in entries.flatten() {
+        let path = entry.path();
+        let name = path.file_name().and_then(|n| n.to_str()).unwrap_or("");
+        if path.is_dir() {
+            if config.ignore_paths.iter().any(|p| name.contains(p)) {
+                continue;
             }
+            collect_rs_files(&path, config, out);
+        } else if path.extension().and_then(|s| s.to_str()) == Some("rs") {
+            out.push(path);
         }
     }
-    SanctifyConfig::default()
 }
 
-fn find_config_path(start_path: &Path) -> Option<PathBuf> {
-    let mut current = if let Ok(abs) = fs::canonicalize(start_path) {
-        Some(abs)
-    } else {
-        Some(start_path.to_path_buf())
-    };
-    while let Some(ref p) = current {
-        let config_path = p.join(".sanctify.toml");
-        if config_path.exists() {
-            return Some(config_path);
+fn infer_contract_name(source: &str) -> Option<String> {
+    let mut saw_contract_attr = false;
+    for line in source.lines() {
+        let l = line.trim();
+        if l.starts_with("#[contract]") {
+            saw_contract_attr = true;
+            continue;
         }
-        current = p.parent().map(|p| p.to_path_buf());
+        if saw_contract_attr {
+            if let Some(rest) = l.strip_prefix("pub struct ") {
+                return Some(
+                    rest.trim_end_matches(';')
+                        .split_whitespace()
+                        .next()?
+                        .to_string(),
+                );
+            }
+            if let Some(rest) = l.strip_prefix("struct ") {
+                return Some(
+                    rest.trim_end_matches(';')
+                        .split_whitespace()
+                        .next()?
+                        .to_string(),
+                );
+            }
+        }
     }
     None
 }
 
-fn run_analysis(
-    path: &Path,
-    content: &str,
-    analyzer: &Analyzer,
-    config: &SanctifyConfig,
-) -> CachedAnalysis {
-    crate::rules::RuleEngine::new(analyzer, config).run_all(content, Some(path))
-}
+fn load_config(path: &Path) -> SanctifyConfig {
+    let mut current = if path.is_file() {
+        path.parent()
+            .map(|p| p.to_path_buf())
+            .unwrap_or_else(|| PathBuf::from("."))
+    } else {
+        path.to_path_buf()
+    };
 
-#[allow(clippy::too_many_arguments)]
-fn analyze_directory(
-    dir: &Path,
-    analyzer: &Analyzer,
-    config: &SanctifyConfig,
-    cache: &mut AnalysisCache,
-    all_size_warnings: &mut Vec<SizeWarning>,
-    all_unsafe_patterns: &mut Vec<UnsafePattern>,
-    all_auth_gaps: &mut Vec<String>,
-    all_panic_issues: &mut Vec<sanctifier_core::PanicIssue>,
-    all_arithmetic_issues: &mut Vec<ArithmeticIssue>,
-    all_deprecated_api_issues: &mut Vec<DeprecatedApiIssue>,
-    all_custom_rule_matches: &mut Vec<CustomRuleMatch>,
-    all_gas_estimations: &mut Vec<GasEstimationReport>,
-    all_reentrancy_issues: &mut Vec<sanctifier_core::reentrancy::ReentrancyIssue>,
-    all_symbolic_paths: &mut Vec<sanctifier_core::symbolic::SymbolicGraph>,
-    upgrade_report: &mut UpgradeReport,
-) {
-    if let Ok(entries) = fs::read_dir(dir) {
-        for entry in entries.flatten() {
-            let path = entry.path();
-            let name = path.file_name().and_then(|n| n.to_str()).unwrap_or("");
-            if config
-                .exclude
-                .iter()
-                .any(|p| name.contains(p) || path.to_string_lossy().contains(p))
-            {
-                continue;
-            }
-            if path.is_dir() {
-                if config.ignore_paths.iter().any(|p| name.contains(p)) {
-                    continue;
-                }
-                analyze_directory(
-                    &path,
-                    analyzer,
-                    config,
-                    cache,
-                    all_size_warnings,
-                    all_unsafe_patterns,
-                    all_auth_gaps,
-                    all_panic_issues,
-                    all_arithmetic_issues,
-                    all_deprecated_api_issues,
-                    all_custom_rule_matches,
-                    all_gas_estimations,
-                    all_reentrancy_issues,
-                    all_symbolic_paths,
-                    upgrade_report,
-                );
-            } else if path.extension().and_then(|s| s.to_str()) == Some("rs") {
-                if let Ok(content) = fs::read_to_string(&path) {
-                    let file_hash = compute_hash(&content);
-                    let file_key = path.to_string_lossy().to_string();
-                    let analysis = if let Some(cached) = cache.files.get(&file_key) {
-                        if cached.hash == file_hash {
-                            cached.clone()
-                        } else {
-                            let res = run_analysis(&path, &content, analyzer, config);
-                            let updated = CachedAnalysis {
-                                hash: file_hash,
-                                ..res
-                            };
-                            cache.files.insert(file_key, updated.clone());
-                            updated
-                        }
-                    } else {
-                        let res = run_analysis(&path, &content, analyzer, config);
-                        let updated = CachedAnalysis {
-                            hash: file_hash,
-                            ..res
-                        };
-                        cache.files.insert(file_key, updated.clone());
-                        updated
-                    };
-                    all_size_warnings.extend(analysis.size_warnings);
-                    all_unsafe_patterns.extend(analysis.unsafe_patterns);
-                    all_auth_gaps.extend(analysis.auth_gaps);
-                    all_panic_issues.extend(analysis.panic_issues);
-                    all_arithmetic_issues.extend(analysis.arithmetic_issues);
-                    all_deprecated_api_issues.extend(analysis.deprecated_api_issues);
-                    all_custom_rule_matches.extend(analysis.custom_rule_matches);
-                    all_gas_estimations.extend(analysis.gas_estimations);
-                    all_reentrancy_issues.extend(analysis.reentrancy_issues);
-                    let sym = analyzer.analyze_symbolic_paths(&content);
-                    all_symbolic_paths.extend(sym);
-                    let ur = analyzer.analyze_upgrade_patterns(&content);
-                    upgrade_report.findings.extend(ur.findings);
+    loop {
+        let config_path = current.join(".sanctify.toml");
+        if config_path.exists() {
+            if let Ok(content) = fs::read_to_string(&config_path) {
+                if let Ok(config) = toml::from_str(&content) {
+                    return config;
                 }
             }
+        }
+        if !current.pop() {
+            break;
         }
     }
-}
-
-fn fix_directory(
-    dir: &Path,
-    analyzer: &Analyzer,
-    config: &SanctifyConfig,
-    yes: bool,
-    dry_run: bool,
-    total_fixes: &mut usize,
-) {
-    if let Ok(entries) = fs::read_dir(dir) {
-        for entry in entries.flatten() {
-            let path = entry.path();
-            let name = path.file_name().and_then(|n| n.to_str()).unwrap_or("");
-            if config
-                .exclude
-                .iter()
-                .any(|p| name.contains(p) || path.to_string_lossy().contains(p))
-            {
-                continue;
-            }
-            if path.is_dir() {
-                if config.ignore_paths.iter().any(|p| name.contains(p)) {
-                    continue;
-                }
-                fix_directory(&path, analyzer, config, yes, dry_run, total_fixes);
-            } else if path.extension().and_then(|s| s.to_str()) == Some("rs") {
-                fix_file(&path, analyzer, yes, dry_run, total_fixes);
-            }
-        }
-    }
-}
-
-fn fix_file(path: &Path, analyzer: &Analyzer, yes: bool, dry_run: bool, total_fixes: &mut usize) {
-    if let Ok(content) = fs::read_to_string(path) {
-        let mut fixes = analyzer.suggest_fixes(&content);
-        if fixes.is_empty() {
-            return;
-        }
-        fixes.sort_by(|a, b| b.line.cmp(&a.line).then(b.column.cmp(&a.column)));
-        println!(
-            "\n{} Found {} potential fixes for {:?}",
-            "💡".blue(),
-            fixes.len(),
-            path
-        );
-        let mut lines: Vec<String> = content.lines().map(|s| s.to_string()).collect();
-        let mut applied_in_file = 0;
-        for fix in fixes {
-            println!(
-                "   {} [{:?}] {}",
-                "->".yellow(),
-                fix.fix_type,
-                fix.description
-            );
-            let should_apply = if yes || dry_run {
-                true
-            } else {
-                println!("      Apply this fix? (y/n) ");
-                let mut input = String::new();
-                std::io::stdin().read_line(&mut input).is_ok() && input.trim().to_lowercase() == "y"
-            };
-            if should_apply && !dry_run {
-                if fix.fix_type == FixType::PrefixUnused {
-                    if let Some(line) = lines.get_mut(fix.line - 1) {
-                        let (start, rest) = line.split_at(fix.column);
-                        let (_, end) = rest.split_at(fix.end_column - fix.column);
-                        *line = format!("{}{}{}", start, fix.replacement, end);
-                        applied_in_file += 1;
-                    }
-                } else if fix.fix_type == FixType::AddAuth {
-                    if let Some(line) = lines.get_mut(fix.line - 1) {
-                        let (start, rest) = line.split_at(fix.column);
-                        *line = format!("{}{}{}", start, fix.replacement, rest);
-                        applied_in_file += 1;
-                    }
-                }
-            } else if should_apply {
-                applied_in_file += 1;
-            }
-        }
-        if !dry_run && applied_in_file > 0 {
-            let new_content = lines.join("\n");
-            if let Err(e) = fs::write(path, new_content) {
-                eprintln!("{} Failed to write to {:?}: {}", "❌".red(), path, e);
-            } else {
-                println!(
-                    "   {} Applied {} fixes to {:?}",
-                    "✅".green(),
-                    applied_in_file,
-                    path
-                );
-            }
-        }
-        *total_fixes += applied_in_file;
-    }
-}
-
-// Suppress dead_code for helpers used only by the legacy inline analyze path
-#[allow(dead_code)]
-fn zk_proof_for_report(
-    size: usize,
-    auth: usize,
-    panics: usize,
-    arith: usize,
-    deprecated: usize,
-) -> ZkProofSummary {
-    let data = serde_json::json!({
-        "size": size, "auth": auth, "panics": panics,
-        "arith": arith, "deprecated": deprecated,
-    });
-    ZkProofSummary::generate_zk_proof_summary(&data.to_string())
+    SanctifyConfig::default()
 }
