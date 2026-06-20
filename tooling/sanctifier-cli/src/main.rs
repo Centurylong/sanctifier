@@ -205,29 +205,6 @@ fn main() -> anyhow::Result<()> {
     Ok(())
 }
 
-fn is_soroban_project(path: &Path) -> bool {
-    if path.is_file() && path.extension().is_some_and(|e| e == "rs") {
-        return true;
-    }
-    let mut current = if path.is_dir() {
-        Some(path)
-    } else {
-        path.parent()
-    };
-    while let Some(p) = current {
-        let cargo = p.join("Cargo.toml");
-        if cargo.exists() {
-            if let Ok(content) = std::fs::read_to_string(&cargo) {
-                if content.contains("soroban-sdk") || content.contains("[workspace]") {
-                    return true;
-                }
-            }
-        }
-        current = p.parent();
-    }
-    false
-}
-
 fn load_config(path: &Path) -> SanctifyConfig {
     if let Some(p) = find_config_path(path) {
         if let Ok(content) = fs::read_to_string(&p) {

@@ -42,11 +42,11 @@ fn test_analyze_vulnerable_contract() {
         .arg(fixture_path)
         .assert()
         .success()
-        .stdout(predicate::str::contains(
+        .stdout(predicates::str::contains(
             "Found potential Authentication Gaps!",
         ))
-        .stdout(predicate::str::contains("Found explicit Panics/Unwraps!"))
-        .stdout(predicate::str::contains(
+        .stdout(predicates::str::contains("Found explicit Panics/Unwraps!"))
+        .stdout(predicates::str::contains(
             "Found unchecked Arithmetic Operations!",
         ));
 }

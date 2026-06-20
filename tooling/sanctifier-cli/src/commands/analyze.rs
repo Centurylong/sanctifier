@@ -5,7 +5,7 @@ use clap::Args;
 use colored::*;
 use sanctifier_core::scoring::ScoringInput;
 use sanctifier_core::zk_proof::ZkProofSummary;
-use sanctifier_core::{Analyzer, SanctifyConfig, SizeWarningLevel, UpgradeReport};
+use sanctifier_core::{Analyzer, SizeWarningLevel, UpgradeReport};
 use std::fs;
 use std::path::{Path, PathBuf};
 
