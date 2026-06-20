@@ -1,7 +1,10 @@
 pub mod gas_estimator;
+pub mod invariant;
 pub mod kani_bridge;
 pub mod reentrancy;
+pub mod rules;
 pub mod scoring;
+pub mod smt;
 pub mod symbolic;
 pub mod zk_proof;
 
@@ -604,14 +607,12 @@ impl Analyzer {
                 }
                 // In syn 2.0, bare macro calls (e.g. `panic!(...)`) are Stmt::Macro,
                 // not Stmt::Expr(Expr::Macro(...)).
-                syn::Stmt::Macro(m) => {
-                    if m.mac.path.is_ident("panic") {
-                        issues.push(PanicIssue {
-                            function_name: fn_name.to_string(),
-                            issue_type: "panic!".to_string(),
-                            location: fn_name.to_string(),
-                        });
-                    }
+                syn::Stmt::Macro(m) if m.mac.path.is_ident("panic") => {
+                    issues.push(PanicIssue {
+                        function_name: fn_name.to_string(),
+                        issue_type: "panic!".to_string(),
+                        location: fn_name.to_string(),
+                    });
                 }
                 _ => {}
             }
@@ -797,12 +798,11 @@ impl Analyzer {
                         self.check_expr_v2(&init.expr, auth_fns, has_mutation, has_auth);
                     }
                 }
-                syn::Stmt::Macro(m) => {
+                syn::Stmt::Macro(m)
                     if m.mac.path.is_ident("require_auth")
-                        || m.mac.path.is_ident("require_auth_for_args")
-                    {
-                        *has_auth = true;
-                    }
+                        || m.mac.path.is_ident("require_auth_for_args") =>
+                {
+                    *has_auth = true;
                 }
                 _ => {}
             }

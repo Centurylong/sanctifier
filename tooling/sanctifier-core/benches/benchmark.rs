@@ -114,37 +114,43 @@ fn bench_ast_parsing_and_rules(c: &mut Criterion) {
     let mut group = c.benchmark_group("Static Analysis Engine");
 
     // Benchmark the initialization of the analyzer
-    group.bench_function("Analyzer Initialization", |b| {
+    group.bench_function("Analyzer Initialization", |b: &mut criterion::Bencher| {
         b.iter(|| {
             let config = SanctifyConfig::default();
             Analyzer::new(config)
         })
     });
 
-    // Benchmark the full rule execution suite
-    group.bench_function("Full AST Rule Execution", |b| {
+    // Benchmark the full rule execution suite (all available analyzers)
+    group.bench_function("Full AST Rule Execution", |b: &mut criterion::Bencher| {
         let config = SanctifyConfig::default();
         let analyzer = Analyzer::new(config);
 
-        b.iter(|| analyzer.run_rules(COMPLEX_CONTRACT_PAYLOAD))
+        b.iter(|| {
+            let _ = analyzer.scan_auth_gaps(COMPLEX_CONTRACT_PAYLOAD);
+            let _ = analyzer.scan_panics(COMPLEX_CONTRACT_PAYLOAD);
+            let _ = analyzer.scan_arithmetic_overflow(COMPLEX_CONTRACT_PAYLOAD);
+            let _ = analyzer.analyze_ledger_size(COMPLEX_CONTRACT_PAYLOAD);
+            let _ = analyzer.analyze_unsafe_patterns(COMPLEX_CONTRACT_PAYLOAD);
+        })
     });
 
     // Benchmark specific targeted rules
-    group.bench_function("Auth Gaps Analysis", |b| {
+    group.bench_function("Auth Gaps Analysis", |b: &mut criterion::Bencher| {
         let config = SanctifyConfig::default();
         let analyzer = Analyzer::new(config);
 
         b.iter(|| analyzer.scan_auth_gaps(COMPLEX_CONTRACT_PAYLOAD))
     });
 
-    group.bench_function("Panic & Unwrap Analysis", |b| {
+    group.bench_function("Panic & Unwrap Analysis", |b: &mut criterion::Bencher| {
         let config = SanctifyConfig::default();
         let analyzer = Analyzer::new(config);
 
         b.iter(|| analyzer.scan_panics(COMPLEX_CONTRACT_PAYLOAD))
     });
 
-    group.bench_function("Ledger Size Analysis", |b| {
+    group.bench_function("Ledger Size Analysis", |b: &mut criterion::Bencher| {
         let config = SanctifyConfig::default();
         let analyzer = Analyzer::new(config);
 
