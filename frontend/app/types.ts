@@ -84,6 +84,7 @@ export interface AnalysisReport {
 
 export interface Finding {
   id: string;
+  fingerprint: string;
   severity: Severity;
   category: string;
   title: string;
@@ -92,4 +93,19 @@ export interface Finding {
   line?: number;
   suggestion?: string;
   raw: unknown;
+}
+
+export interface SavedReport {
+  id: string;
+  label: string;
+  savedAt: string;
+  findings: Finding[];
+  report: AnalysisReport;
+}
+
+export type DiffBucket = "added" | "removed" | "unchanged";
+
+export interface DiffedFinding {
+  finding: Finding;
+  bucket: DiffBucket;
 }

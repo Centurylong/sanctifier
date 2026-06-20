@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, useCallback } from "react";
-import type { AnalysisReport, Finding, Severity } from "../types";
+import { useState, useCallback, useEffect } from "react";
+import type { AnalysisReport, Finding, Severity, SavedReport } from "../types";
 import { transformReport } from "../lib/transform";
 import { exportToPdf } from "../lib/export-pdf";
 import { SeverityFilter } from "../components/SeverityFilter";
@@ -13,8 +13,8 @@ import { ThemeToggle } from "../components/ThemeToggle";
 import { LoadingSpinner } from "../components/LoadingSpinner";
 import { SanctityScoreWidget } from "../components/SanctityScoreWidget";
 import Link from "next/link";
-
 import { analyzeSourceInBrowser } from "../lib/wasm";
+import { saveReport, listSavedReports } from "../lib/reports-store";
 
 const SAMPLE_JSON = `{
   "size_warnings": [],
@@ -32,6 +32,13 @@ export default function DashboardPage() {
   const [reportData, setReportData] = useState<AnalysisReport | null>(null);
   const [rustSource, setRustSource] = useState<string>("");
   const [wasmBusy, setWasmBusy] = useState(false);
+  const [savedReport, setSavedReport] = useState<SavedReport | null>(null);
+  const [savedReportsCount, setSavedReportsCount] = useState(0);
+
+  // Track how many saved reports exist so the nav badge stays current
+  useEffect(() => {
+    setSavedReportsCount(listSavedReports().length);
+  }, []);
 
   const loadReport = useCallback(() => {
     setError(null);
@@ -88,6 +95,13 @@ export default function DashboardPage() {
     }
   }, [rustSource]);
 
+  const handleSaveReport = useCallback(() => {
+    if (!reportData || findings.length === 0) return;
+    const entry = saveReport(findings, reportData);
+    setSavedReport(entry);
+    setSavedReportsCount(listSavedReports().length);
+  }, [reportData, findings]);
+
   return (
     <div className="min-h-screen bg-zinc-50 dark:bg-zinc-950 text-zinc-900 dark:text-zinc-100">
       <header className="border-b border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 px-6 py-4 flex items-center justify-between">
@@ -96,6 +110,17 @@ export default function DashboardPage() {
             Sanctifier
           </Link>
           <span className="text-zinc-500 dark:text-zinc-400">Security Dashboard</span>
+          <Link
+            href="/diff"
+            className="flex items-center gap-1.5 text-sm text-zinc-500 dark:text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 transition-colors"
+          >
+            Scan Diff
+            {savedReportsCount >= 2 && (
+              <span className="rounded-full bg-zinc-200 dark:bg-zinc-700 text-zinc-700 dark:text-zinc-300 text-[10px] font-bold px-1.5 py-0.5 leading-none">
+                {savedReportsCount}
+              </span>
+            )}
+          </Link>
         </div>
         <ThemeToggle />
       </header>
@@ -131,7 +156,22 @@ export default function DashboardPage() {
             >
               Export PDF
             </button>
+            <button
+              onClick={handleSaveReport}
+              disabled={findings.length === 0}
+              className="rounded-lg border border-zinc-300 dark:border-zinc-600 px-4 py-2 text-sm disabled:opacity-50 hover:bg-zinc-100 dark:hover:bg-zinc-800"
+            >
+              Save Report
+            </button>
           </div>
+          {savedReport && (
+            <p className="mt-2 text-sm text-emerald-600 dark:text-emerald-400">
+              ✓ Report saved as &ldquo;{savedReport.label}&rdquo;.{" "}
+              <Link href="/diff" className="underline hover:opacity-75">
+                Compare reports →
+              </Link>
+            </p>
+          )}
           {error && (
             <p className="mt-2 text-sm text-red-600 dark:text-red-400">{error}</p>
           )}
