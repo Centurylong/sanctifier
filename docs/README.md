@@ -29,6 +29,9 @@ New to Sanctifier and adding it to an existing project? Read in this order:
   finding-by-finding explanations.
 - **[Awesome Soroban Security](awesome-soroban-security.md)** — curated external
   tools, audits, incidents, and learning resources.
+- **[Differential Testing vs Slither/Aderyn](differential-testing.md)** — how
+  Sanctifier's coverage compares to established EVM analyzers on overlapping
+  checks, with the shared corpus, the overlap matrix, and follow-up gaps.
 
 ## How these pages fit together
 
