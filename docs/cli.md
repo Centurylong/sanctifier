@@ -8,6 +8,7 @@ This document contains the help content for the `sanctifier` command-line progra
 
 * [`sanctifier`↴](#sanctifier)
 * [`sanctifier analyze`↴](#sanctifier-analyze)
+* [`sanctifier attest`↴](#sanctifier-attest)
 * [`sanctifier badge`↴](#sanctifier-badge)
 * [`sanctifier report`↴](#sanctifier-report)
 * [`sanctifier init`↴](#sanctifier-init)
@@ -25,6 +26,7 @@ Stellar Soroban Security & Formal Verification Suite
 ###### **Subcommands:**
 
 * `analyze` — Analyze a Soroban contract for vulnerabilities
+* `attest` — Generate (or verify) a zero-knowledge attestation that a scan passed a score threshold
 * `badge` — Generate a dynamic Sanctifier status badge
 * `report` — Generate a security report
 * `init` — Initialize Sanctifier in a new project
@@ -57,6 +59,28 @@ Analyze a Soroban contract for vulnerabilities
   Default value: `64000`
 * `--vuln-db <VULN_DB>` — Path to a custom vulnerability database JSON file
 * `--webhook-url <WEBHOOK_URLS>` — Webhook endpoint(s) to notify when scan completes (Discord/Slack/Teams/custom)
+
+
+
+## `sanctifier attest`
+
+Generate (or verify) a zero-knowledge attestation that a scan passed a score threshold
+
+**Usage:** `sanctifier attest [OPTIONS] [PATH]`
+
+###### **Arguments:**
+
+* `<PATH>` — Path to the contract directory or a single .rs file
+
+  Default value: `.`
+
+###### **Options:**
+
+* `-t`, `--threshold <THRESHOLD>` — Minimum security score (0-100) the scan must reach to attest
+
+  Default value: `90`
+* `-o`, `--out <OUT>` — Write the attestation artifact here (defaults to stdout)
+* `--verify <FILE>` — Verify an existing attestation artifact instead of generating one
 
 
 

@@ -6,7 +6,9 @@ use std::path::{Path, PathBuf};
 
 mod branding;
 mod commands;
+mod score;
 pub mod vulndb;
+pub mod zk;
 
 #[derive(Parser)]
 #[command(name = "sanctifier")]
@@ -20,6 +22,8 @@ struct Cli {
 pub enum Commands {
     /// Analyze a Soroban contract for vulnerabilities
     Analyze(commands::analyze::AnalyzeArgs),
+    /// Generate (or verify) a zero-knowledge attestation that a scan passed a score threshold
+    Attest(commands::attest::AttestArgs),
     /// Generate a dynamic Sanctifier status badge
     Badge(commands::badge::BadgeArgs),
     /// Generate a security report
@@ -65,6 +69,9 @@ fn main() -> anyhow::Result<()> {
                 branding::print_logo();
             }
             commands::analyze::exec(args)?;
+        }
+        Commands::Attest(args) => {
+            commands::attest::exec(args)?;
         }
         Commands::Badge(args) => {
             commands::badge::exec(args)?;
