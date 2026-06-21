@@ -75,9 +75,7 @@ fn test_diff_invalid_git_ref() {
     
     cmd.assert()
         .failure()
-        .stdout(predicate::str::contains("Git reference 'nonexistent-ref' not found").or(
-            predicate::str::contains("error")
-        ));
+        .stderr(predicate::str::contains("Git reference 'nonexistent-ref' not found"));
 }
 
 #[test]
@@ -93,7 +91,7 @@ fn test_diff_not_git_repo() {
     
     cmd.assert()
         .failure()
-        .stdout(predicate::str::contains("Not a git repository"));
+        .stderr(predicate::str::contains("Not a git repository"));
 }
 
 #[test]
