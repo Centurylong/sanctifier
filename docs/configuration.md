@@ -52,6 +52,7 @@ All keys are optional. Omitted keys fall back to the defaults shown below.
 | [`approaching_threshold`](#approaching_threshold) | float (0.0–1.0) | `0.8` | `analyze` |
 | [`strict_mode`](#strict_mode) | boolean | `false` | `analyze` |
 | [`custom_rules`](#custom_rules) | array of tables | `[]` (none) | `analyze` |
+| [`kani_unwind`](#kani_unwind) | integer or absent | absent (unbounded) | `verify` |
 
 ---
 
@@ -183,6 +184,36 @@ severity = "warning"
 
 ---
 
+### `kani_unwind`
+
+**Type:** integer (positive) · **Default:** absent (Kani's default unbounded behaviour)
+
+Sets the **maximum loop unwinding depth** for bounded model checking with
+[Kani](https://model-checking.github.io/kani/). When present:
+
+* `sanctifier verify` includes `--unwind N` in the `cargo kani` hint it prints
+  for invariants dispatched to Kani (shown as `KANI ↗`).
+* Generated `#[kani::proof]` harnesses produced by `#[sanctify::invariant]`
+  are annotated with `#[kani::unwind(N)]` when you build under Kani with the
+  `SANCTIFY_KANI_UNWIND` environment variable set (the CLI sets this
+  automatically).
+
+Without this key Kani uses its default unbounded behaviour, which may not
+terminate on contracts with complex loops.
+
+```toml
+# Bound loop unwinding to 10 iterations — good starting point for state
+# invariant harnesses on token contracts.
+kani_unwind = 10
+```
+
+> **Choosing a value:** start with a small bound (e.g. 4–16) and increase
+> until Kani either proves or refutes the property. If Kani reports
+> `unwinding assertion failure`, the real counterexample may require a
+> larger bound.
+
+---
+
 ## 3. Fully annotated sample
 
 Copy this into `.sanctify.toml` at your workspace root and trim what you do not
@@ -218,6 +249,9 @@ severity = "error"
 name = "no_mem_forget"
 pattern = "std::mem::forget"
 severity = "warning"
+
+# Bounded model checking loop unwind depth (optional).
+# kani_unwind = 10
 ```
 
 ---

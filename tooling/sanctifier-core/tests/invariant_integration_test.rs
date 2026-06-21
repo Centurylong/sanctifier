@@ -82,6 +82,37 @@ fn integration_invariant_decl_equality() {
     assert_eq!(a, b);
 }
 
+// ── kani_unwind config tests ──────────────────────────────────────────────────
+
+/// `kani_unwind` deserialises correctly when present in TOML.
+#[test]
+fn config_kani_unwind_deserialises_when_set() {
+    use sanctifier_core::SanctifyConfig;
+    let toml = r#"
+        kani_unwind = 16
+    "#;
+    let cfg: SanctifyConfig = toml::from_str(toml).expect("valid toml");
+    assert_eq!(cfg.kani_unwind, Some(16));
+}
+
+/// `kani_unwind` is `None` when the key is absent (backward-compatible default).
+#[test]
+fn config_kani_unwind_defaults_to_none() {
+    use sanctifier_core::SanctifyConfig;
+    let toml = r#"
+        ledger_limit = 64000
+    "#;
+    let cfg: SanctifyConfig = toml::from_str(toml).expect("valid toml");
+    assert_eq!(cfg.kani_unwind, None);
+}
+
+/// The default `SanctifyConfig` has `kani_unwind = None`.
+#[test]
+fn config_default_kani_unwind_is_none() {
+    use sanctifier_core::SanctifyConfig;
+    assert_eq!(SanctifyConfig::default().kani_unwind, None);
+}
+
 /// Verify SMT fast-path: integer equality tautology is Proven.
 #[cfg(feature = "smt")]
 #[test]

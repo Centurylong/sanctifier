@@ -48,7 +48,13 @@ pub fn invariant(args: TokenStream, input: TokenStream) -> TokenStream {
         .source_text()
         .unwrap_or_else(|| "Contract".to_string());
 
-    let harness = kani_gen::kani_harness(&self_name, &args2, 0);
+    // Read the unwinding bound from the compile-time environment variable
+    // `SANCTIFY_KANI_UNWIND`. The CLI sets this before invoking `cargo kani`
+    // when `kani_unwind` is configured in `.sanctify.toml`.
+    let unwind: Option<u32> = option_env!("SANCTIFY_KANI_UNWIND")
+        .and_then(|s| s.parse().ok());
+
+    let harness = kani_gen::kani_harness(&self_name, &args2, 0, unwind);
 
     let expanded = quote! {
         #impl_item
