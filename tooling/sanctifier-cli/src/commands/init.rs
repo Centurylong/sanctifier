@@ -845,5 +845,13 @@ mod tests {
         // Second scaffold with force should succeed
         let result = TemplateGenerator::scaffold(&Template::Token, temp_dir.path(), true);
         assert!(result.is_ok(), "should succeed with --force");
+    
+    #[test]
+    fn test_scaffold_creates_src_directory() {
+        let temp_dir = TempDir::new().unwrap();
+        let output = temp_dir.path().join("my-token");
+        TemplateGenerator::scaffold(&Template::Token, &output, false).unwrap();
+        assert!(output.join("src").is_dir(),     "src/ directory should be created");
+        assert!(output.join("Cargo.toml").exists(), "Cargo.toml should be created");
     }
 }
