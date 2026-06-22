@@ -1,4 +1,5 @@
 pub mod analyze;
+pub mod attest;
 pub mod badge;
 pub mod explain;
 pub mod init;

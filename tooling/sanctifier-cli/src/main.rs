@@ -10,6 +10,7 @@ mod config;
 mod logging;
 mod reporter;
 pub mod vulndb;
+pub mod zk;
 
 use tracing::{error, info};
 
@@ -30,8 +31,12 @@ struct Cli {
 pub enum Commands {
     /// Analyze a Soroban contract for vulnerabilities
     Analyze(commands::analyze::AnalyzeArgs),
+    /// Generate (or verify) a zero-knowledge attestation that a scan passed a score threshold
+    Attest(commands::attest::AttestArgs),
     /// Generate a dynamic Sanctifier status badge
     Badge(commands::badge::BadgeArgs),
+    /// Compare findings between working tree and a git reference
+    Diff(commands::diff::DiffArgs),
     /// Generate a security report
     Report {
         /// Output file path
@@ -91,6 +96,9 @@ fn run(cli: Cli) -> anyhow::Result<i32> {
             }
             commands::analyze::exec(args)?;
             Ok(0)
+        }
+        Commands::Attest(args) => {
+            commands::attest::exec(args)?;
         }
         Commands::Badge(args) => {
             commands::badge::exec(args)?;

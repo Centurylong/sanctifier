@@ -8,7 +8,9 @@ This document contains the help content for the `sanctifier` command-line progra
 
 * [`sanctifier`↴](#sanctifier)
 * [`sanctifier analyze`↴](#sanctifier-analyze)
+* [`sanctifier attest`↴](#sanctifier-attest)
 * [`sanctifier badge`↴](#sanctifier-badge)
+* [`sanctifier diff`↴](#sanctifier-diff)
 * [`sanctifier report`↴](#sanctifier-report)
 * [`sanctifier init`↴](#sanctifier-init)
 * [`sanctifier callgraph`↴](#sanctifier-callgraph)
@@ -25,7 +27,9 @@ Stellar Soroban Security & Formal Verification Suite
 ###### **Subcommands:**
 
 * `analyze` — Analyze a Soroban contract for vulnerabilities
+* `attest` — Generate (or verify) a zero-knowledge attestation that a scan passed a score threshold
 * `badge` — Generate a dynamic Sanctifier status badge
+* `diff` — Compare findings between working tree and a git reference
 * `report` — Generate a security report
 * `init` — Initialize Sanctifier in a new project
 * `callgraph` — Generate a Graphviz DOT call graph of cross-contract calls (env.invoke_contract)
@@ -60,6 +64,28 @@ Analyze a Soroban contract for vulnerabilities
 
 
 
+## `sanctifier attest`
+
+Generate (or verify) a zero-knowledge attestation that a scan passed a score threshold
+
+**Usage:** `sanctifier attest [OPTIONS] [PATH]`
+
+###### **Arguments:**
+
+* `<PATH>` — Path to the contract directory or a single .rs file
+
+  Default value: `.`
+
+###### **Options:**
+
+* `-t`, `--threshold <THRESHOLD>` — Minimum security score (0-100) the scan must reach to attest
+
+  Default value: `90`
+* `-o`, `--out <OUT>` — Write the attestation artifact here (defaults to stdout)
+* `--verify <FILE>` — Verify an existing attestation artifact instead of generating one
+
+
+
 ## `sanctifier badge`
 
 Generate a dynamic Sanctifier status badge
@@ -76,6 +102,29 @@ Generate a dynamic Sanctifier status badge
   Default value: `sanctifier-security.svg`
 * `--markdown-output <MARKDOWN_OUTPUT>` — Where to write generated markdown snippet
 * `--badge-url <BADGE_URL>` — Public URL for the SVG (used by markdown output). Falls back to local SVG path
+
+
+
+## `sanctifier diff`
+
+Compare findings between working tree and a git reference
+
+**Usage:** `sanctifier diff [OPTIONS] <GIT_REF>`
+
+###### **Arguments:**
+
+* `<GIT_REF>` — Git reference to compare against (e.g., origin/main, HEAD~1, commit-sha)
+
+###### **Options:**
+
+* `-p`, `--path <PATH>` — Path to the contract directory or Cargo.toml
+
+  Default value: `.`
+* `--fail-on-new` — Exit with non-zero code if new findings are detected
+* `-f`, `--format <FORMAT>` — Output format (text, json)
+
+  Default value: `text`
+* `--vuln-db <VULN_DB>` — Path to a custom vulnerability database JSON file
 
 
 
