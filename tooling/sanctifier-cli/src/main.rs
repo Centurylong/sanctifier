@@ -65,6 +65,7 @@ fn main() -> anyhow::Result<()> {
             }
         }
         Commands::Init(args) => {
+            branding::print_logo();
             commands::init::exec(args, None)?;
         }
         Commands::Callgraph { path, output } => {
