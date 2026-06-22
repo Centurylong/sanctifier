@@ -285,5 +285,106 @@ name     = "no_mem_forget"
 pattern  = "std::mem::forget"
 severity = "warning"
 "#
+    
+    fn amm_contract() -> &'static str {
+        r##"#![no_std]
+use soroban_sdk::{contract, contractimpl, contracttype, token, Address, Env};
+
+// SECURITY: Fee is locked at 0.3% (30 bps) and cannot change after deployment.
+// Dynamic fees would allow the admin to drain LPs by setting fee = 100%.
+const FEE_BPS: i128  = 30;
+const BPS_DENOM: i128 = 10_000;
+
+#[contracttype]
+pub enum DataKey {
+    ReserveA, ReserveB, TokenA, TokenB,
+    TotalShares, Shares(Address), Admin,
+}
+
+/// Constant-product AMM (x·y = k) with slippage guard and K-invariant enforcement.
+///
+/// The K-invariant assertion (`new_k >= old_k`) is the core security property.
+/// Any swap that reduces the pool product is immediately rejected.
+// #[sanctify(invariant = "k_invariant")]
+#[contract]
+pub struct AmmPool;
+
+#[contractimpl]
+impl AmmPool {
+    // #[sanctify(auth = "admin", once = true)]
+    pub fn initialize(env: Env, admin: Address, token_a: Address, token_b: Address) {
+        if env.storage().instance().has(&DataKey::Admin) {
+            panic!("pool already initialised"); // #[sanctify(panic)]
+        }
+        env.storage().instance().set(&DataKey::Admin, &admin);
+        env.storage().instance().set(&DataKey::TokenA, &token_a);
+        env.storage().instance().set(&DataKey::TokenB, &token_b);
+        env.storage().instance().set(&DataKey::ReserveA, &0_i128);
+        env.storage().instance().set(&DataKey::ReserveB, &0_i128);
+        env.storage().instance().set(&DataKey::TotalShares, &0_i128);
+    }
+
+    /// Swap `amount_in` of `token_in` for the other pool token.
+    /// Reverts if output is below `min_out` — the caller-supplied slippage bound.
+    // #[sanctify(auth = "caller", arithmetic, invariant = "k_invariant")]
+    pub fn swap(env: Env, caller: Address, token_in: Address, amount_in: i128, min_out: i128) -> i128 {
+        assert!(amount_in > 0, "amount_in must be positive");
+        caller.require_auth(); // SECURITY: auth BEFORE state read — #[sanctify(auth_gaps)]
+
+        let token_a: Address = env.storage().instance().get(&DataKey::TokenA).expect("not init");
+        let token_b: Address = env.storage().instance().get(&DataKey::TokenB).expect("not init");
+        let reserve_a: i128  = env.storage().instance().get(&DataKey::ReserveA).unwrap_or(0);
+        let reserve_b: i128  = env.storage().instance().get(&DataKey::ReserveB).unwrap_or(0);
+        assert!(reserve_a > 0 && reserve_b > 0, "pool has no liquidity");
+
+        let (reserve_in, reserve_out, token_out) = if token_in == token_a {
+            (reserve_a, reserve_b, token_b.clone())
+        } else if token_in == token_b {
+            (reserve_b, reserve_a, token_a.clone())
+        } else {
+            panic!("token_in not in pool"); // #[sanctify(panic)]
+        };
+
+        // Constant-product formula with fee deducted from input
+        // amount_out = (amount_in * fee * reserve_out) / (reserve_in * BPS + amount_in * fee)
+        let fee_num     = BPS_DENOM - FEE_BPS;
+        let in_with_fee = amount_in.checked_mul(fee_num).expect("overflow"); // #[sanctify(arithmetic)]
+        let numerator   = in_with_fee.checked_mul(reserve_out).expect("overflow");
+        let denominator = reserve_in.checked_mul(BPS_DENOM).expect("overflow")
+                            .checked_add(in_with_fee).expect("overflow");
+        let amount_out  = numerator / denominator;
+
+        // SECURITY: slippage guard — revert if output below caller's minimum
+        assert!(amount_out >= min_out, "slippage: output below min_out"); // #[sanctify(invariants)]
+        assert!(amount_out > 0, "output amount is zero");
+
+        let old_k = reserve_a.checked_mul(reserve_b).expect("overflow");
+        let (new_ra, new_rb) = if token_in == token_a {
+            (reserve_a.checked_add(amount_in).expect("overflow"),
+             reserve_b.checked_sub(amount_out).expect("underflow"))
+        } else {
+            (reserve_a.checked_sub(amount_out).expect("underflow"),
+             reserve_b.checked_add(amount_in).expect("overflow"))
+        };
+        // SECURITY: K-invariant — pool product must not decrease after swap
+        let new_k = new_ra.checked_mul(new_rb).expect("overflow");
+        assert!(new_k >= old_k, "K-invariant violated"); // #[sanctify(invariants)]
+
+        token::Client::new(&env, &token_in).transfer(&caller, &env.current_contract_address(), &amount_in);
+        token::Client::new(&env, &token_out).transfer(&env.current_contract_address(), &caller, &amount_out);
+
+        env.storage().instance().set(&DataKey::ReserveA, &new_ra);
+        env.storage().instance().set(&DataKey::ReserveB, &new_rb);
+        amount_out
+    }
+
+    pub fn get_reserves(env: Env) -> (i128, i128) {
+        (
+            env.storage().instance().get(&DataKey::ReserveA).unwrap_or(0),
+            env.storage().instance().get(&DataKey::ReserveB).unwrap_or(0),
+        )
+    }
+}
+"##
     }
 }
