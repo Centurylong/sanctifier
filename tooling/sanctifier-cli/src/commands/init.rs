@@ -874,5 +874,19 @@ mod tests {
         assert!(result.is_ok(), "exec with --template token should succeed");
         assert!(temp_dir.path().join("src").join("lib.rs").exists());
         assert!(temp_dir.path().join(".sanctify.toml").exists());
+    
+    #[test]
+    fn test_exec_output_arg_changes_target_directory() {
+        let temp_dir = TempDir::new().unwrap();
+        let sub = temp_dir.path().join("out");
+        let args = InitArgs {
+            force: false,
+            template: None,
+            output: Some(sub.clone()),
+        };
+        fs::create_dir_all(&sub).unwrap();
+        let result = exec(args, None);
+        assert!(result.is_ok(), "exec with --output should succeed");
+        assert!(sub.join(".sanctify.toml").exists(), ".sanctify.toml should appear in --output dir");
     }
 }
