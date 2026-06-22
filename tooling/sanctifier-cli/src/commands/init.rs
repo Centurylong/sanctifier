@@ -75,3 +75,33 @@ impl FileWriter {
         Ok(config_path)
     }
 }
+
+pub struct OutputFormatter;
+
+impl OutputFormatter {
+    pub fn display_success(config_path: &Path) {
+        println!("{} Configuration file created successfully!", "\u2713".green());
+        println!("   Location: {}", config_path.display());
+    }
+
+    pub fn display_existing_file_warning() {
+        eprintln!(
+            "{} Configuration file already exists: .sanctify.toml",
+            "\u26a0".yellow()
+        );
+        eprintln!("   Use --force to overwrite the existing configuration");
+    }
+
+    pub fn display_error(error: &anyhow::Error) {
+        eprintln!("{} Failed to create configuration file", "\u2717".red());
+        eprintln!("   Error: {}", error);
+    }
+
+    pub fn display_template_hint() {
+        println!();
+        println!("   {} Scaffold a secure contract template with --template:", "\u2192".cyan());
+        println!("     sanctifier init --template token     # SEP-41 fungible token");
+        println!("     sanctifier init --template amm       # Constant-product AMM");
+        println!("     sanctifier init --template multisig  # M-of-N governance");
+    }
+}
