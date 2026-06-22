@@ -28,7 +28,8 @@ pub enum Commands {
         #[arg(short, long)]
         output: Option<std::path::PathBuf>,
     },
-    /// Initialize Sanctifier in a new project
+    /// Initialize Sanctifier in a new project.
+    /// Use --template token|amm|multisig to scaffold a secure-by-default contract.
     Init(commands::init::InitArgs),
     /// Generate a Graphviz DOT call graph of cross-contract calls (env.invoke_contract)
     Callgraph {
