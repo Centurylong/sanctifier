@@ -654,3 +654,122 @@ pub fn exec(args: InitArgs, path: Option<PathBuf>) -> anyhow::Result<()> {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::fs;
+    use tempfile::TempDir;
+
+    #[test]
+    fn test_generate_default_config() {
+        let config = ConfigGenerator::generate_default_config();
+        assert_eq!(config.ignore_paths, vec!["target", ".git"]);
+        assert_eq!(config.enabled_rules, vec!["auth_gaps", "panics", "arithmetic", "ledger_size"]);
+        assert_eq!(config.ledger_limit, 64000);
+        assert!(!config.strict_mode);
+        assert_eq!(config.approaching_threshold, 0.8);
+        assert_eq!(config.custom_rules.len(), 2);
+        let rule1 = &config.custom_rules[0];
+        assert_eq!(rule1.name, "no_unsafe_block");
+        let rule2 = &config.custom_rules[1];
+        assert_eq!(rule2.name, "no_mem_forget");
+        assert_eq!(rule2.pattern, "std::mem::forget");
+    }
+
+    #[test]
+    fn test_config_has_all_required_fields() {
+        let config = ConfigGenerator::generate_default_config();
+        assert!(!config.ignore_paths.is_empty(), "ignore_paths should not be empty");
+        assert!(!config.enabled_rules.is_empty(), "enabled_rules should not be empty");
+        assert!(config.ledger_limit > 0, "ledger_limit should be positive");
+        assert!(config.approaching_threshold > 0.0 && config.approaching_threshold < 1.0);
+    }
+
+    #[test]
+    fn test_custom_rules_have_valid_patterns() {
+        let config = ConfigGenerator::generate_default_config();
+        for rule in &config.custom_rules {
+            assert!(!rule.name.is_empty(), "Custom rule name should not be empty");
+            assert!(!rule.pattern.is_empty(), "Custom rule pattern should not be empty");
+            let regex_result = regex::Regex::new(&rule.pattern);
+            assert!(regex_result.is_ok(), "Pattern '{}' should be a valid regex", rule.pattern);
+        }
+    }
+
+    #[test]
+    fn test_config_exists_returns_false_when_no_file() {
+        let temp_dir = TempDir::new().unwrap();
+        assert!(!FileWriter::config_exists(temp_dir.path()));
+    }
+
+    #[test]
+    fn test_config_exists_returns_true_when_file_exists() {
+        let temp_dir = TempDir::new().unwrap();
+        fs::write(temp_dir.path().join(".sanctify.toml"), "test").unwrap();
+        assert!(FileWriter::config_exists(temp_dir.path()));
+    }
+
+    #[test]
+    fn test_write_config_creates_file() {
+        let temp_dir = TempDir::new().unwrap();
+        let config = ConfigGenerator::generate_default_config();
+        let result = FileWriter::write_config(&config, temp_dir.path());
+        assert!(result.is_ok());
+        assert!(result.unwrap().exists());
+    }
+
+    #[test]
+    fn test_write_config_creates_valid_toml() {
+        let temp_dir = TempDir::new().unwrap();
+        let config = ConfigGenerator::generate_default_config();
+        let result = FileWriter::write_config(&config, temp_dir.path());
+        assert!(result.is_ok());
+        let content = fs::read_to_string(result.unwrap()).unwrap();
+        let parsed: Result<SanctifyConfig, _> = toml::from_str(&content);
+        assert!(parsed.is_ok(), "Generated TOML should be parseable");
+    }
+
+    #[test]
+    fn test_write_config_returns_correct_path() {
+        let temp_dir = TempDir::new().unwrap();
+        let config = ConfigGenerator::generate_default_config();
+        let returned_path = FileWriter::write_config(&config, temp_dir.path()).unwrap();
+        assert_eq!(returned_path, temp_dir.path().join(".sanctify.toml"));
+    }
+
+    #[test]
+    fn test_exec_creates_config_in_temp_dir() {
+        let temp_dir = TempDir::new().unwrap();
+        let args = InitArgs { force: false, template: None, output: None };
+        let result = exec(args, Some(temp_dir.path().to_path_buf()));
+        assert!(result.is_ok(), "exec should succeed in empty directory");
+        let config_path = temp_dir.path().join(".sanctify.toml");
+        assert!(config_path.exists(), "Config file should be created");
+        let content = fs::read_to_string(&config_path).unwrap();
+        let parsed: Result<SanctifyConfig, _> = toml::from_str(&content);
+        assert!(parsed.is_ok(), "Generated TOML should be parseable");
+    }
+
+    #[test]
+    fn test_exec_with_existing_file_without_force() {
+        let temp_dir = TempDir::new().unwrap();
+        fs::write(temp_dir.path().join(".sanctify.toml"), "existing content").unwrap();
+        let args = InitArgs { force: false, template: None, output: None };
+        let result = exec(args, Some(temp_dir.path().to_path_buf()));
+        assert!(result.is_err(), "exec should fail without --force");
+    }
+
+    #[test]
+    fn test_exec_with_force_overwrites_existing_file() {
+        let temp_dir = TempDir::new().unwrap();
+        fs::write(temp_dir.path().join(".sanctify.toml"), "existing content").unwrap();
+        let args = InitArgs { force: true, template: None, output: None };
+        let result = exec(args, Some(temp_dir.path().to_path_buf()));
+        assert!(result.is_ok(), "exec should succeed with force flag");
+        let content = fs::read_to_string(temp_dir.path().join(".sanctify.toml")).unwrap();
+        assert_ne!(content, "existing content", "File should be overwritten");
+        assert!(content.contains("ignore_paths"), "Should contain default config");
+    }
+
+}
