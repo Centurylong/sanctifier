@@ -815,5 +815,14 @@ mod tests {
         assert!(lib_content.contains("K-invariant"),    "AMM contract must enforce K-invariant");
         assert!(lib_content.contains("min_out"),        "AMM contract must have slippage guard");
         assert!(lib_content.contains("require_auth()"), "AMM contract must call require_auth");
+    
+    #[test]
+    fn test_multisig_template_includes_nonce_rule() {
+        let temp_dir = TempDir::new().unwrap();
+        TemplateGenerator::scaffold(&Template::Multisig, temp_dir.path(), false).unwrap();
+        let toml_content = fs::read_to_string(temp_dir.path().join(".sanctify.toml")).unwrap();
+        assert!(toml_content.contains("require_nonce_check"), "multisig config must include nonce rule");
+        assert!(toml_content.contains("require_timelock"),    "multisig config must include timelock rule");
+        assert!(toml_content.contains("strict_mode           = true"), "multisig config must use strict mode");
     }
 }
