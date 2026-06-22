@@ -853,5 +853,13 @@ mod tests {
         TemplateGenerator::scaffold(&Template::Token, &output, false).unwrap();
         assert!(output.join("src").is_dir(),     "src/ directory should be created");
         assert!(output.join("Cargo.toml").exists(), "Cargo.toml should be created");
+    
+    #[test]
+    fn test_cargo_toml_contains_soroban_sdk() {
+        let temp_dir = TempDir::new().unwrap();
+        TemplateGenerator::scaffold(&Template::Amm, temp_dir.path(), false).unwrap();
+        let cargo_content = fs::read_to_string(temp_dir.path().join("Cargo.toml")).unwrap();
+        assert!(cargo_content.contains("soroban-sdk"), "Cargo.toml must depend on soroban-sdk");
+        assert!(cargo_content.contains("cdylib"), "Cargo.toml must set crate-type = cdylib");
     }
 }
