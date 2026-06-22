@@ -48,6 +48,8 @@ pub enum Commands {
     },
     /// Check for and download the latest Sanctifier binary
     Update,
+    /// Watch source files and re-run analysis automatically on change (debounced)
+    Watch(commands::watch::WatchArgs),
     /// Verify #[sanctify::invariant] declarations across a contract or workspace
     Verify(commands::verify::VerifyArgs),
     /// Run SMT-based formal verification on Soroban token contract invariants
@@ -141,6 +143,9 @@ fn main() -> anyhow::Result<()> {
         }
         Commands::Update => {
             commands::update::exec()?;
+        }
+        Commands::Watch(args) => {
+            commands::watch::exec(args)?;
         }
         Commands::Verify(args) => {
             commands::verify::exec(args)?;
