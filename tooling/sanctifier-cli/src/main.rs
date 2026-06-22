@@ -26,6 +26,8 @@ pub enum Commands {
     Attest(commands::attest::AttestArgs),
     /// Generate a dynamic Sanctifier status badge
     Badge(commands::badge::BadgeArgs),
+    /// Compare findings between working tree and a git reference
+    Diff(commands::diff::DiffArgs),
     /// Generate a security report
     Report {
         /// Output file path
@@ -75,6 +77,12 @@ fn main() -> anyhow::Result<()> {
         }
         Commands::Badge(args) => {
             commands::badge::exec(args)?;
+        }
+        Commands::Diff(args) => {
+            if args.format != "json" {
+                branding::print_logo();
+            }
+            commands::diff::exec(args)?;
         }
         Commands::Report { output } => {
             if let Some(p) = output {
