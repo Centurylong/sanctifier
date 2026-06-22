@@ -130,5 +130,33 @@ impl TemplateGenerator {
         }
         fs::write(path, content)?;
         Ok(())
+    
+    fn cargo_toml(name: &str) -> String {
+        format!(
+            r#"[package]
+name = "{name}"
+version = "0.1.0"
+edition = "2021"
+
+[lib]
+crate-type = ["cdylib"]
+
+[dependencies]
+soroban-sdk = {{ version = "21.0.0" }}
+
+[dev-dependencies]
+soroban-sdk = {{ version = "21.0.0", features = ["testutils"] }}
+
+[profile.release]
+opt-level     = "z"
+overflow-checks = true
+debug         = false
+strip         = "symbols"
+panic         = "abort"
+codegen-units = 1
+lto           = true
+"#,
+            name = name
+        )
     }
 }
