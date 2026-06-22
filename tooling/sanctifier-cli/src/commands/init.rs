@@ -780,5 +780,20 @@ mod tests {
         assert_ne!(t1, t2);
         assert_ne!(t2, t3);
         assert_ne!(t1, t3);
+    
+    #[test]
+    fn test_token_template_creates_lib_rs_and_toml() {
+        let temp_dir = TempDir::new().unwrap();
+        let files = TemplateGenerator::scaffold(&Template::Token, temp_dir.path(), false).unwrap();
+        let lib_rs    = temp_dir.path().join("src").join("lib.rs");
+        let toml_path = temp_dir.path().join(".sanctify.toml");
+        assert!(lib_rs.exists(),    "src/lib.rs should be created");
+        assert!(toml_path.exists(), ".sanctify.toml should be created");
+        assert_eq!(files.len(), 3, "scaffold should return 3 file paths");
+        // Token contract must mention require_auth and checked_add
+        let lib_content = fs::read_to_string(&lib_rs).unwrap();
+        assert!(lib_content.contains("require_auth"), "token contract must call require_auth");
+        assert!(lib_content.contains("checked_add"),  "token contract must use checked arithmetic");
+        assert!(lib_content.contains("MAX_SUPPLY"),   "token contract must enforce supply cap");
     }
 }
