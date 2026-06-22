@@ -770,6 +770,15 @@ mod tests {
         let content = fs::read_to_string(temp_dir.path().join(".sanctify.toml")).unwrap();
         assert_ne!(content, "existing content", "File should be overwritten");
         assert!(content.contains("ignore_paths"), "Should contain default config");
+    
+    #[test]
+    fn test_template_enum_variants_exist() {
+        // Ensure all three variants compile and are distinct
+        let t1 = Template::Token;
+        let t2 = Template::Amm;
+        let t3 = Template::Multisig;
+        assert_ne!(t1, t2);
+        assert_ne!(t2, t3);
+        assert_ne!(t1, t3);
     }
-
 }
