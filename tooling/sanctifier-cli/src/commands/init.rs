@@ -158,5 +158,107 @@ lto           = true
 "#,
             name = name
         )
+    
+    fn token_contract() -> &'static str {
+        r##"#![no_std]
+use soroban_sdk::{contract, contractimpl, contracttype, Address, Env, String as SorobanString};
+
+// SECURITY: Supply cap enforced at compile time — prevents unbounded inflation attacks.
+// Adjust before deployment; cannot be changed post-deploy without a contract upgrade.
+const MAX_SUPPLY: i128 = 1_000_000_000 * 10_i128.pow(7); // 1 billion tokens, 7 decimals
+
+#[contracttype]
+pub enum DataKey {
+    Balance(Address),
+    Allowance(Address, Address),
+    TotalSupply,
+    Admin,
+    Name,
+    Symbol,
+}
+
+/// SEP-41 fungible token with security checks baked in.
+///
+/// `// #[sanctify(...)]` annotations are parsed by `sanctifier analyze` and
+/// verified against the rules configured in .sanctify.toml.
+#[contract]
+pub struct Token;
+
+#[contractimpl]
+impl Token {
+    /// One-time initialiser. Panics if already called — prevents re-initialisation.
+    // #[sanctify(auth = "admin", once = true)]
+    pub fn initialize(env: Env, admin: Address, name: SorobanString, symbol: SorobanString) {
+        // SECURITY: re-init guard — must be the first state mutation check
+        if env.storage().instance().has(&DataKey::Admin) {
+            panic!("contract already initialised"); // #[sanctify(panic)] expected guard
+        }
+        env.storage().instance().set(&DataKey::Admin, &admin);
+        env.storage().instance().set(&DataKey::TotalSupply, &0_i128);
+        env.storage().instance().set(&DataKey::Name, &name);
+        env.storage().instance().set(&DataKey::Symbol, &symbol);
+    }
+
+    /// Mint `amount` tokens to `to`. Admin-only.
+    // #[sanctify(auth = "admin", arithmetic)]
+    pub fn mint(env: Env, to: Address, amount: i128) {
+        assert!(amount > 0, "amount must be positive");
+        Self::require_admin(&env); // SECURITY: auth BEFORE state mutation — #[sanctify(auth_gaps)]
+        let supply: i128 = env.storage().instance().get(&DataKey::TotalSupply).unwrap_or(0);
+        // SECURITY: checked_add to detect overflow before writing state
+        let new_supply = supply.checked_add(amount).expect("arithmetic overflow"); // #[sanctify(arithmetic)]
+        assert!(new_supply <= MAX_SUPPLY, "supply cap exceeded"); // #[sanctify(invariants)]
+        let bal: i128 = env.storage().persistent()
+            .get(&DataKey::Balance(to.clone())).unwrap_or(0);
+        env.storage().persistent().set(
+            &DataKey::Balance(to),
+            &bal.checked_add(amount).expect("arithmetic overflow"),
+        );
+        env.storage().instance().set(&DataKey::TotalSupply, &new_supply);
+    }
+
+    /// Transfer `amount` from `from` to `to`. Sender must authorise.
+    // #[sanctify(auth = "from", arithmetic)]
+    pub fn transfer(env: Env, from: Address, to: Address, amount: i128) {
+        assert!(amount > 0, "amount must be positive");
+        from.require_auth(); // SECURITY: auth BEFORE state read — #[sanctify(auth_gaps)]
+        let from_bal: i128 = env.storage().persistent()
+            .get(&DataKey::Balance(from.clone())).unwrap_or(0);
+        assert!(from_bal >= amount, "insufficient balance");
+        let to_bal: i128 = env.storage().persistent()
+            .get(&DataKey::Balance(to.clone())).unwrap_or(0);
+        // Checks-effects: update state only after all assertions pass
+        env.storage().persistent().set(&DataKey::Balance(from), &(from_bal - amount));
+        env.storage().persistent().set(
+            &DataKey::Balance(to),
+            &to_bal.checked_add(amount).expect("arithmetic overflow"),
+        );
+    }
+
+    /// Approve `spender` to transfer up to `amount` on behalf of `from`.
+    // #[sanctify(auth = "from")]
+    pub fn approve(env: Env, from: Address, spender: Address, amount: i128) {
+        from.require_auth(); // #[sanctify(auth_gaps)]
+        env.storage().persistent().set(&DataKey::Allowance(from, spender), &amount);
+    }
+
+    pub fn balance(env: Env, account: Address) -> i128 {
+        env.storage().persistent().get(&DataKey::Balance(account)).unwrap_or(0)
+    }
+
+    pub fn total_supply(env: Env) -> i128 {
+        env.storage().instance().get(&DataKey::TotalSupply).unwrap_or(0)
+    }
+
+    pub fn admin(env: Env) -> Address {
+        env.storage().instance().get(&DataKey::Admin).expect("not initialised")
+    }
+
+    fn require_admin(env: &Env) {
+        let admin: Address = env.storage().instance().get(&DataKey::Admin).expect("not init");
+        admin.require_auth();
+    }
+}
+"##
     }
 }
