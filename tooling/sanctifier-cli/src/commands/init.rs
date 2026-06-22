@@ -602,3 +602,55 @@ severity = "error"
         Ok(vec![lib_rs, toml_path, cargo_path])
     }
 }
+
+pub fn exec(args: InitArgs, path: Option<PathBuf>) -> anyhow::Result<()> {
+    use std::env;
+
+    let target_dir = match path.or_else(|| args.output.clone()) {
+        Some(p) => p,
+        None    => env::current_dir()?,
+    };
+
+    if let Some(ref template) = args.template {
+        // ── template scaffold path ──────────────────────────────────────
+        if FileWriter::config_exists(&target_dir) && !args.force {
+            OutputFormatter::display_existing_file_warning();
+            anyhow::bail!("files already exist in output directory");
+        }
+        match TemplateGenerator::scaffold(template, &target_dir, args.force) {
+            Ok(files) => {
+                let name = match template {
+                    Template::Token    => "token",
+                    Template::Amm      => "amm",
+                    Template::Multisig => "multisig",
+                };
+                OutputFormatter::display_scaffold_success(name, &target_dir);
+                let refs: Vec<&Path> = files.iter().map(|p| p.as_path()).collect();
+                OutputFormatter::display_scaffold_files(&refs);
+                Ok(())
+            }
+            Err(e) => {
+                OutputFormatter::display_error(&e);
+                Err(e)
+            }
+        }
+    } else {
+        // ── default config-only path ────────────────────────────────────
+        if FileWriter::config_exists(&target_dir) && !args.force {
+            OutputFormatter::display_existing_file_warning();
+            anyhow::bail!("configuration file already exists");
+        }
+        let config = ConfigGenerator::generate_default_config();
+        match FileWriter::write_config(&config, &target_dir) {
+            Ok(config_path) => {
+                OutputFormatter::display_success(&config_path);
+                OutputFormatter::display_template_hint();
+                Ok(())
+            }
+            Err(e) => {
+                OutputFormatter::display_error(&e);
+                Err(e)
+            }
+        }
+    }
+}
