@@ -833,5 +833,17 @@ mod tests {
         assert!(lib_content.contains("TIMELOCK_SECONDS"), "multisig must have timelock constant");
         assert!(lib_content.contains("nonce already used"), "multisig must check nonce uniqueness");
         assert!(lib_content.contains("threshold not reached"), "multisig must enforce threshold");
+    
+    #[test]
+    fn test_force_flag_overwrites_existing_scaffold() {
+        let temp_dir = TempDir::new().unwrap();
+        // First scaffold
+        TemplateGenerator::scaffold(&Template::Token, temp_dir.path(), false).unwrap();
+        // Second scaffold without force should fail
+        let result = TemplateGenerator::scaffold(&Template::Token, temp_dir.path(), false);
+        assert!(result.is_err(), "should fail without --force when files exist");
+        // Second scaffold with force should succeed
+        let result = TemplateGenerator::scaffold(&Template::Token, temp_dir.path(), true);
+        assert!(result.is_ok(), "should succeed with --force");
     }
 }
