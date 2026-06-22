@@ -411,5 +411,150 @@ name     = "require_k_invariant_check"
 pattern  = "K-invariant"
 severity = "error"
 "#
+    
+    fn multisig_contract() -> &'static str {
+        r##"#![no_std]
+use soroban_sdk::{contract, contractimpl, contracttype, Address, Bytes, BytesN, Env, Vec};
+
+// SECURITY: 24-hour timelock prevents flash-loan governance attacks.
+// A proposal submitted and executed in the same ledger is impossible.
+const TIMELOCK_SECONDS: u64 = 86_400;
+
+// SECURITY: Threshold is hardcoded at deploy time. Cannot be lowered post-deploy
+// to prevent a governance takeover that reduces the required signers to 1.
+const THRESHOLD: u32 = 2;
+
+#[contracttype]
+pub enum DataKey {
+    Signers,
+    Proposal(BytesN<32>),
+    Nonce(u64),
+    ApprovalCount(BytesN<32>),
+    HasSigned(BytesN<32>, Address),
+    ExecutedAt(BytesN<32>),
+    UnlockTime(BytesN<32>),
+}
+
+#[contracttype]
+pub struct Proposal {
+    pub target:     Address,
+    pub proposer:   Address,
+    pub created_at: u64,
+    pub nonce:      u64,
+}
+
+/// M-of-N multi-signature governance with timelock and nonce replay protection.
+///
+/// Core security properties enforced by sanctifier rules:
+///   1. Nonce uniqueness — each nonce usable exactly once  [require_nonce_check]
+///   2. Timelock         — execute reverts before unlock   [require_timelock]
+///   3. Threshold        — execute requires >= THRESHOLD approvals
+///   4. Signer-only      — submit/approve/execute gated to registered signers
+// #[sanctify(invariant = "threshold_check")]
+#[contract]
+pub struct Multisig;
+
+#[contractimpl]
+impl Multisig {
+    // #[sanctify(once = true)]
+    pub fn initialize(env: Env, signers: Vec<Address>) {
+        if env.storage().instance().has(&DataKey::Signers) {
+            panic!("already initialised"); // #[sanctify(panic)]
+        }
+        assert!(!signers.is_empty(), "must have at least one signer");
+        env.storage().instance().set(&DataKey::Signers, &signers);
+    }
+
+    /// Submit a proposal. Returns proposal ID. Each nonce must be unique.
+    // #[sanctify(auth = "proposer", require_nonce_check)]
+    pub fn submit(env: Env, proposer: Address, target: Address, nonce: u64) -> BytesN<32> {
+        proposer.require_auth(); // SECURITY: auth first — #[sanctify(auth_gaps)]
+        Self::require_signer(&env, &proposer);
+
+        // SECURITY: replay protection — each nonce usable exactly once
+        assert!(
+            !env.storage().persistent().has(&DataKey::Nonce(nonce)),
+            "replay: nonce already used"  // #[sanctify(require_nonce_check)]
+        );
+        env.storage().persistent().set(&DataKey::Nonce(nonce), &true);
+
+        let proposal_id = Self::compute_id(&env, nonce);
+        let proposal = Proposal {
+            target,
+            proposer,
+            created_at: env.ledger().timestamp(),
+            nonce,
+        };
+        env.storage().persistent().set(&DataKey::Proposal(proposal_id.clone()), &proposal);
+        env.storage().persistent().set(&DataKey::ApprovalCount(proposal_id.clone()), &0_u32);
+
+        // SECURITY: set timelock at submission — cannot be shortened later
+        let unlock_at = env.ledger().timestamp() + TIMELOCK_SECONDS;
+        env.storage().persistent().set(
+            &DataKey::UnlockTime(proposal_id.clone()), &unlock_at // #[sanctify(require_timelock)]
+        );
+        proposal_id
+    }
+
+    /// Approve a proposal. Each signer may only approve once.
+    // #[sanctify(auth = "signer")]
+    pub fn approve(env: Env, signer: Address, proposal_id: BytesN<32>) {
+        signer.require_auth(); // #[sanctify(auth_gaps)]
+        Self::require_signer(&env, &signer);
+        let signed_key = DataKey::HasSigned(proposal_id.clone(), signer.clone());
+        // SECURITY: prevent double-voting by same signer
+        assert!(!env.storage().persistent().has(&signed_key), "already approved");
+        env.storage().persistent().set(&signed_key, &true);
+        let count: u32 = env.storage().persistent()
+            .get(&DataKey::ApprovalCount(proposal_id.clone())).unwrap_or(0);
+        env.storage().persistent().set(
+            &DataKey::ApprovalCount(proposal_id),
+            &count.checked_add(1).expect("overflow"),
+        );
+    }
+
+    /// Execute a proposal after timelock and once threshold is reached.
+    // #[sanctify(require_timelock, require_nonce_check)]
+    pub fn execute(env: Env, executor: Address, proposal_id: BytesN<32>) {
+        executor.require_auth(); // #[sanctify(auth_gaps)]
+        Self::require_signer(&env, &executor);
+
+        // SECURITY: timelock — revert if called too early
+        let unlock_at: u64 = env.storage().persistent()
+            .get(&DataKey::UnlockTime(proposal_id.clone()))
+            .expect("unknown proposal"); // #[sanctify(require_timelock)]
+        assert!(env.ledger().timestamp() >= unlock_at, "timelock: too early");
+
+        // SECURITY: threshold — require M approvals
+        let count: u32 = env.storage().persistent()
+            .get(&DataKey::ApprovalCount(proposal_id.clone())).unwrap_or(0);
+        assert!(count >= THRESHOLD, "threshold not reached"); // #[sanctify(invariants)]
+
+        // SECURITY: mark executed BEFORE invoking target to prevent re-entrancy
+        assert!(
+            !env.storage().persistent().has(&DataKey::ExecutedAt(proposal_id.clone())),
+            "already executed"
+        );
+        env.storage().persistent().set(
+            &DataKey::ExecutedAt(proposal_id),
+            &env.ledger().timestamp(),
+        );
+        // TODO: env.invoke_contract(&proposal.target, &Symbol::new(&env, "exec"), args);
+    }
+
+    fn require_signer(env: &Env, addr: &Address) {
+        let signers: Vec<Address> = env.storage().instance()
+            .get(&DataKey::Signers).expect("not initialised");
+        assert!(signers.contains(addr), "not a registered signer");
+    }
+
+    fn compute_id(env: &Env, nonce: u64) -> BytesN<32> {
+        // Deterministic proposal ID from nonce. Replace with full hash in production.
+        let mut raw = [0u8; 32];
+        raw[..8].copy_from_slice(&nonce.to_be_bytes());
+        BytesN::from_array(env, &raw)
+    }
+}
+"##
     }
 }
