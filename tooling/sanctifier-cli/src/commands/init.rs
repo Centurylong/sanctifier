@@ -105,3 +105,15 @@ impl OutputFormatter {
         println!("     sanctifier init --template multisig  # M-of-N governance");
     }
 }
+    pub fn display_scaffold_success(template_name: &str, output_dir: &Path) {
+        println!("{} Scaffolded {} contract successfully!", "\u2713".green(), template_name.bold());
+        println!("   Location: {}", output_dir.display());
+    }
+
+    pub fn display_scaffold_files(files: &[&Path]) {
+        println!("   Files created:");
+        for f in files {
+            println!("     {} {}", "\u2022".green(), f.display());
+        }
+    }
+}
