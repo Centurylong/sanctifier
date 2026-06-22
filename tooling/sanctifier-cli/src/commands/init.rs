@@ -14,3 +14,18 @@ pub enum Template {
     /// M-of-N multi-signature governance with timelock and nonce replay protection
     Multisig,
 }
+
+#[derive(Args, Debug)]
+pub struct InitArgs {
+    /// Force overwrite existing configuration file
+    #[arg(short, long)]
+    pub force: bool,
+
+    /// Contract template to scaffold (token | amm | multisig)
+    #[arg(long, value_enum)]
+    pub template: Option<Template>,
+
+    /// Output directory for the scaffolded contract [default: current dir]
+    #[arg(short, long)]
+    pub output: Option<PathBuf>,
+}
