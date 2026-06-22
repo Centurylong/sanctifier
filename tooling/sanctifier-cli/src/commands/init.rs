@@ -581,5 +581,24 @@ name     = "no_unsafe_block"
 pattern  = "unsafe"
 severity = "error"
 "#
+    
+    pub fn scaffold(template: &Template, output: &Path, force: bool) -> anyhow::Result<Vec<PathBuf>> {
+        fs::create_dir_all(output.join("src"))?;
+
+        let (contract_code, config_code, template_name) = match template {
+            Template::Token    => (Self::token_contract(),    Self::token_config(),    "token"),
+            Template::Amm      => (Self::amm_contract(),      Self::amm_config(),      "amm"),
+            Template::Multisig => (Self::multisig_contract(), Self::multisig_config(), "multisig"),
+        };
+
+        let lib_rs      = output.join("src").join("lib.rs");
+        let toml_path   = output.join(".sanctify.toml");
+        let cargo_path  = output.join("Cargo.toml");
+
+        Self::write_file(&lib_rs,     contract_code,                force)?;
+        Self::write_file(&toml_path,  config_code,                  force)?;
+        Self::write_file(&cargo_path, &Self::cargo_toml(template_name), force)?;
+
+        Ok(vec![lib_rs, toml_path, cargo_path])
     }
 }
