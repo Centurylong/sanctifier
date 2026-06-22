@@ -6,7 +6,7 @@
       "version": "20"
     }
   },
-  "postCreateCommand": "bash .devcontainer/setup.sh",
+"postCreateCommand": "bash .devcontainer/setup.sh && echo '==> Verifying toolchain' && cargo fmt --all --check && cargo clippy -p sanctifier-core --all-targets --all-features -- -D warnings",
   "customizations": {
     "vscode": {
       "extensions": [

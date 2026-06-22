@@ -1,0 +1,14 @@
+---
+source: tooling/sanctifier-core/tests/detector_snapshots.rs
+expression: findings
+---
+- rule_name: error_code_collision
+  severity: Error
+  message: "Duplicate discriminant 1 in #[contracterror] enum 'ErrorWithDuplicates': NotFound, Invalid"
+  location: "ErrorWithDuplicates:7"
+  suggestion: Assign explicit unique discriminants to all error variants
+- rule_name: error_code_collision
+  severity: Warning
+  message: "Inconsistent discriminant style in #[contracterror] enum 'ErrorInconsistent': mix of explicit and implicit values"
+  location: "ErrorInconsistent:15"
+  suggestion: Use explicit discriminants for all variants or none for consistency

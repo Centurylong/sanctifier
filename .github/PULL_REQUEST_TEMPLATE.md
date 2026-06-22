@@ -1,35 +1,41 @@
-## What does this PR do?
+## Summary of the change
+<!-- Describe what changed and why. One or two paragraphs. -->
 
-<!-- One or two sentences. Link the issue: Closes #123 -->
+## Fixes / Closes
+Fixes #524
+<!-- If this PR closes an existing issue, replace with the appropriate number, e.g. closes #123 or Fixes #123 (GitHub treats them similarly). -->
 
-Closes #
+
+## Motivation and context
+<!-- Why is this change needed? What problem does it solve? Link to discussions/issue context as needed. -->
+
+## Dependencies
+<!-- List any required dependencies for reviewers/maintainers (tools, services, follow-up migrations, feature flags, etc.). -->
+- 
 
 ## Type of change
+<!-- Please delete options that are not relevant. -->
+- Bug fix (non-breaking change which fixes an issue)
+- New feature (non-breaking change which adds functionality)
+- Breaking change (fix or feature that would cause existing functionality to not work as expected)
+- This change requires a documentation update
 
-- [ ] bug fix
-- [ ] new feature
-- [ ] refactor / cleanup
-- [ ] docs
-- [ ] ci/cd
+## How Has This Been Tested?
+<!-- Please describe the tests that you ran to verify your changes. Provide instructions so we can reproduce. -->
 
-## Area
+Test A
+- 
 
-- [ ] sanctifier-core
-- [ ] sanctifier-cli
-- [ ] runtime-guard / contracts
-- [ ] frontend
-- [ ] other
+Test B
+- 
 
-## Testing
+## Checklist:
+- [ ] My code follows the style guidelines of this project
+- [ ] I have performed a self-review of my own code
+- [ ] I have commented my code, particularly in hard-to-understand areas
+- [ ] I have made corresponding changes to the documentation
+- [ ] My changes generate no new warnings
+- [ ] I have added tests that prove my fix is effective or that my feature works
+- [ ] New and existing unit tests pass locally with my changes
+- [ ] Any dependent changes have been merged and published in downstream modules
 
-<!-- How did you verify this works? -->
-
-- [ ] existing tests pass (`cargo test -p sanctifier-core --all-features`)
-- [ ] added / updated tests
-- [ ] manually tested
-
-## Checklist
-
-- [ ] `cargo fmt --all` clean
-- [ ] `cargo clippy` clean (no new warnings)
-- [ ] no secrets or keys committed

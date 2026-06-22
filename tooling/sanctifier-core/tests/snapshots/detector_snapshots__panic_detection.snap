@@ -1,0 +1,19 @@
+---
+source: tooling/sanctifier-core/tests/detector_snapshots.rs
+expression: findings
+---
+- rule_name: panic_detection
+  severity: Warning
+  message: "Use of 'unwrap' can cause contract failure"
+  location: must_have_admin
+  suggestion: Use Result types and proper error handling instead
+- rule_name: panic_detection
+  severity: Warning
+  message: "Use of 'expect' can cause contract failure"
+  location: must_init
+  suggestion: Use Result types and proper error handling instead
+- rule_name: panic_detection
+  severity: Error
+  message: "Use of 'panic!' can cause contract failure"
+  location: always_fail
+  suggestion: Use Result types and proper error handling instead

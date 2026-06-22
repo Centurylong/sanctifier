@@ -180,6 +180,27 @@ dependencies = [
 ]
 
 [[package]]
+name = "bulletproofs"
+version = "5.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "012e2e5f88332083bd4235d445ae78081c00b2558443821a9ca5adfe1070073d"
+dependencies = [
+ "byteorder",
+ "clear_on_drop",
+ "curve25519-dalek",
+ "digest",
+ "group",
+ "merlin",
+ "rand",
+ "rand_core",
+ "serde",
+ "serde_derive",
+ "sha3",
+ "subtle",
+ "thiserror",
+]
+
+[[package]]
 name = "bumpalo"
 version = "3.20.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -274,6 +295,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "clap-markdown"
+version = "0.1.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d2a2617956a06d4885b490697b5307ebb09fec10b088afc18c81762d848c2339"
+dependencies = [
+ "clap",
+]
+
+[[package]]
 name = "clap_builder"
 version = "4.5.60"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -302,6 +332,15 @@ name = "clap_lex"
 version = "1.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "3a822ea5bc7590f9d40f1ba12c0dc3c2760f3482c6984db1573ad11031420831"
+
+[[package]]
+name = "clear_on_drop"
+version = "0.2.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "38508a63f4979f0048febc9966fadbd48e5dab31fd0ec6a3f151bbf4a74f7423"
+dependencies = [
+ "cc",
+]
 
 [[package]]
 name = "colorchoice"
@@ -384,8 +423,11 @@ dependencies = [
  "curve25519-dalek-derive",
  "digest",
  "fiat-crypto",
+ "group",
  "platforms",
+ "rand_core",
  "rustc_version",
+ "serde",
  "subtle",
  "zeroize",
 ]
@@ -1176,6 +1218,18 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f8ca58f447f06ed17d5fc4043ce1b10dd205e060fb3ce5b979b8ed8e59ff3f79"
 
 [[package]]
+name = "merlin"
+version = "3.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "58c38e2799fc0978b65dfff8023ec7843e2330bb462f19198840b34b6582397d"
+dependencies = [
+ "byteorder",
+ "keccak",
+ "rand_core",
+ "zeroize",
+]
+
+[[package]]
 name = "minimal-lexical"
 version = "0.2.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1691,17 +1745,25 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "assert_cmd",
+ "bulletproofs",
  "clap",
+ "clap-markdown",
  "colored",
+ "curve25519-dalek",
+ "hex",
+ "merlin",
  "predicates",
+ "rand",
  "regex",
  "reqwest",
  "sanctifier-core",
  "serde",
  "serde_json",
+ "sha2",
  "tempfile",
  "tokio",
  "toml",
+ "z3",
 ]
 
 [[package]]
@@ -2948,6 +3010,20 @@ name = "zeroize"
 version = "1.8.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b97154e67e32c85465826e8bcc1c59429aaaf107c1e4a9e53c8d8ccd5eff88d0"
+dependencies = [
+ "zeroize_derive",
+]
+
+[[package]]
+name = "zeroize_derive"
+version = "1.5.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "3c50655cbb0fe3fc43170059e702f1ce5e19b84cec58dc87b037a09935c2f328"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn",
+]
 
 [[package]]
 name = "zerotrie"

@@ -1,0 +1,9 @@
+---
+source: tooling/sanctifier-core/tests/detector_snapshots.rs
+expression: findings
+---
+- rule_name: auth_gap
+  severity: Warning
+  message: "Function 'set_admin' performs storage mutation without authentication"
+  location: set_admin
+  suggestion: Add require_auth() or require_auth_for_args() before storage operations

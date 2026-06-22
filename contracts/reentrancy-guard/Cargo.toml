@@ -2,7 +2,16 @@
 name = "reentrancy-guard"
 version = "0.1.0"
 edition = "2021"
-description = "Standardized, formally verified reentrancy guard for Soroban contracts"
+description = "Formally verified, no_std reentrancy guard for Soroban smart contracts"
+license = "MIT"
+authors = ["Centurylong Contributors"]
+repository = "https://github.com/Centurylong/sanctifier"
+homepage = "https://github.com/Centurylong/sanctifier/tree/main/contracts/reentrancy-guard"
+documentation = "https://docs.rs/reentrancy-guard"
+readme = "README.md"
+keywords = ["soroban", "stellar", "reentrancy", "guard", "security"]
+categories = ["cryptography::cryptocurrencies", "no-std"]
+rust-version = "1.78"
 
 [lib]
 crate-type = ["rlib"]

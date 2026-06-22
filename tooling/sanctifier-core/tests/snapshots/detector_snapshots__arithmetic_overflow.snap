@@ -1,0 +1,19 @@
+---
+source: tooling/sanctifier-core/tests/detector_snapshots.rs
+expression: findings
+---
+- rule_name: arithmetic_overflow
+  severity: Warning
+  message: "Unchecked '+' operation could overflow"
+  location: "deposit:13"
+  suggestion: Use .checked_add(rhs) or .saturating_add(rhs) to handle overflow
+- rule_name: arithmetic_overflow
+  severity: Warning
+  message: "Unchecked '-' operation could overflow"
+  location: "withdraw:17"
+  suggestion: Use .checked_sub(rhs) or .saturating_sub(rhs) to handle underflow
+- rule_name: arithmetic_overflow
+  severity: Warning
+  message: "Unchecked '*=' operation could overflow"
+  location: "accrue:21"
+  suggestion: "Replace a *= b with a = a.checked_mul(b).expect(\"overflow\")"

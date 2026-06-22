@@ -5,6 +5,7 @@ Thanks for your interest. This guide covers everything you need to go from zero 
 ## Table of Contents
 
 - [Quick start](#quick-start)
+- [Contributor on-ramp](#contributor-on-ramp)
 - [Dev container (optional)](#dev-container-optional)
 - [Project layout](#project-layout)
 - [Making changes](#making-changes)
@@ -14,11 +15,19 @@ Thanks for your interest. This guide covers everything you need to go from zero 
 - [Good first issues](#good-first-issues)
 - [Discussions](#discussions)
 
+
 ---
+
+## Contributor on-ramp
+
+Start here if you want a coherent onboarding experience that links together templates, devcontainer bootstrap, starter pack, roadmap, and docs.
+
+- [Contributor On‑Ramp (One Coherent Start)](docs/contributor-onramp.md)
 
 ## Quick start
 
 **Prerequisites:** Rust 1.78+, Git.
+
 
 ```bash
 git clone https://github.com/Centurylong/sanctifier.git

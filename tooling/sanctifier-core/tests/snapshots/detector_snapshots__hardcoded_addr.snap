@@ -1,0 +1,14 @@
+---
+source: tooling/sanctifier-core/tests/detector_snapshots.rs
+expression: findings
+---
+- rule_name: hardcoded_addr
+  severity: Error
+  message: Hardcoded Stellar address detected in authentication context
+  location: "initialize:14"
+  suggestion: Store sensitive values in contract storage or pass as parameters
+- rule_name: hardcoded_addr
+  severity: Error
+  message: Hardcoded secret key detected - never hardcode secrets in source code
+  location: "verify_signature:20"
+  suggestion: Store sensitive values in contract storage or pass as parameters

@@ -1,0 +1,17 @@
+# Code owners for Sanctifier.
+#
+# GitHub auto-requests a review from the matching owner(s) when a PR touches
+# these paths. The last matching pattern wins. Owners must have write access
+# for the auto-request to take effect.
+#
+# Maintainers: adjust per-area owners below as the team grows.
+
+# Default owner for everything in the repo.
+*                           @Gbangbolaoluwagbemiga
+
+# CI/CD, release engineering, and repo automation.
+/.github/                   @Gbangbolaoluwagbemiga
+/scripts/                   @Gbangbolaoluwagbemiga
+
+# Core analysis engine and tooling.
+/tooling/                   @Gbangbolaoluwagbemiga

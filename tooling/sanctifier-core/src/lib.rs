@@ -3,6 +3,7 @@ use std::panic::catch_unwind;
 pub mod finding_codes;
 pub mod gas_estimator;
 pub mod gas_report;
+pub mod invariant;
 pub mod patcher;
 pub mod rules;
 #[cfg(feature = "smt")]
@@ -432,6 +433,22 @@ impl Analyzer {
         with_panic_guard(|| self.scan_auth_gaps_impl(source))
     }
 
+    /// Scan `source` for `#[sanctify::invariant(...)]` attributes and return
+    /// one `InvariantDecl` per invariant found.
+    ///
+    /// `file_label` is embedded in each declaration's `location` field and
+    /// should be the file path (or any stable identifier) for error messages.
+    ///
+    /// Returns an empty `Vec` when `source` fails to parse as valid Rust.
+    /// Panics inside the visitor are caught and turned into an empty result.
+    pub fn scan_invariant_attrs(
+        &self,
+        source: &str,
+        file_label: &str,
+    ) -> Vec<invariant::InvariantDecl> {
+        with_panic_guard(|| invariant::scan_invariant_attrs(source, file_label))
+    }
+
     #[cfg(feature = "smt")]
     pub fn verify_smt_invariants(&self, _source: &str) -> Vec<smt::SmtInvariantIssue> {
         with_panic_guard(|| self.verify_smt_invariants_impl())
@@ -439,8 +456,11 @@ impl Analyzer {
 
     #[cfg(feature = "smt")]
     fn verify_smt_invariants_impl(&self) -> Vec<smt::SmtInvariantIssue> {
-        // In a full implementation, this would dynamically parse the AST to extract invariants.
-        // For now, we return an empty vector to avoid false positives in general analysis.
+        // The abstract Z3 model checks hardcoded token invariants, not the source
+        // under analysis. Running it here produces false positives on every contract
+        // (BalanceNonNegative and NoUnauthorizedMint are VIOLATED by design in the
+        // abstract model). Invariant proving belongs exclusively to `sanctifier prove`,
+        // which invokes SmtProver directly. Return empty to keep `analyze` clean.
         Vec::new()
     }
 

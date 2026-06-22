@@ -7,6 +7,9 @@ categories:
   - name: Q&A
     description: Ask questions about using Sanctifier or Soroban security.
     format: question
+    # Optional reference for first-time posters
+    # See: .github/DISCUSSIONS_ONBOARDING_GUIDE.md
+
   - name: Ideas
     description: Propose features or changes before opening an issue.
     format: open
