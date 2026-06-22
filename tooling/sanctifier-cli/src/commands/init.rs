@@ -861,5 +861,18 @@ mod tests {
         let cargo_content = fs::read_to_string(temp_dir.path().join("Cargo.toml")).unwrap();
         assert!(cargo_content.contains("soroban-sdk"), "Cargo.toml must depend on soroban-sdk");
         assert!(cargo_content.contains("cdylib"), "Cargo.toml must set crate-type = cdylib");
+    
+    #[test]
+    fn test_exec_with_token_template() {
+        let temp_dir = TempDir::new().unwrap();
+        let args = InitArgs {
+            force: false,
+            template: Some(Template::Token),
+            output: None,
+        };
+        let result = exec(args, Some(temp_dir.path().to_path_buf()));
+        assert!(result.is_ok(), "exec with --template token should succeed");
+        assert!(temp_dir.path().join("src").join("lib.rs").exists());
+        assert!(temp_dir.path().join(".sanctify.toml").exists());
     }
 }
