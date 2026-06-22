@@ -60,3 +60,18 @@ impl ConfigGenerator {
         }
     }
 }
+
+pub struct FileWriter;
+
+impl FileWriter {
+    pub fn config_exists(path: &Path) -> bool {
+        path.join(".sanctify.toml").exists()
+    }
+
+    pub fn write_config(config: &SanctifyConfig, path: &Path) -> anyhow::Result<PathBuf> {
+        let config_path = path.join(".sanctify.toml");
+        let toml_string = toml::to_string_pretty(config)?;
+        fs::write(&config_path, toml_string)?;
+        Ok(config_path)
+    }
+}
