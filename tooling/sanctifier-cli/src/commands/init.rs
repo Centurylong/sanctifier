@@ -29,3 +29,34 @@ pub struct InitArgs {
     #[arg(short, long)]
     pub output: Option<PathBuf>,
 }
+
+pub struct ConfigGenerator;
+
+impl ConfigGenerator {
+    pub fn generate_default_config() -> SanctifyConfig {
+        SanctifyConfig {
+            ignore_paths: vec!["target".to_string(), ".git".to_string()],
+            enabled_rules: vec![
+                "auth_gaps".to_string(),
+                "panics".to_string(),
+                "arithmetic".to_string(),
+                "ledger_size".to_string(),
+            ],
+            ledger_limit: 64000,
+            strict_mode: false,
+            custom_rules: vec![
+                CustomRule {
+                    name: "no_unsafe_block".to_string(),
+                    pattern: "unsafe\\s*\\{".to_string(),
+                    severity: sanctifier_core::RuleSeverity::Error,
+                },
+                CustomRule {
+                    name: "no_mem_forget".to_string(),
+                    pattern: "std::mem::forget".to_string(),
+                    severity: sanctifier_core::RuleSeverity::Warning,
+                },
+            ],
+            approaching_threshold: 0.8,
+        }
+    }
+}
