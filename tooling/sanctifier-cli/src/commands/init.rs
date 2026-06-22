@@ -117,3 +117,18 @@ impl OutputFormatter {
         }
     }
 }
+
+pub struct TemplateGenerator;
+
+impl TemplateGenerator {
+    fn write_file(path: &Path, content: &str, force: bool) -> anyhow::Result<()> {
+        if path.exists() && !force {
+            anyhow::bail!(
+                "file already exists: {} (use --force to overwrite)",
+                path.display()
+            );
+        }
+        fs::write(path, content)?;
+        Ok(())
+    }
+}
