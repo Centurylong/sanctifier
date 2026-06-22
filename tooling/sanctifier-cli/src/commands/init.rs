@@ -795,5 +795,16 @@ mod tests {
         assert!(lib_content.contains("require_auth"), "token contract must call require_auth");
         assert!(lib_content.contains("checked_add"),  "token contract must use checked arithmetic");
         assert!(lib_content.contains("MAX_SUPPLY"),   "token contract must enforce supply cap");
+    
+    #[test]
+    fn test_amm_template_strict_mode_false() {
+        let temp_dir = TempDir::new().unwrap();
+        TemplateGenerator::scaffold(&Template::Amm, temp_dir.path(), false).unwrap();
+        let toml_content = fs::read_to_string(temp_dir.path().join(".sanctify.toml")).unwrap();
+        // AMM profile uses strict_mode = false (less aggressive than token)
+        assert!(toml_content.contains("strict_mode           = false"),
+            "AMM config should not use strict mode");
+        assert!(toml_content.contains("require_slippage_guard"),
+            "AMM config must include slippage guard rule");
     }
 }
