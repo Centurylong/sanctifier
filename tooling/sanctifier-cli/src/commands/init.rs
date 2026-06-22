@@ -824,5 +824,14 @@ mod tests {
         assert!(toml_content.contains("require_nonce_check"), "multisig config must include nonce rule");
         assert!(toml_content.contains("require_timelock"),    "multisig config must include timelock rule");
         assert!(toml_content.contains("strict_mode           = true"), "multisig config must use strict mode");
+    
+    #[test]
+    fn test_multisig_contract_includes_timelock_and_nonce() {
+        let temp_dir = TempDir::new().unwrap();
+        TemplateGenerator::scaffold(&Template::Multisig, temp_dir.path(), false).unwrap();
+        let lib_content = fs::read_to_string(temp_dir.path().join("src").join("lib.rs")).unwrap();
+        assert!(lib_content.contains("TIMELOCK_SECONDS"), "multisig must have timelock constant");
+        assert!(lib_content.contains("nonce already used"), "multisig must check nonce uniqueness");
+        assert!(lib_content.contains("threshold not reached"), "multisig must enforce threshold");
     }
 }
