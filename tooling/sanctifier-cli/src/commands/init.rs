@@ -806,5 +806,14 @@ mod tests {
             "AMM config should not use strict mode");
         assert!(toml_content.contains("require_slippage_guard"),
             "AMM config must include slippage guard rule");
+    
+    #[test]
+    fn test_amm_contract_includes_k_invariant() {
+        let temp_dir = TempDir::new().unwrap();
+        TemplateGenerator::scaffold(&Template::Amm, temp_dir.path(), false).unwrap();
+        let lib_content = fs::read_to_string(temp_dir.path().join("src").join("lib.rs")).unwrap();
+        assert!(lib_content.contains("K-invariant"),    "AMM contract must enforce K-invariant");
+        assert!(lib_content.contains("min_out"),        "AMM contract must have slippage guard");
+        assert!(lib_content.contains("require_auth()"), "AMM contract must call require_auth");
     }
 }
