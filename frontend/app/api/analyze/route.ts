@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { spawn } from "child_process";
 import type { AnalysisReport, UnsafePattern, ArithmeticIssue, PanicIssue } from "../../types";
+import { saveReport } from "../../lib/report-storage";
+import { transformReport } from "../../lib/transform";
 
 // ---------------------------------------------------------------------------
 // GET – streaming terminal endpoint (existing behaviour)
@@ -138,7 +140,16 @@ export async function POST(request: NextRequest) {
     }
 
     const report = analyzeRustSource(source);
-    return NextResponse.json(report);
+    const findings = transformReport(report);
+    
+    // Save report and get shareable ID
+    const sourceSnippet = source.slice(0, 500); // First 500 chars for preview
+    const reportId = await saveReport(report, findings, sourceSnippet);
+    
+    return NextResponse.json({
+      ...report,
+      reportId,
+    });
   } catch (err) {
     const message = err instanceof Error ? err.message : "Unknown error";
     return NextResponse.json(
