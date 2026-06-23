@@ -5,15 +5,25 @@ expression: findings
 - rule_name: arithmetic_overflow
   severity: Warning
   message: "Unchecked '+' operation could overflow"
-  location: "deposit:13"
+  location: "deposit:14"
   suggestion: Use .checked_add(rhs) or .saturating_add(rhs) to handle overflow
 - rule_name: arithmetic_overflow
   severity: Warning
   message: "Unchecked '-' operation could overflow"
-  location: "withdraw:17"
+  location: "withdraw:18"
   suggestion: Use .checked_sub(rhs) or .saturating_sub(rhs) to handle underflow
 - rule_name: arithmetic_overflow
   severity: Warning
   message: "Unchecked '*=' operation could overflow"
-  location: "accrue:21"
+  location: "accrue:22"
   suggestion: "Replace a *= b with a = a.checked_mul(b).expect(\"overflow\")"
+- rule_name: SANCT_UNSAFE_CAST
+  severity: Error
+  message: "Unsafe numeric cast detected: as u32 from i128"
+  location: "truncate_amount:27"
+  suggestion: "Use TryInto/try_into and handle the conversion error instead of a lossy `as` cast"
+- rule_name: SANCT_UNSAFE_CAST
+  severity: Error
+  message: "Unsafe numeric cast detected: as u64 from i64"
+  location: "wrap_signed:31"
+  suggestion: "Use TryInto/try_into and handle the conversion error instead of a lossy `as` cast"
