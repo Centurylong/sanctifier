@@ -17,7 +17,8 @@
     "hardcoded_addr": "S012",
     "edge_amount": "S013",
     "unused_variable": "S015",
-    "error_code_collision": "S016"
+    "error_code_collision": "S016",
+    "fee_rounding": "S017"
   },
   "overlap_legend": {
     "shared-covered": "Class has an EVM analogue and Sanctifier already flags it.",
