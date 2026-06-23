@@ -10,7 +10,7 @@ pub mod rules;
 #[cfg(feature = "smt")]
 pub mod smt;
 mod storage_collision;
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 use syn::spanned::Spanned;
 use syn::visit::{self, Visit};
 use syn::{parse_str, Fields, File, Item, Meta, Type};
@@ -932,6 +932,7 @@ impl Analyzer {
             issues: Vec::new(),
             current_fn: None,
             seen: HashSet::new(),
+            var_types: HashMap::new(),
         };
         visitor.visit_file(&file);
         visitor.issues
