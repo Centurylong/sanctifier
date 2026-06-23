@@ -280,8 +280,7 @@ fn collect_signature_int_types(sig: &syn::Signature) -> HashMap<String, IntType>
     sig.inputs
         .iter()
         .filter_map(|arg| match arg {
-            syn::FnArg::Typed(pat_ty) => pat_ident(&pat_ty.pat)
-                .and_then(|ident| int_type_from_type(&pat_ty.ty).map(|ty| (ident, ty))),
+            syn::FnArg::Typed(pat_ty) => pat_ident(&pat_ty.pat).zip(int_type_from_type(&pat_ty.ty)),
             syn::FnArg::Receiver(_) => None,
         })
         .collect()
@@ -289,8 +288,7 @@ fn collect_signature_int_types(sig: &syn::Signature) -> HashMap<String, IntType>
 
 fn local_int_binding(pat: &syn::Pat) -> Option<(String, IntType)> {
     match pat {
-        syn::Pat::Type(pat_ty) => pat_ident(&pat_ty.pat)
-            .and_then(|ident| int_type_from_type(&pat_ty.ty).map(|ty| (ident, ty))),
+        syn::Pat::Type(pat_ty) => pat_ident(&pat_ty.pat).zip(int_type_from_type(&pat_ty.ty)),
         _ => None,
     }
 }
