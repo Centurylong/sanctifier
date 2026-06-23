@@ -15,7 +15,7 @@
 use sanctifier_core::rules::{
     arithmetic_overflow::ArithmeticOverflowRule, auth_gap::AuthGapRule,
     edge_amount::EdgeAmountRule, error_code_collision::ErrorCodeCollisionRule,
-    hardcoded_addr::HardcodedAddrRule, ledger_size::LedgerSizeRule,
+    fee_rounding::FeeRoundingRule, hardcoded_addr::HardcodedAddrRule, ledger_size::LedgerSizeRule,
     panic_detection::PanicDetectionRule, unhandled_result::UnhandledResultRule,
     unused_variable::UnusedVariableRule, Rule,
 };
@@ -107,5 +107,14 @@ fn snapshot_edge_amount() {
         "edge_amount",
         &EdgeAmountRule::new(),
         include_str!("fixtures/detectors/edge_amount.rs"),
+    );
+}
+
+#[test]
+fn snapshot_fee_rounding() {
+    assert_detector_snapshot(
+        "fee_rounding",
+        &FeeRoundingRule::new(),
+        include_str!("fixtures/detectors/fee_rounding.rs"),
     );
 }
