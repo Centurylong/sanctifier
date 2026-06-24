@@ -27,6 +27,7 @@ New to Sanctifier and adding it to an existing project? Read in this order:
   JSON output.
 - **[Getting Started (detailed)](getting-started.md)** — example output and
   finding-by-finding explanations.
+- **[Detector Cookbook](detector-cookbook.md)** — three worked examples of custom detectors (trivial, medium, and data-flow).
 - **[Awesome Soroban Security](awesome-soroban-security.md)** — curated external
   tools, audits, incidents, and learning resources.
 - **[Differential Testing vs Slither/Aderyn](differential-testing.md)** — how
