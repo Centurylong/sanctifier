@@ -8,6 +8,7 @@ This document contains the help content for the `sanctifier` command-line progra
 
 * [`sanctifier`↴](#sanctifier)
 * [`sanctifier analyze`↴](#sanctifier-analyze)
+* [`sanctifier baseline`↴](#sanctifier-baseline)
 * [`sanctifier attest`↴](#sanctifier-attest)
 * [`sanctifier badge`↴](#sanctifier-badge)
 * [`sanctifier diff`↴](#sanctifier-diff)
@@ -27,6 +28,7 @@ Stellar Soroban Security & Formal Verification Suite
 ###### **Subcommands:**
 
 * `analyze` — Analyze a Soroban contract for vulnerabilities
+* `baseline` — Snapshot current findings into .sanctify-baseline.json (use --update to refresh)
 * `attest` — Generate (or verify) a zero-knowledge attestation that a scan passed a score threshold
 * `badge` — Generate a dynamic Sanctifier status badge
 * `diff` — Compare findings between working tree and a git reference
@@ -61,6 +63,26 @@ Analyze a Soroban contract for vulnerabilities
   Default value: `64000`
 * `--vuln-db <VULN_DB>` — Path to a custom vulnerability database JSON file
 * `--webhook-url <WEBHOOK_URLS>` — Webhook endpoint(s) to notify when scan completes (Discord/Slack/Teams/custom)
+* `--no-baseline` — Ignore .sanctify-baseline.json and report all findings
+
+
+
+## `sanctifier baseline`
+
+Snapshot current findings into .sanctify-baseline.json (use --update to refresh)
+
+**Usage:** `sanctifier baseline [OPTIONS] [PATH]`
+
+###### **Arguments:**
+
+* `<PATH>` — Path to the contract directory, workspace, or a single `.rs` file
+
+  Default value: `.`
+
+###### **Options:**
+
+* `--update` — Overwrite an existing `.sanctify-baseline.json` (refresh after intentional changes)
+* `-q`, `--quiet` — Quiet — only print the path of the written file (useful in CI)
 
 
 

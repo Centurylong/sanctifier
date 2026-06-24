@@ -1860,11 +1860,14 @@ dependencies = [
 name = "sanctifier-core"
 version = "0.1.0"
 dependencies = [
+ "anyhow",
+ "hex",
  "proc-macro2",
  "quote",
  "regex",
  "serde",
  "serde_json",
+ "sha2",
  "soroban-sdk",
  "syn",
  "thiserror",
