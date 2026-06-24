@@ -17,5 +17,6 @@ impl ReinitFixed {
         if existing.is_none() {
             env.storage().instance().set(&ADMIN, &admin);
         }
+        env.storage().instance().extend_ttl(100, 1000);
     }
 }

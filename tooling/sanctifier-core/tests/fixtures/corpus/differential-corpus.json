@@ -18,7 +18,9 @@
     "edge_amount": "S013",
     "unused_variable": "S015",
     "error_code_collision": "S016",
-    "fee_rounding": "S017"
+    "fee_rounding": "S017",
+    "missing_ttl": "S006",
+    "SANCT_TTL_MISSING": "S006"
   },
   "overlap_legend": {
     "shared-covered": "Class has an EVM analogue and Sanctifier already flags it.",
@@ -77,11 +79,11 @@
       "title": "Missing storage TTL bump (state archival)",
       "soroban": { "vulnerable": "missing_ttl_vulnerable.rs", "fixed": "missing_ttl_fixed.rs" },
       "solidity": null,
-      "sanctifier": { "ideal_code": "S006", "observed_codes": [], "status": "planned" },
+      "sanctifier": { "ideal_code": "S006", "observed_codes": ["S006"], "status": "flagged" },
       "slither": { "detectors": [], "expected": false },
       "aderyn": { "detectors": [], "expected": false },
       "overlap": "soroban-specific",
-      "notes": "Soroban archives ledger entries whose TTL is not extended. There is no EVM analogue, so neither Slither nor Aderyn can have an equivalent check. Sanctifier should own this class (planned S006)."
+      "notes": "Soroban archives ledger entries whose TTL is not extended. There is no EVM analogue, so neither Slither nor Aderyn can have an equivalent check. Sanctifier now flags direct persistent/instance storage access that lacks a matching TTL extension."
     },
     {
       "bug_class": "weak_randomness",
