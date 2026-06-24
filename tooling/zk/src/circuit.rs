@@ -64,20 +64,20 @@ pub struct AuditCircuit<F: PrimeField> {
 impl<F: PrimeField> ConstraintSynthesizer<F> for AuditCircuit<F> {
     fn generate_constraints(self, cs: ConstraintSystemRef<F>) -> Result<(), SynthesisError> {
         // ── 1. Public inputs ─────────────────────────────────────────────────
-        let wasm_hash_var =
-            FpVar::new_input(ark_relations::ns!(cs, "wasm_hash"), || Ok(self.public.wasm_hash))?;
-        let _ruleset_ver_var = FpVar::new_input(
-            ark_relations::ns!(cs, "ruleset_version"),
-            || Ok(self.public.ruleset_version),
-        )?;
-        let score_threshold_var = FpVar::new_input(
-            ark_relations::ns!(cs, "score_threshold"),
-            || Ok(self.public.score_threshold),
-        )?;
-        let rules_commitment_var = FpVar::new_input(
-            ark_relations::ns!(cs, "rules_commitment"),
-            || Ok(self.public.rules_commitment),
-        )?;
+        let wasm_hash_var = FpVar::new_input(ark_relations::ns!(cs, "wasm_hash"), || {
+            Ok(self.public.wasm_hash)
+        })?;
+        let _ruleset_ver_var = FpVar::new_input(ark_relations::ns!(cs, "ruleset_version"), || {
+            Ok(self.public.ruleset_version)
+        })?;
+        let score_threshold_var =
+            FpVar::new_input(ark_relations::ns!(cs, "score_threshold"), || {
+                Ok(self.public.score_threshold)
+            })?;
+        let rules_commitment_var =
+            FpVar::new_input(ark_relations::ns!(cs, "rules_commitment"), || {
+                Ok(self.public.rules_commitment)
+            })?;
 
         // wasm_hash is a binding public input — its value is already constrained
         // by being declared as `new_input`. No further constraint needed here;
@@ -147,8 +147,7 @@ impl<F: PrimeField> ConstraintSynthesizer<F> for AuditCircuit<F> {
             let term = b.select(&pow2, &zero)?;
             diff_reconstructed += term;
         }
-        diff_reconstructed
-            .enforce_equal(&(score_var.clone() - score_threshold_var.clone()))?;
+        diff_reconstructed.enforce_equal(&(score_var.clone() - score_threshold_var.clone()))?;
 
         // ── 5. Commitment check: Poseidon(rule_results) == rules_commitment ──
         let fp_results: Vec<FpVar<F>> = rule_result_bits

@@ -83,12 +83,21 @@ fn bench_proof_size(c: &mut Criterion) {
     });
 
     // Print once to stderr so it shows in `cargo bench` output
-    eprintln!("\n[bench] Groth16/BLS12-381 compressed proof size: {} bytes\n", bytes.len());
+    eprintln!(
+        "\n[bench] Groth16/BLS12-381 compressed proof size: {} bytes\n",
+        bytes.len()
+    );
 
     // Report constraint count
     let n = sanctifier_zk::constraint_count();
     eprintln!("[bench] R1CS constraint count: {n}\n");
 }
 
-criterion_group!(benches, bench_setup, bench_prove, bench_verify, bench_proof_size);
+criterion_group!(
+    benches,
+    bench_setup,
+    bench_prove,
+    bench_verify,
+    bench_proof_size
+);
 criterion_main!(benches);

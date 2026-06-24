@@ -57,8 +57,8 @@ fn main() -> Result<()> {
         .unwrap_or(1);
 
     // Read WASM (fall back to dummy bytes if /dev/null or missing)
-    let wasm_bytes: Vec<u8> = std::fs::read(&wasm_path)
-        .unwrap_or_else(|_| b"\x00asm\x01\x00\x00\x00".to_vec()); // minimal WASM magic
+    let wasm_bytes: Vec<u8> =
+        std::fs::read(&wasm_path).unwrap_or_else(|_| b"\x00asm\x01\x00\x00\x00".to_vec()); // minimal WASM magic
 
     eprintln!(
         "[sanctifier-prover] auditing {} ({} bytes), threshold={}, ruleset=v{}",

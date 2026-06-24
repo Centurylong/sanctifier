@@ -29,7 +29,7 @@ use anyhow::Result;
 use ark_bls12_381::{Bls12_381, Fr};
 use ark_ff::{BigInteger, PrimeField};
 use ark_groth16::{Groth16, PreparedVerifyingKey, ProvingKey, VerifyingKey};
-use ark_relations::r1cs::{ConstraintSystem, ConstraintSynthesizer};
+use ark_relations::r1cs::{ConstraintSynthesizer, ConstraintSystem};
 use ark_serialize::{CanonicalDeserialize, CanonicalSerialize};
 use ark_snark::{CircuitSpecificSetupSNARK, SNARK};
 use ark_std::rand::{CryptoRng, RngCore};
@@ -50,7 +50,9 @@ pub type AuditStatement = AuditPublicInputs<Fr>;
 ///
 /// Call once per circuit shape; the keys are reusable for any number of proofs
 /// over the same circuit (same `N_RULES`, same Poseidon parameters).
-pub fn setup(rng: &mut (impl RngCore + CryptoRng)) -> Result<(ProvingKey<Bls12_381>, VerifyingKey<Bls12_381>)> {
+pub fn setup(
+    rng: &mut (impl RngCore + CryptoRng),
+) -> Result<(ProvingKey<Bls12_381>, VerifyingKey<Bls12_381>)> {
     let circuit = dummy_circuit();
     let (pk, vk) = Groth16::<Bls12_381>::circuit_specific_setup(circuit, rng)
         .map_err(|e| anyhow::anyhow!("setup failed: {:?}", e))?;
@@ -73,9 +75,7 @@ pub fn prove(
     let score = rule_results.iter().filter(|&&b| b).count() as u64;
     let threshold = stmt.score_threshold.into_bigint().as_ref()[0];
     if score < threshold {
-        anyhow::bail!(
-            "score {score} is below threshold {threshold}; cannot produce a valid proof"
-        );
+        anyhow::bail!("score {score} is below threshold {threshold}; cannot produce a valid proof");
     }
 
     let circuit = AuditCircuit {
@@ -119,7 +119,9 @@ pub fn verify_with_pvk(
 /// Serialise a proof to compressed bytes.
 pub fn proof_to_bytes(proof: &ark_groth16::Proof<Bls12_381>) -> Vec<u8> {
     let mut buf = Vec::new();
-    proof.serialize_compressed(&mut buf).expect("serialisation cannot fail");
+    proof
+        .serialize_compressed(&mut buf)
+        .expect("serialisation cannot fail");
     buf
 }
 
