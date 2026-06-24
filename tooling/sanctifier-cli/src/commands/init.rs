@@ -115,7 +115,7 @@ pub fn exec(args: InitArgs, path: Option<PathBuf>) -> anyhow::Result<()> {
     };
 
     if let Some(template_name) = &args.template {
-        let valid_templates = vec!["token", "amm", "rbac", "timelock"];
+        let valid_templates = ["token", "amm", "rbac", "timelock"];
         if !valid_templates.contains(&template_name.as_str()) {
             anyhow::bail!("Unknown template '{}'. Use --list to see available templates.", template_name);
         }
