@@ -17,7 +17,12 @@
     "hardcoded_addr": "S012",
     "edge_amount": "S013",
     "unused_variable": "S015",
-    "error_code_collision": "S016"
+    "error_code_collision": "S016",
+    "fee_rounding": "S017",
+    "missing_ttl": "S006",
+    "SANCT_TTL_MISSING": "S006",
+    "arg_dos": "SANCT_ARG_DOS",
+    "SANCT_ARG_DOS": "SANCT_ARG_DOS"
   },
   "overlap_legend": {
     "shared-covered": "Class has an EVM analogue and Sanctifier already flags it.",
@@ -65,22 +70,22 @@
       "title": "Unbounded loop / DoS by gas exhaustion",
       "soroban": { "vulnerable": "unbounded_loop_vulnerable.rs", "fixed": "unbounded_loop_fixed.rs" },
       "solidity": { "vulnerable": "unbounded_loop_vulnerable.sol", "fixed": "unbounded_loop_fixed.sol" },
-      "sanctifier": { "ideal_code": "S006", "observed_codes": [], "status": "planned" },
+      "sanctifier": { "ideal_code": "SANCT_ARG_DOS", "observed_codes": ["SANCT_ARG_DOS"], "status": "flagged" },
       "slither": { "detectors": ["calls-loop", "costly-loop"], "expected": true },
       "aderyn": { "detectors": ["costly-operations-inside-loops"], "expected": true },
-      "overlap": "shared-sanctifier-gap",
-      "notes": "Sanctifier estimates instruction counts but has no detector for caller-controlled unbounded iteration; planned under S006."
+      "overlap": "shared-covered",
+      "notes": "Sanctifier flags caller-controlled Vec/Map argument iteration without a visible length cap via SANCT_ARG_DOS. Slither and Aderyn cover analogous EVM loop-cost patterns."
     },
     {
       "bug_class": "missing_ttl",
       "title": "Missing storage TTL bump (state archival)",
       "soroban": { "vulnerable": "missing_ttl_vulnerable.rs", "fixed": "missing_ttl_fixed.rs" },
       "solidity": null,
-      "sanctifier": { "ideal_code": "S006", "observed_codes": [], "status": "planned" },
+      "sanctifier": { "ideal_code": "S006", "observed_codes": ["S006"], "status": "flagged" },
       "slither": { "detectors": [], "expected": false },
       "aderyn": { "detectors": [], "expected": false },
       "overlap": "soroban-specific",
-      "notes": "Soroban archives ledger entries whose TTL is not extended. There is no EVM analogue, so neither Slither nor Aderyn can have an equivalent check. Sanctifier should own this class (planned S006)."
+      "notes": "Soroban archives ledger entries whose TTL is not extended. There is no EVM analogue, so neither Slither nor Aderyn can have an equivalent check. Sanctifier now flags direct persistent/instance storage access that lacks a matching TTL extension."
     },
     {
       "bug_class": "weak_randomness",

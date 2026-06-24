@@ -16,6 +16,7 @@ This document contains the help content for the `sanctifier` command-line progra
 * [`sanctifier init`↴](#sanctifier-init)
 * [`sanctifier callgraph`↴](#sanctifier-callgraph)
 * [`sanctifier update`↴](#sanctifier-update)
+* [`sanctifier watch`↴](#sanctifier-watch)
 * [`sanctifier verify`↴](#sanctifier-verify)
 * [`sanctifier prove`↴](#sanctifier-prove)
 
@@ -36,6 +37,7 @@ Stellar Soroban Security & Formal Verification Suite
 * `init` — Initialize Sanctifier in a new project
 * `callgraph` — Generate a Graphviz DOT call graph of cross-contract calls (env.invoke_contract)
 * `update` — Check for and download the latest Sanctifier binary
+* `watch` — Watch source files and re-run analysis automatically on change (debounced)
 * `verify` — Verify #[sanctify::invariant] declarations across a contract or workspace
 * `prove` — Run SMT-based formal verification on Soroban token contract invariants
 
@@ -199,6 +201,26 @@ Generate a Graphviz DOT call graph of cross-contract calls (env.invoke_contract)
 Check for and download the latest Sanctifier binary
 
 **Usage:** `sanctifier update`
+
+
+
+## `sanctifier watch`
+
+Watch source files and re-run analysis automatically on change (debounced)
+
+**Usage:** `sanctifier watch [OPTIONS]`
+
+###### **Options:**
+
+* `-p`, `--path <PATH>` — Path to a contract directory, workspace, or single `.rs` file to watch
+
+  Default value: `.`
+* `-d`, `--debounce <DEBOUNCE>` — Debounce window in milliseconds before re-running after a change
+
+  Default value: `300`
+* `-f`, `--format <FORMAT>` — Output format passed through to `analyze` (text | json)
+
+  Default value: `text`
 
 
 

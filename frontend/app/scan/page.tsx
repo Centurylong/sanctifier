@@ -215,6 +215,8 @@ export default function ScanPage() {
   const [pageState, setPageState] = useState<PageState>("idle");
   const [apiError, setApiError] = useState<string | null>(null);
   const [findings, setFindings] = useState<Finding[]>([]);
+  const [reportId, setReportId] = useState<string | null>(null);
+  const [copySuccess, setCopySuccess] = useState(false);
 
   // ── File selection ─────────────────────────────────────────────────────────
   const handleFile = useCallback((f: File) => {
@@ -227,6 +229,8 @@ export default function ScanPage() {
   const handleSubmit = useCallback(async () => {
     setApiError(null);
     setFindings([]);
+    setReportId(null);
+    setCopySuccess(false);
     setPageState("loading");
 
     try {
@@ -264,7 +268,7 @@ export default function ScanPage() {
         body,
       });
 
-      const json = await res.json() as AnalysisReport & { error?: string };
+      const json = await res.json() as AnalysisReport & { error?: string; reportId?: string };
 
       if (!res.ok || json.error) {
         setApiError(json.error ?? `Server error (${res.status})`);
@@ -272,10 +276,16 @@ export default function ScanPage() {
         return;
       }
 
+      // Extract reportId if present
+      const { reportId, ...reportData } = json;
+      if (reportId) {
+        setReportId(reportId);
+      }
+
       // Handle new CI/CD format with nested "findings" key
-      const report = (json as Record<string, unknown>).findings
-        ? ((json as Record<string, unknown>).findings as AnalysisReport)
-        : json;
+      const report = (reportData as Record<string, unknown>).findings
+        ? ((reportData as Record<string, unknown>).findings as AnalysisReport)
+        : reportData;
 
       const transformed = transformReport(report);
       setFindings(transformed);
@@ -291,6 +301,20 @@ export default function ScanPage() {
   const canSubmit =
     pageState !== "loading" &&
     (tab === "paste" ? source.trim().length > 0 : file !== null);
+
+  // ── Copy Link ──────────────────────────────────────────────────────────────
+  const handleCopyLink = useCallback(async () => {
+    if (!reportId) return;
+
+    try {
+      const url = `${window.location.origin}/report/${reportId}`;
+      await navigator.clipboard.writeText(url);
+      setCopySuccess(true);
+      setTimeout(() => setCopySuccess(false), 2000);
+    } catch (err) {
+      console.error("Failed to copy link:", err);
+    }
+  }, [reportId]);
 
   // ── Render ─────────────────────────────────────────────────────────────────
   return (
@@ -519,6 +543,8 @@ export default function ScanPage() {
                         setFindings([]);
                         setSource("");
                         setFile(null);
+                        setReportId(null);
+                        setCopySuccess(false);
                       }}
                       className="text-xs underline underline-offset-2 focus:outline-none"
                       style={{ color: "var(--muted-foreground)" }}
@@ -526,6 +552,96 @@ export default function ScanPage() {
                       Scan another
                     </button>
                   </div>
+
+                  {/* Share Link */}
+                  {reportId && (
+                    <div
+                      className="rounded-xl border p-4"
+                      style={{
+                        borderColor: "var(--border)",
+                        backgroundColor: "var(--card)",
+                      }}
+                    >
+                      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                        <div className="flex-1">
+                          <p
+                            className="text-xs font-medium"
+                            style={{ color: "var(--muted-foreground)" }}
+                          >
+                            Shareable link — expires in 30 days
+                          </p>
+                          <code
+                            className="mt-1 block truncate text-xs"
+                            style={{ color: "var(--foreground)" }}
+                          >
+                            {typeof window !== "undefined"
+                              ? `${window.location.origin}/report/${reportId}`
+                              : `/report/${reportId}`}
+                          </code>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={handleCopyLink}
+                          className="flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium transition-colors focus:outline-none focus:ring-2"
+                          style={{
+                            backgroundColor: copySuccess
+                              ? "var(--primary)"
+                              : "var(--muted)",
+                            color: copySuccess
+                              ? "var(--primary-foreground)"
+                              : "var(--foreground)",
+                          }}
+                        >
+                          {copySuccess ? (
+                            <>
+                              <svg
+                                width="16"
+                                height="16"
+                                viewBox="0 0 24 24"
+                                fill="none"
+                                aria-hidden="true"
+                              >
+                                <path
+                                  d="M20 6L9 17l-5-5"
+                                  stroke="currentColor"
+                                  strokeWidth="2"
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                />
+                              </svg>
+                              Copied!
+                            </>
+                          ) : (
+                            <>
+                              <svg
+                                width="16"
+                                height="16"
+                                viewBox="0 0 24 24"
+                                fill="none"
+                                aria-hidden="true"
+                              >
+                                <path
+                                  d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"
+                                  stroke="currentColor"
+                                  strokeWidth="2"
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                />
+                                <path
+                                  d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"
+                                  stroke="currentColor"
+                                  strokeWidth="2"
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                />
+                              </svg>
+                              Copy Link
+                            </>
+                          )}
+                        </button>
+                      </div>
+                    </div>
+                  )}
 
                   <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
                     <SanctityScore findings={findings} />
