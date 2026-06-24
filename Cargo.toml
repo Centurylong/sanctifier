@@ -3,6 +3,7 @@ members = [
     "tooling/sanctifier-core",
     "tooling/sanctifier-guards",
     "tooling/sanctify-macros",
+    "tooling/zk",
     "contracts/vulnerable-contract",
     "contracts/token-with-bugs",
     "contracts/amm-pool",
@@ -20,7 +21,14 @@ soroban-sdk = { version = "20.5.0" }
 [workspace.package]
 rust-version = "1.78"
 
+# Soroban contracts need size optimisation; ZK crate overrides this per binary.
 [profile.release]
 opt-level = "z"
 lto = true
 codegen-units = 1
+
+# Benchmarks need speed — don't apply the size-first release settings.
+[profile.bench]
+opt-level = 3
+lto = false
+codegen-units = 16
