@@ -18,6 +18,7 @@ impl ReentrancyFixed {
         let balance: i128 = env.storage().persistent().get(&user).unwrap_or(0);
         let remaining = balance.saturating_sub(amount);
         env.storage().persistent().set(&user, &remaining);
+        env.storage().persistent().extend_ttl(&user, 100, 1000);
         env.events().publish((PAID,), (user.clone(), amount));
     }
 }
