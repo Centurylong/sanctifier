@@ -1,0 +1,100 @@
+name: Formal Verification (Kani)
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+# Non-blocking initially (#348): this job runs every Kani harness with a
+# per-harness time budget and reports a pass/fail summary, but it never fails
+# the build while the proof suite stabilizes. Flip the `exit 0` / step
+# `continue-on-error` to make it blocking once the harnesses are reliably green.
+jobs:
+  kani:
+    name: Kani proofs (non-blocking)
+    runs-on: ubuntu-latest
+    # Hard ceiling so a runaway solver can never hang CI.
+    timeout-minutes: 30
+    env:
+      # Per-harness wall-clock budget handed to Kani.
+      HARNESS_TIMEOUT: 120s
+      # Crates that contain `#[cfg(kani)]` proof harnesses.
+      KANI_PACKAGES: kani-poc-contract token-invariants amm-pool reentrancy-guard
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      # Cache the Kani toolchain (~/.kani), the installed verifier binary, the
+      # cargo registry, and build artifacts so reruns stay fast.
+      - name: Cache Kani toolchain & cargo
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/bin/
+            ~/.cargo/registry/index/
+            ~/.cargo/registry/cache/
+            ~/.kani/
+            target/
+          key: ${{ runner.os }}-kani-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-kani-
+
+      - name: Install Kani
+        continue-on-error: true
+        run: |
+          if ! command -v cargo-kani >/dev/null 2>&1; then
+            cargo install --locked kani-verifier
+          fi
+          # Idempotent: fetches the backend once, then is a fast no-op when cached.
+          cargo kani setup
+
+      - name: Run Kani harnesses (per-harness time budget)
+        id: kani
+        continue-on-error: true
+        run: |
+          set +e
+          {
+            echo "## 🔬 Kani formal verification"
+            echo ""
+            echo "Per-harness time budget: \`${HARNESS_TIMEOUT}\`"
+            echo ""
+            echo "| Package | Result |"
+            echo "| ------- | ------ |"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+          overall=0
+          for pkg in $KANI_PACKAGES; do
+            echo "::group::cargo kani -p ${pkg}"
+            # `--harness-timeout` budgets each harness; the outer `timeout` is a
+            # belt-and-suspenders wall-clock cap on the whole package run.
+            timeout 900 cargo kani \
+              -p "${pkg}" \
+              --harness-timeout "${HARNESS_TIMEOUT}" \
+              --output-format terse
+            rc=$?
+            echo "::endgroup::"
+            if [ "${rc}" -eq 0 ]; then
+              echo "| \`${pkg}\` | ✅ pass |" >> "$GITHUB_STEP_SUMMARY"
+            else
+              echo "| \`${pkg}\` | ⚠️ fail/timeout (exit ${rc}) |" >> "$GITHUB_STEP_SUMMARY"
+              overall=1
+            fi
+          done
+
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          if [ "${overall}" -eq 0 ]; then
+            echo "All Kani harnesses verified ✅" >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "> Some harnesses did not verify. This job is **non-blocking** for now (#348)." >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+          # Non-blocking: report results without failing the build.
+          exit 0
