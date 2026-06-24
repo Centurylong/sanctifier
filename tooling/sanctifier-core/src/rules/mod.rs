@@ -1,3 +1,4 @@
+pub mod arg_dos;
 pub mod arithmetic_overflow;
 pub mod auth_gap;
 pub mod edge_amount;
@@ -127,6 +128,7 @@ impl RuleRegistry {
         registry.register(edge_amount::EdgeAmountRule::new());
         registry.register(fee_rounding::FeeRoundingRule::new());
         registry.register(missing_ttl::MissingTtlRule::new());
+        registry.register(arg_dos::ArgDosRule::new());
         registry
     }
 }
