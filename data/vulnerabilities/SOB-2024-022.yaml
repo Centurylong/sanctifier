@@ -1,0 +1,25 @@
+id: SOB-2024-022
+title: Token Decimal Precision Mismatch
+description: |
+  Mixing tokens with different decimal precision in AMMs or lending without normalization
+  results in massive price distortion.
+cvss: 7.1
+severity: high
+category: arithmetic
+affected_versions: "soroban-sdk <=20.5.0"
+pattern: |
+  amount_a\s*/\s*amount_b|amount_b\s*/\s*amount_a
+poc_exploit: |
+  // Token A: 7 decimals, Token B: 2 decimals;
+  // price calc without normalization gives 100,000x error
+patch: |
+  const PRECISION: i128 = 1_000_000_000_000_000_000;
+  let normalized = amount * PRECISION / 10_i128.pow(decimals as u32);
+recommendation: Always normalize token amounts to a common precision before cross-token calculations.
+references: []
+tags:
+  - token
+  - decimals
+  - amm
+  - precision
+related_cves: []
