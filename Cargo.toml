@@ -12,6 +12,7 @@ members = [
     "contracts/runtime-guard-wrapper",
     "contracts/kani-poc",
     "contracts/token-invariants",
+    "contracts/sep41-token-invariants",
 ]
 resolver = "2"
 
