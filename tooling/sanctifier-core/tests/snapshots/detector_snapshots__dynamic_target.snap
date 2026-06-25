@@ -1,0 +1,19 @@
+---
+source: tooling/sanctifier-core/tests/detector_snapshots.rs
+expression: findings
+---
+- rule_name: dynamic_target
+  severity: Error
+  message: "SANCT_DYNAMIC_TARGET: Dynamic contract target `& target` instantiated without a visible allowlist check"
+  location: "proxy:10"
+  suggestion: Validate the target Address against an allowlist before creating client
+- rule_name: dynamic_target
+  severity: Error
+  message: "SANCT_DYNAMIC_TARGET: Dynamic contract target `& target` invoked without a visible allowlist check"
+  location: "proxy_invoke:15"
+  suggestion: Validate the target Address against an allowlist before invoking
+- rule_name: dynamic_target
+  severity: Error
+  message: "SANCT_DYNAMIC_TARGET: Dynamic contract target `& dst` instantiated without a visible allowlist check"
+  location: "proxy_alias:21"
+  suggestion: Validate the target Address against an allowlist before creating client

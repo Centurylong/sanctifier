@@ -14,10 +14,11 @@
 
 use sanctifier_core::rules::{
     arg_dos::ArgDosRule, arithmetic_overflow::ArithmeticOverflowRule, auth_gap::AuthGapRule,
-    edge_amount::EdgeAmountRule, error_code_collision::ErrorCodeCollisionRule,
-    fee_rounding::FeeRoundingRule, hardcoded_addr::HardcodedAddrRule, ledger_size::LedgerSizeRule,
-    missing_ttl::MissingTtlRule, panic_detection::PanicDetectionRule,
-    unhandled_result::UnhandledResultRule, unused_variable::UnusedVariableRule, Rule, RuleRegistry,
+    dynamic_target::DynamicTargetRule, edge_amount::EdgeAmountRule,
+    error_code_collision::ErrorCodeCollisionRule, fee_rounding::FeeRoundingRule,
+    hardcoded_addr::HardcodedAddrRule, ledger_size::LedgerSizeRule, missing_ttl::MissingTtlRule,
+    panic_detection::PanicDetectionRule, unhandled_result::UnhandledResultRule,
+    unused_variable::UnusedVariableRule, Rule, RuleRegistry,
 };
 
 /// Run a detector against its fixture and snapshot the resulting findings.
@@ -138,6 +139,15 @@ fn snapshot_arg_dos() {
 }
 
 #[test]
+fn snapshot_dynamic_target() {
+    assert_detector_snapshot(
+        "dynamic_target",
+        &DynamicTargetRule::new(),
+        include_str!("fixtures/detectors/dynamic_target.rs"),
+    );
+}
+
+#[test]
 fn arg_dos_detector_flags_only_uncapped_argument_iteration() {
     let findings = RuleRegistry::with_default_rules()
         .run_by_name(include_str!("fixtures/detectors/arg_dos.rs"), "arg_dos");
@@ -146,4 +156,16 @@ fn arg_dos_detector_flags_only_uncapped_argument_iteration() {
     assert_eq!(findings[0].rule_name, "SANCT_ARG_DOS");
     assert!(findings[0].message.contains("recipients"));
     assert!(findings[0].location.contains("uncapped_vec_airdrop"));
+}
+
+#[test]
+fn dynamic_target_detector_flags_only_unguarded_targets() {
+    let findings = RuleRegistry::with_default_rules()
+        .run_by_name(include_str!("fixtures/detectors/dynamic_target.rs"), "dynamic_target");
+
+    assert_eq!(findings.len(), 3, "{findings:#?}");
+    for finding in &findings {
+        assert_eq!(finding.rule_name, "dynamic_target");
+        assert!(finding.message.contains("SANCT_DYNAMIC_TARGET"));
+    }
 }
