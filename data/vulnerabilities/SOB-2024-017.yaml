@@ -1,0 +1,24 @@
+id: SOB-2024-017
+title: Allowance Race Condition (ERC-20 Style)
+description: |
+  Changing a non-zero allowance directly to another non-zero value lets the spender
+  front-run and spend both old and new allowances.
+cvss: 6.5
+severity: medium
+category: access-control
+affected_versions: "soroban-sdk <=20.5.0"
+pattern: |
+  fn\s+approve\s*\([^)]*\)\s*\{(?:(?!current\s*!=\s*0|set_to_zero).)*set_allowance
+poc_exploit: |
+  // Owner: approve(100)->approve(200);
+  // spender front-runs second tx to spend 100, then spends 200 = 300 total
+patch: |
+  if current != 0 && amount != 0 { panic!("set to 0 first"); }
+recommendation: Force allowance to zero before setting a new value, or use delta-based allowance functions.
+references: []
+tags:
+  - token
+  - allowance
+  - race-condition
+  - front-running
+related_cves: []
