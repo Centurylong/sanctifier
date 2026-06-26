@@ -1,0 +1,25 @@
+id: SOB-2024-014
+title: Weak Randomness via Ledger Sequence
+description: |
+  Using ledger sequence or timestamp as a randomness source is predictable; validators can
+  manipulate it for lotteries or NFT mints.
+cvss: 7.4
+severity: high
+category: randomness
+affected_versions: "soroban-sdk <=20.5.0"
+pattern: |
+  ledger\(\)\.sequence\(\)\s*%|ledger\(\)\.timestamp\(\)\s*%
+poc_exploit: |
+  // Attacker observes sequence N, computes N % 100, times call to win lottery
+patch: |
+  let random_u64: u64 = env.prng().u64();
+  let winner_index = (random_u64 % participant_count as u64) as u32;
+recommendation: Use env.prng() for on-chain randomness.
+references:
+  - https://soroban.stellar.org/docs/fundamentals/built-in-types
+tags:
+  - randomness
+  - prng
+  - lottery
+  - nft
+related_cves: []
