@@ -1,0 +1,24 @@
+id: SOL-2024-004
+title: Missing TTL Extension
+description: |
+  Persistent storage entries written without TTL extension may expire after the default
+  ledger threshold, causing silent data loss.
+cvss: 6.5
+severity: medium
+category: storage
+affected_versions: "soroban-sdk <=20.5.0"
+pattern: |
+  storage\(\)\.persistent\(\)\.set\(&[^,]+,\s*&[^)]+\)(?![\s\S]{0,50}extend_ttl)
+poc_exploit: |
+  env.storage().persistent().set(&key, &value); // expires silently
+patch: |
+  env.storage().persistent().set(&key, &value);
+  env.storage().persistent().extend_ttl(&key, 100, 200_000);
+recommendation: Call extend_ttl() after writing to persistent storage.
+references:
+  - https://soroban.stellar.org/docs/fundamentals/state-archival
+tags:
+  - storage
+  - ttl
+  - state-archival
+related_cves: []

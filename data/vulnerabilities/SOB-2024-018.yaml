@@ -1,0 +1,27 @@
+id: SOB-2024-018
+title: Upgrade Authorization Bypass
+description: |
+  Contract WASM upgrade callable without admin authentication allows any account to replace
+  contract logic with malicious code.
+cvss: 9.9
+severity: critical
+category: access-control
+affected_versions: "soroban-sdk <=20.5.0"
+pattern: |
+  fn\s+upgrade\s*\([^)]*\)\s*\{(?:(?!require_auth).)*update_current_contract_wasm
+poc_exploit: |
+  contract.upgrade(&env, malicious_wasm_hash);
+patch: |
+  fn upgrade(env: Env, new_wasm_hash: BytesN<32>) {
+      get_admin(&env).require_auth();
+      env.deployer().update_current_contract_wasm(new_wasm_hash);
+  }
+recommendation: Always require admin authorization in the upgrade function.
+references:
+  - https://soroban.stellar.org/docs/fundamentals/contract-upgrade
+tags:
+  - upgrade
+  - authorization
+  - admin
+  - critical
+related_cves: []
