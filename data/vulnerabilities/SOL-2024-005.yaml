@@ -1,0 +1,24 @@
+id: SOL-2024-005
+title: Hardcoded Admin Key
+description: |
+  Admin addresses embedded in contract source code cannot be rotated and if compromised
+  represent a permanent irrecoverable security failure.
+cvss: 7.5
+severity: high
+category: access-control
+affected_versions: "soroban-sdk <=20.5.0"
+pattern: |
+  Address::from_str\s*\(\s*"G[A-Z2-7]{55}"
+poc_exploit: |
+  // Attacker compromises private key for hardcoded admin address
+patch: |
+  fn get_admin(env: &Env) -> Address {
+      env.storage().instance().get(&DataKey::Admin).unwrap()
+  }
+recommendation: Store admin addresses in contract storage and set them during initialization.
+references: []
+tags:
+  - hardcoded
+  - admin
+  - key-management
+related_cves: []

@@ -1,0 +1,24 @@
+id: SOL-2024-008
+title: Cross-Contract Call Without Error Handling
+description: |
+  Invoking another contract without handling potential failures can leave state inconsistent.
+cvss: 6.5
+severity: medium
+category: error-handling
+affected_versions: "soroban-sdk <=20.5.0"
+pattern: |
+  \w+_client\.\w+\(&env,[^;]+\);\s*//[^\n]*(?!match|unwrap_or|map_err)
+poc_exploit: |
+  token_client.transfer(&env, from, to, amount); // may panic leaving state corrupt
+patch: |
+  match env.invoke_contract::<_, i128>(&contract_id, &sym, args) {
+      Ok(v) => v,
+      Err(_) => return Err(Error::CrossContractFailed),
+  }
+recommendation: Wrap cross-contract calls in error handling and revert state on failure.
+references: []
+tags:
+  - cross-contract
+  - error-handling
+  - state-consistency
+related_cves: []

@@ -19,6 +19,12 @@ This document contains the help content for the `sanctifier` command-line progra
 * [`sanctifier watch`↴](#sanctifier-watch)
 * [`sanctifier verify`↴](#sanctifier-verify)
 * [`sanctifier prove`↴](#sanctifier-prove)
+* [`sanctifier cve`↴](#sanctifier-cve)
+* [`sanctifier cve search`↴](#sanctifier-cve-search)
+* [`sanctifier cve list`↴](#sanctifier-cve-list)
+* [`sanctifier cve show`↴](#sanctifier-cve-show)
+* [`sanctifier cve export`↴](#sanctifier-cve-export)
+* [`sanctifier cve serve`↴](#sanctifier-cve-serve)
 
 ## `sanctifier`
 
@@ -40,6 +46,7 @@ Stellar Soroban Security & Formal Verification Suite
 * `watch` — Watch source files and re-run analysis automatically on change (debounced)
 * `verify` — Verify #[sanctify::invariant] declarations across a contract or workspace
 * `prove` — Run SMT-based formal verification on Soroban token contract invariants
+* `cve` — Search, list, show, and export the public Soroban/Stellar CVE database
 
 
 
@@ -265,6 +272,103 @@ Run SMT-based formal verification on Soroban token contract invariants
 * `--output-dir <OUTPUT_DIR>` — Directory to write proof certificates (default: <path>/.sanctifier/proofs)
 * `--no-save` — Skip saving proof certificates to disk (useful for CI smoke checks)
 * `--json` — Emit results as JSON
+
+
+
+## `sanctifier cve`
+
+Search, list, show, and export the public Soroban/Stellar CVE database
+
+**Usage:** `sanctifier cve <COMMAND>`
+
+###### **Subcommands:**
+
+* `search` — Search the vulnerability database by keyword
+* `list` — List all vulnerabilities with optional filters
+* `show` — Show full details for a specific vulnerability by ID
+* `export` — Export the database as JSON or RSS
+* `serve` — Start a local HTTP server exposing GET /api/vulndb
+
+
+
+## `sanctifier cve search`
+
+Search the vulnerability database by keyword
+
+**Usage:** `sanctifier cve search [OPTIONS] --keyword <KEYWORD>`
+
+###### **Options:**
+
+* `-k`, `--keyword <KEYWORD>` — Keyword to search (matches id, name, description, tags, category)
+* `--format <FORMAT>` — Output format: text (default) or json
+
+  Default value: `text`
+
+
+
+## `sanctifier cve list`
+
+List all vulnerabilities with optional filters
+
+**Usage:** `sanctifier cve list [OPTIONS]`
+
+###### **Options:**
+
+* `-c`, `--category <CATEGORY>` — Filter by category (e.g. access-control, arithmetic, storage)
+* `-s`, `--severity <SEVERITY>` — Filter by severity (critical, high, medium, low)
+* `--format <FORMAT>` — Output format: text (default) or json
+
+  Default value: `text`
+
+
+
+## `sanctifier cve show`
+
+Show full details for a specific vulnerability by ID
+
+**Usage:** `sanctifier cve show [OPTIONS] <ID>`
+
+###### **Arguments:**
+
+* `<ID>` — Vulnerability ID (e.g. SOL-2024-001 or SOB-2024-015)
+
+###### **Options:**
+
+* `--format <FORMAT>` — Output format: text (default) or json
+
+  Default value: `text`
+
+
+
+## `sanctifier cve export`
+
+Export the database as JSON or RSS
+
+**Usage:** `sanctifier cve export [OPTIONS]`
+
+###### **Options:**
+
+* `--format <FORMAT>` — Output format: json or rss
+
+  Default value: `json`
+* `-o`, `--output <OUTPUT>` — Write output to this file instead of stdout
+* `--base-url <BASE_URL>` — Base URL used in RSS links (default: https://sanctifier.dev)
+
+  Default value: `https://sanctifier.dev`
+
+
+
+## `sanctifier cve serve`
+
+Start a local HTTP server exposing GET /api/vulndb
+
+**Usage:** `sanctifier cve serve [OPTIONS]`
+
+###### **Options:**
+
+* `-p`, `--port <PORT>` — Port to listen on
+
+  Default value: `7654`
 
 
 
