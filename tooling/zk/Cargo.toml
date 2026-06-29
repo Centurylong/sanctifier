@@ -12,7 +12,7 @@ ark-r1cs-std = { version = "0.4", features = ["parallel"] }
 ark-relations = "0.4"
 ark-ff        = "0.4"
 ark-std       = { version = "0.4", features = ["std"] }
-ark-serialize = { version = "0.4", features = ["derive"] }
+ark-serialize = { version = "0.6", features = ["derive"] }
 ark-snark     = "0.4"
 ark-crypto-primitives = { version = "0.4", features = ["r1cs", "sponge"] }
 sha2       = "0.10"
