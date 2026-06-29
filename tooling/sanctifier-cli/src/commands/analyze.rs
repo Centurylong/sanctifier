@@ -3,6 +3,7 @@ use crate::commands::webhook::{
 };
 use clap::Args;
 use colored::*;
+use sanctifier_core::baseline::{apply_baseline, load_baseline, BaselineEntry};
 use sanctifier_core::finding_codes;
 use sanctifier_core::{Analyzer, SanctifyConfig, SizeWarningLevel};
 use serde_json;
@@ -31,6 +32,10 @@ pub struct AnalyzeArgs {
     /// Webhook endpoint(s) to notify when scan completes (Discord/Slack/Teams/custom)
     #[arg(long = "webhook-url")]
     pub webhook_urls: Vec<String>,
+
+    /// Ignore .sanctify-baseline.json and report all findings.
+    #[arg(long)]
+    pub no_baseline: bool,
 }
 
 pub fn exec(args: AnalyzeArgs) -> anyhow::Result<()> {
@@ -152,6 +157,241 @@ pub fn exec(args: AnalyzeArgs) -> anyhow::Result<()> {
         }
     }
 
+    // ── Inline suppression ───────────────────────────────────────────────────
+    let mut inline_suppressions: std::collections::HashMap<String, Vec<(usize, String, String)>> = std::collections::HashMap::new();
+
+    let mut get_suppressions = |file_path: &str| -> Vec<(usize, String, String)> {
+        if let Some(supps) = inline_suppressions.get(file_path) {
+            return supps.clone();
+        }
+        let mut supps = Vec::new();
+        if let Ok(content) = fs::read_to_string(file_path) {
+            for (i, line) in content.lines().enumerate() {
+                if let Some(idx) = line.find("// sanctifier-ignore:") {
+                    let rest = line[idx + "// sanctifier-ignore:".len()..].trim();
+                    if let Some((code, justification)) = rest.split_once('-') {
+                        let justification = justification.trim();
+                        if justification.is_empty() {
+                            if !is_json {
+                                eprintln!("{} Warning: Inline suppression missing justification at {}:{}", "⚠️".yellow(), file_path, i + 1);
+                            }
+                        } else {
+                            supps.push((i + 1, code.trim().to_string(), justification.to_string()));
+                        }
+                    } else {
+                        if !is_json {
+                            eprintln!("{} Warning: Inline suppression missing justification at {}:{}", "⚠️".yellow(), file_path, i + 1);
+                        }
+                    }
+                }
+            }
+        }
+        inline_suppressions.insert(file_path.to_string(), supps.clone());
+        supps
+    };
+
+    let extract_line_and_file = |raw_location: &str| -> Option<(String, usize)> {
+        let parts: Vec<&str> = raw_location.split(':').collect();
+        if parts.len() < 2 {
+            return None;
+        }
+        let file_name = parts[0].to_string();
+        for p in parts.iter().skip(1) {
+            let p = p.trim_start_matches("line ").trim();
+            if let Ok(line) = p.parse::<usize>() {
+                return Some((file_name, line));
+            }
+        }
+        None
+    };
+
+    let mut is_inline_suppressed = |raw_location: &str, code: &str| -> bool {
+        if let Some((file_path, line_num)) = extract_line_and_file(raw_location) {
+            let supps = get_suppressions(&file_path);
+            for (s_line, s_code, _) in supps {
+                if s_code == code && (s_line == line_num || s_line + 1 == line_num) {
+                    return true;
+                }
+            }
+        }
+        false
+    };
+
+    auth_gaps.retain(|gap| !is_inline_suppressed(gap, finding_codes::AUTH_GAP));
+    panic_issues.retain(|p| !is_inline_suppressed(&p.location, finding_codes::PANIC_USAGE));
+    arithmetic_issues.retain(|a| !is_inline_suppressed(&a.location, finding_codes::ARITHMETIC_OVERFLOW));
+    collisions.retain(|c| !is_inline_suppressed(&c.location, finding_codes::STORAGE_COLLISION));
+    event_issues.retain(|e| !is_inline_suppressed(&e.location, finding_codes::EVENT_INCONSISTENCY));
+    unhandled_results.retain(|r| !is_inline_suppressed(&r.location, finding_codes::UNHANDLED_RESULT));
+    for rep in &mut upgrade_reports {
+        rep.findings.retain(|f| !is_inline_suppressed(&f.location, finding_codes::UPGRADE_RISK));
+    }
+    smt_issues.retain(|s| !is_inline_suppressed(&s.location, finding_codes::SMT_INVARIANT_VIOLATION));
+
+    unsafe_patterns.retain(|u| {
+        let file_name = u.snippet.split(':').next().unwrap_or("");
+        let supps = get_suppressions(file_name);
+        !supps.iter().any(|(s_line, s_code, _)| {
+            s_code == finding_codes::UNSAFE_PATTERN && (*s_line == u.line || *s_line + 1 == u.line)
+        })
+    });
+    custom_matches.retain(|m| {
+        let file_name = m.snippet.split(':').next().unwrap_or("");
+        let supps = get_suppressions(file_name);
+        !supps.iter().any(|(s_line, s_code, _)| {
+            s_code == finding_codes::CUSTOM_RULE_MATCH && (*s_line == m.line || *s_line + 1 == m.line)
+        })
+    });
+    vuln_matches.retain(|m| {
+        let supps = get_suppressions(&m.file);
+        !supps.iter().any(|(s_line, s_code, _)| {
+            *s_code == m.vuln_id && (*s_line == m.line || *s_line + 1 == m.line)
+        })
+    });
+
+    // ── Baseline suppression ─────────────────────────────────────────────────
+    // Load .sanctify-baseline.json from the project root (if it exists and
+    // --no-baseline was not passed) and filter out pre-existing findings.
+    let project_root = if path.is_file() {
+        path.parent()
+            .map(|p| p.to_path_buf())
+            .unwrap_or_else(|| PathBuf::from("."))
+    } else {
+        path.to_path_buf()
+    };
+
+    let (suppressed_count, stale_entries) = if !args.no_baseline {
+        match load_baseline(&project_root) {
+            Ok(Some(ref bl)) => {
+                use sanctifier_core::baseline::FlatFinding;
+                use std::collections::HashSet;
+
+                // Build FlatFindings from current typed results without re-running analysis.
+                let mut current_flat: Vec<FlatFinding> = Vec::new();
+
+                for gap in &auth_gaps {
+                    let ctx = gap.split(':').next_back().unwrap_or(gap.as_str());
+                    current_flat.push(FlatFinding::new(finding_codes::AUTH_GAP, gap, ctx));
+                }
+                for p in &panic_issues {
+                    let ctx = format!("{}|{}", p.function_name, p.issue_type);
+                    current_flat.push(FlatFinding::new(finding_codes::PANIC_USAGE, &p.location, &ctx));
+                }
+                for a in &arithmetic_issues {
+                    let ctx = format!("{}|{}", a.function_name, a.operation);
+                    current_flat.push(FlatFinding::new(finding_codes::ARITHMETIC_OVERFLOW, &a.location, &ctx));
+                }
+                for w in &size_warnings {
+                    // Size warnings have no per-file location in the typed struct; use key only.
+                    current_flat.push(FlatFinding::new(finding_codes::LEDGER_SIZE_RISK, "", &w.struct_name));
+                }
+                for c in &collisions {
+                    let ctx = format!("{}|{}", c.key_value, c.key_type);
+                    current_flat.push(FlatFinding::new(finding_codes::STORAGE_COLLISION, &c.location, &ctx));
+                }
+                for u in &unsafe_patterns {
+                    let ctx = format!("{:?}", u.pattern_type);
+                    current_flat.push(FlatFinding::new(finding_codes::UNSAFE_PATTERN, "", &ctx));
+                }
+                for e in &event_issues {
+                    let ctx = format!("{}|{:?}", e.event_name, e.issue_type);
+                    current_flat.push(FlatFinding::new(finding_codes::EVENT_INCONSISTENCY, &e.location, &ctx));
+                }
+                for r in &unhandled_results {
+                    let ctx = format!("{}|{}", r.function_name, r.call_expression);
+                    current_flat.push(FlatFinding::new(finding_codes::UNHANDLED_RESULT, &r.location, &ctx));
+                }
+                for rep in &upgrade_reports {
+                    for f in &rep.findings {
+                        let ctx = format!("{:?}|{}", f.category, f.function_name.as_deref().unwrap_or(""));
+                        current_flat.push(FlatFinding::new(finding_codes::UPGRADE_RISK, &f.location, &ctx));
+                    }
+                }
+                for s in &smt_issues {
+                    let ctx = format!("{}|{}", s.function_name, s.description);
+                    current_flat.push(FlatFinding::new(finding_codes::SMT_INVARIANT_VIOLATION, &s.location, &ctx));
+                }
+
+                let (new_flat, stale) = apply_baseline(bl, &current_flat);
+                let new_fps: HashSet<String> = new_flat.iter().map(|f| f.fingerprint()).collect();
+
+                // Build suppressed set.
+                let suppressed_fps: HashSet<String> = current_flat
+                    .iter()
+                    .map(|f| f.fingerprint())
+                    .filter(|fp| !new_fps.contains(fp))
+                    .collect();
+
+                let suppressed_count = suppressed_fps.len();
+                let stale_entries: Vec<BaselineEntry> = stale.into_iter().cloned().collect();
+
+                // Filter each typed collection in-place.
+                auth_gaps.retain(|gap| {
+                    let ctx = gap.split(':').next_back().unwrap_or(gap.as_str());
+                    let fp = FlatFinding::new(finding_codes::AUTH_GAP, gap, ctx).fingerprint();
+                    !suppressed_fps.contains(&fp)
+                });
+                panic_issues.retain(|p| {
+                    let ctx = format!("{}|{}", p.function_name, p.issue_type);
+                    let fp = FlatFinding::new(finding_codes::PANIC_USAGE, &p.location, &ctx).fingerprint();
+                    !suppressed_fps.contains(&fp)
+                });
+                arithmetic_issues.retain(|a| {
+                    let ctx = format!("{}|{}", a.function_name, a.operation);
+                    let fp = FlatFinding::new(finding_codes::ARITHMETIC_OVERFLOW, &a.location, &ctx).fingerprint();
+                    !suppressed_fps.contains(&fp)
+                });
+                size_warnings.retain(|w| {
+                    let fp = FlatFinding::new(finding_codes::LEDGER_SIZE_RISK, "", &w.struct_name).fingerprint();
+                    !suppressed_fps.contains(&fp)
+                });
+                collisions.retain(|c| {
+                    let ctx = format!("{}|{}", c.key_value, c.key_type);
+                    let fp = FlatFinding::new(finding_codes::STORAGE_COLLISION, &c.location, &ctx).fingerprint();
+                    !suppressed_fps.contains(&fp)
+                });
+                unsafe_patterns.retain(|u| {
+                    let ctx = format!("{:?}", u.pattern_type);
+                    let fp = FlatFinding::new(finding_codes::UNSAFE_PATTERN, "", &ctx).fingerprint();
+                    !suppressed_fps.contains(&fp)
+                });
+                event_issues.retain(|e| {
+                    let ctx = format!("{}|{:?}", e.event_name, e.issue_type);
+                    let fp = FlatFinding::new(finding_codes::EVENT_INCONSISTENCY, &e.location, &ctx).fingerprint();
+                    !suppressed_fps.contains(&fp)
+                });
+                unhandled_results.retain(|r| {
+                    let ctx = format!("{}|{}", r.function_name, r.call_expression);
+                    let fp = FlatFinding::new(finding_codes::UNHANDLED_RESULT, &r.location, &ctx).fingerprint();
+                    !suppressed_fps.contains(&fp)
+                });
+                for rep in &mut upgrade_reports {
+                    rep.findings.retain(|f| {
+                        let ctx = format!("{:?}|{}", f.category, f.function_name.as_deref().unwrap_or(""));
+                        let fp = FlatFinding::new(finding_codes::UPGRADE_RISK, &f.location, &ctx).fingerprint();
+                        !suppressed_fps.contains(&fp)
+                    });
+                }
+                smt_issues.retain(|s| {
+                    let ctx = format!("{}|{}", s.function_name, s.description);
+                    let fp = FlatFinding::new(finding_codes::SMT_INVARIANT_VIOLATION, &s.location, &ctx).fingerprint();
+                    !suppressed_fps.contains(&fp)
+                });
+
+                (suppressed_count, stale_entries)
+            }
+            Ok(None) => (0, vec![]),
+            Err(e) => {
+                if !is_json {
+                    eprintln!("{} Could not read baseline: {}", "⚠️".yellow(), e);
+                }
+                (0, vec![])
+            }
+        }
+    } else {
+        (0, vec![])
+    };
+
     let total_findings = collisions.len()
         + size_warnings.len()
         + unsafe_patterns.len()
@@ -193,7 +433,37 @@ pub fn exec(args: AnalyzeArgs) -> anyhow::Result<()> {
         eprintln!("⚠️ Failed to initialize webhook client: {}", err);
     }
 
+    // ── Baseline summary (text mode) ─────────────────────────────────────────
+    if !is_json && suppressed_count > 0 {
+        println!(
+            "{} {} finding{} suppressed by baseline (run {} to see all)",
+            "ℹ️".blue(),
+            suppressed_count,
+            if suppressed_count == 1 { "" } else { "s" },
+            "sanctifier analyze --no-baseline".bold(),
+        );
+    }
+    if !is_json && !stale_entries.is_empty() {
+        println!(
+            "{} {} stale baseline entr{} (no longer present in the codebase):",
+            "ℹ️".blue(),
+            stale_entries.len(),
+            if stale_entries.len() == 1 { "y" } else { "ies" },
+        );
+        for e in &stale_entries {
+            println!("   {} [{}] {} — {}", "~".yellow(), e.code.bold(), e.path, e.context);
+        }
+        println!(
+            "    Run {} to remove them.",
+            "sanctifier baseline --update".bold()
+        );
+    }
+
     if is_json {
+        let stale_json: Vec<serde_json::Value> = stale_entries
+            .iter()
+            .map(|e| serde_json::json!({ "fingerprint": e.fingerprint, "code": e.code, "path": e.path, "context": e.context }))
+            .collect();
         let report = serde_json::json!({
             "storage_collisions": collisions,
             "ledger_size_warnings": size_warnings,
@@ -213,6 +483,10 @@ pub fn exec(args: AnalyzeArgs) -> anyhow::Result<()> {
                 "timestamp": timestamp,
                 "project_path": path.display().to_string(),
                 "format": "sanctifier-ci-v1",
+            },
+            "baseline": {
+                "suppressed_count": suppressed_count,
+                "stale_entries": stale_json,
             },
             "error_codes": finding_codes::all_finding_codes(),
             "summary": {
