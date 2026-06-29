@@ -157,6 +157,97 @@ pub fn exec(args: AnalyzeArgs) -> anyhow::Result<()> {
         }
     }
 
+    // ── Inline suppression ───────────────────────────────────────────────────
+    let mut inline_suppressions: std::collections::HashMap<String, Vec<(usize, String, String)>> = std::collections::HashMap::new();
+
+    let mut get_suppressions = |file_path: &str| -> Vec<(usize, String, String)> {
+        if let Some(supps) = inline_suppressions.get(file_path) {
+            return supps.clone();
+        }
+        let mut supps = Vec::new();
+        if let Ok(content) = fs::read_to_string(file_path) {
+            for (i, line) in content.lines().enumerate() {
+                if let Some(idx) = line.find("// sanctifier-ignore:") {
+                    let rest = line[idx + "// sanctifier-ignore:".len()..].trim();
+                    if let Some((code, justification)) = rest.split_once('-') {
+                        let justification = justification.trim();
+                        if justification.is_empty() {
+                            if !is_json {
+                                eprintln!("{} Warning: Inline suppression missing justification at {}:{}", "⚠️".yellow(), file_path, i + 1);
+                            }
+                        } else {
+                            supps.push((i + 1, code.trim().to_string(), justification.to_string()));
+                        }
+                    } else {
+                        if !is_json {
+                            eprintln!("{} Warning: Inline suppression missing justification at {}:{}", "⚠️".yellow(), file_path, i + 1);
+                        }
+                    }
+                }
+            }
+        }
+        inline_suppressions.insert(file_path.to_string(), supps.clone());
+        supps
+    };
+
+    let extract_line_and_file = |raw_location: &str| -> Option<(String, usize)> {
+        let parts: Vec<&str> = raw_location.split(':').collect();
+        if parts.len() < 2 {
+            return None;
+        }
+        let file_name = parts[0].to_string();
+        for p in parts.iter().skip(1) {
+            let p = p.trim_start_matches("line ").trim();
+            if let Ok(line) = p.parse::<usize>() {
+                return Some((file_name, line));
+            }
+        }
+        None
+    };
+
+    let mut is_inline_suppressed = |raw_location: &str, code: &str| -> bool {
+        if let Some((file_path, line_num)) = extract_line_and_file(raw_location) {
+            let supps = get_suppressions(&file_path);
+            for (s_line, s_code, _) in supps {
+                if s_code == code && (s_line == &line_num || *s_line + 1 == line_num) {
+                    return true;
+                }
+            }
+        }
+        false
+    };
+
+    auth_gaps.retain(|gap| !is_inline_suppressed(gap, finding_codes::AUTH_GAP));
+    panic_issues.retain(|p| !is_inline_suppressed(&p.location, finding_codes::PANIC_USAGE));
+    arithmetic_issues.retain(|a| !is_inline_suppressed(&a.location, finding_codes::ARITHMETIC_OVERFLOW));
+    collisions.retain(|c| !is_inline_suppressed(&c.location, finding_codes::STORAGE_COLLISION));
+    unsafe_patterns.retain(|u| {
+        let file_name = u.snippet.split(':').next().unwrap_or("");
+        let supps = get_suppressions(file_name);
+        !supps.iter().any(|(s_line, s_code, _)| {
+            s_code == finding_codes::UNSAFE_PATTERN && (*s_line == u.line || *s_line + 1 == u.line)
+        })
+    });
+    event_issues.retain(|e| !is_inline_suppressed(&e.location, finding_codes::EVENT_INCONSISTENCY));
+    unhandled_results.retain(|r| !is_inline_suppressed(&r.location, finding_codes::UNHANDLED_RESULT));
+    for rep in &mut upgrade_reports {
+        rep.findings.retain(|f| !is_inline_suppressed(&f.location, finding_codes::UPGRADE_RISK));
+    }
+    smt_issues.retain(|s| !is_inline_suppressed(&s.location, finding_codes::SMT_INVARIANT_VIOLATION));
+    custom_matches.retain(|m| {
+        let file_name = m.snippet.split(':').next().unwrap_or("");
+        let supps = get_suppressions(file_name);
+        !supps.iter().any(|(s_line, s_code, _)| {
+            s_code == finding_codes::CUSTOM_RULE_MATCH && (*s_line == m.line || *s_line + 1 == m.line)
+        })
+    });
+    vuln_matches.retain(|m| {
+        let supps = get_suppressions(&m.file);
+        !supps.iter().any(|(s_line, s_code, _)| {
+            s_code == m.vuln_id && (*s_line == m.line || *s_line + 1 == m.line)
+        })
+    });
+
     // ── Baseline suppression ─────────────────────────────────────────────────
     // Load .sanctify-baseline.json from the project root (if it exists and
     // --no-baseline was not passed) and filter out pre-existing findings.
