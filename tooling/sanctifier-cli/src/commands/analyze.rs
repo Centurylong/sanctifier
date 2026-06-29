@@ -221,6 +221,13 @@ pub fn exec(args: AnalyzeArgs) -> anyhow::Result<()> {
     panic_issues.retain(|p| !is_inline_suppressed(&p.location, finding_codes::PANIC_USAGE));
     arithmetic_issues.retain(|a| !is_inline_suppressed(&a.location, finding_codes::ARITHMETIC_OVERFLOW));
     collisions.retain(|c| !is_inline_suppressed(&c.location, finding_codes::STORAGE_COLLISION));
+    event_issues.retain(|e| !is_inline_suppressed(&e.location, finding_codes::EVENT_INCONSISTENCY));
+    unhandled_results.retain(|r| !is_inline_suppressed(&r.location, finding_codes::UNHANDLED_RESULT));
+    for rep in &mut upgrade_reports {
+        rep.findings.retain(|f| !is_inline_suppressed(&f.location, finding_codes::UPGRADE_RISK));
+    }
+    smt_issues.retain(|s| !is_inline_suppressed(&s.location, finding_codes::SMT_INVARIANT_VIOLATION));
+
     unsafe_patterns.retain(|u| {
         let file_name = u.snippet.split(':').next().unwrap_or("");
         let supps = get_suppressions(file_name);
@@ -228,12 +235,6 @@ pub fn exec(args: AnalyzeArgs) -> anyhow::Result<()> {
             s_code == finding_codes::UNSAFE_PATTERN && (*s_line == u.line || *s_line + 1 == u.line)
         })
     });
-    event_issues.retain(|e| !is_inline_suppressed(&e.location, finding_codes::EVENT_INCONSISTENCY));
-    unhandled_results.retain(|r| !is_inline_suppressed(&r.location, finding_codes::UNHANDLED_RESULT));
-    for rep in &mut upgrade_reports {
-        rep.findings.retain(|f| !is_inline_suppressed(&f.location, finding_codes::UPGRADE_RISK));
-    }
-    smt_issues.retain(|s| !is_inline_suppressed(&s.location, finding_codes::SMT_INVARIANT_VIOLATION));
     custom_matches.retain(|m| {
         let file_name = m.snippet.split(':').next().unwrap_or("");
         let supps = get_suppressions(file_name);
