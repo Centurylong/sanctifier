@@ -37,7 +37,7 @@ impl SymbolicAnalyzer {
 
     pub fn analyze_function(&mut self, func: &ItemFn) {
         let fn_name = func.sig.ident.to_string();
-        
+
         let initial_state = PathState {
             conditions: Vec::new(),
             status: PathStatus::Active,
@@ -65,7 +65,8 @@ impl SymbolicAnalyzer {
         if always_reverts && !paths.is_empty() {
             self.issues.push(SymbolicIssue {
                 function_name: fn_name.clone(),
-                description: "Function always reverts on all execution paths (Always-Revert).".to_string(),
+                description: "Function always reverts on all execution paths (Always-Revert)."
+                    .to_string(),
                 location: format!("fn {}", fn_name),
             });
         }
@@ -116,11 +117,11 @@ impl SymbolicAnalyzer {
         match expr {
             Expr::If(expr_if) => {
                 let cond_str = quote::quote!(#expr_if.cond).to_string();
-                
+
                 // True branch
                 let mut true_path = path.clone();
                 true_path.conditions.push(cond_str.clone());
-                
+
                 // Evaluate statements in true branch
                 let mut true_paths = vec![true_path];
                 for stmt in &expr_if.then_branch.stmts {
@@ -131,7 +132,7 @@ impl SymbolicAnalyzer {
                 // False branch
                 let mut false_path = path.clone();
                 false_path.conditions.push(format!("!({})", cond_str));
-                
+
                 if let Some((_, else_expr)) = &expr_if.else_branch {
                     let false_paths = self.step_expr(&false_path, else_expr);
                     next_paths.extend(false_paths);

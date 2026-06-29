@@ -9,8 +9,8 @@ pub mod patcher;
 pub mod rules;
 #[cfg(feature = "smt")]
 pub mod smt;
-pub mod symbolic;
 mod storage_collision;
+pub mod symbolic;
 use std::collections::{HashMap, HashSet};
 use syn::spanned::Spanned;
 use syn::visit::{self, Visit};
@@ -484,7 +484,7 @@ impl Analyzer {
             Ok(f) => f,
             Err(_) => return vec![],
         };
-        
+
         let mut analyzer = symbolic::SymbolicAnalyzer::new();
         for item in &file.items {
             if let Item::Fn(func) = item {
@@ -506,7 +506,6 @@ impl Analyzer {
         }
         analyzer.issues
     }
-
 
     fn scan_auth_gaps_impl(&self, source: &str) -> Vec<String> {
         let file = match parse_str::<File>(source) {
