@@ -1,0 +1,9 @@
+---
+source: tooling/sanctifier-core/tests/detector_snapshots.rs
+expression: findings
+---
+- rule_name: SANCT_ARG_DOS
+  severity: Warning
+  message: "SANCT_ARG_DOS: argument `recipients` is iterated without a visible length cap"
+  location: "uncapped_vec_airdrop:7"
+  suggestion: "Check `recipients.len()` against a maximum before iterating over `recipients`"

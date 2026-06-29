@@ -106,6 +106,13 @@ export default function DashboardPage() {
         </div>
         <nav className="flex items-center gap-4" aria-label="Main navigation">
           <Link
+            href="/scan"
+            className="text-sm font-medium transition-colors focus:outline-none focus:ring-2"
+            style={{ color: "var(--muted-foreground)" }}
+          >
+            Scan
+          </Link>
+          <Link
             href="/terminal"
             className="text-sm font-medium transition-colors focus:outline-none focus:ring-2"
             style={{ color: "var(--muted-foreground)" }}

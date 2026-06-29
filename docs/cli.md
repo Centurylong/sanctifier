@@ -8,11 +8,15 @@ This document contains the help content for the `sanctifier` command-line progra
 
 * [`sanctifier`↴](#sanctifier)
 * [`sanctifier analyze`↴](#sanctifier-analyze)
+* [`sanctifier baseline`↴](#sanctifier-baseline)
+* [`sanctifier attest`↴](#sanctifier-attest)
 * [`sanctifier badge`↴](#sanctifier-badge)
+* [`sanctifier diff`↴](#sanctifier-diff)
 * [`sanctifier report`↴](#sanctifier-report)
 * [`sanctifier init`↴](#sanctifier-init)
 * [`sanctifier callgraph`↴](#sanctifier-callgraph)
 * [`sanctifier update`↴](#sanctifier-update)
+* [`sanctifier watch`↴](#sanctifier-watch)
 * [`sanctifier verify`↴](#sanctifier-verify)
 * [`sanctifier prove`↴](#sanctifier-prove)
 
@@ -25,11 +29,15 @@ Stellar Soroban Security & Formal Verification Suite
 ###### **Subcommands:**
 
 * `analyze` — Analyze a Soroban contract for vulnerabilities
+* `baseline` — Snapshot current findings into .sanctify-baseline.json (use --update to refresh)
+* `attest` — Generate (or verify) a zero-knowledge attestation that a scan passed a score threshold
 * `badge` — Generate a dynamic Sanctifier status badge
+* `diff` — Compare findings between working tree and a git reference
 * `report` — Generate a security report
 * `init` — Initialize Sanctifier in a new project
 * `callgraph` — Generate a Graphviz DOT call graph of cross-contract calls (env.invoke_contract)
 * `update` — Check for and download the latest Sanctifier binary
+* `watch` — Watch source files and re-run analysis automatically on change (debounced)
 * `verify` — Verify #[sanctify::invariant] declarations across a contract or workspace
 * `prove` — Run SMT-based formal verification on Soroban token contract invariants
 
@@ -57,6 +65,48 @@ Analyze a Soroban contract for vulnerabilities
   Default value: `64000`
 * `--vuln-db <VULN_DB>` — Path to a custom vulnerability database JSON file
 * `--webhook-url <WEBHOOK_URLS>` — Webhook endpoint(s) to notify when scan completes (Discord/Slack/Teams/custom)
+* `--no-baseline` — Ignore .sanctify-baseline.json and report all findings
+
+
+
+## `sanctifier baseline`
+
+Snapshot current findings into .sanctify-baseline.json (use --update to refresh)
+
+**Usage:** `sanctifier baseline [OPTIONS] [PATH]`
+
+###### **Arguments:**
+
+* `<PATH>` — Path to the contract directory, workspace, or a single `.rs` file
+
+  Default value: `.`
+
+###### **Options:**
+
+* `--update` — Overwrite an existing `.sanctify-baseline.json` (refresh after intentional changes)
+* `-q`, `--quiet` — Quiet — only print the path of the written file (useful in CI)
+
+
+
+## `sanctifier attest`
+
+Generate (or verify) a zero-knowledge attestation that a scan passed a score threshold
+
+**Usage:** `sanctifier attest [OPTIONS] [PATH]`
+
+###### **Arguments:**
+
+* `<PATH>` — Path to the contract directory or a single .rs file
+
+  Default value: `.`
+
+###### **Options:**
+
+* `-t`, `--threshold <THRESHOLD>` — Minimum security score (0-100) the scan must reach to attest
+
+  Default value: `90`
+* `-o`, `--out <OUT>` — Write the attestation artifact here (defaults to stdout)
+* `--verify <FILE>` — Verify an existing attestation artifact instead of generating one
 
 
 
@@ -76,6 +126,29 @@ Generate a dynamic Sanctifier status badge
   Default value: `sanctifier-security.svg`
 * `--markdown-output <MARKDOWN_OUTPUT>` — Where to write generated markdown snippet
 * `--badge-url <BADGE_URL>` — Public URL for the SVG (used by markdown output). Falls back to local SVG path
+
+
+
+## `sanctifier diff`
+
+Compare findings between working tree and a git reference
+
+**Usage:** `sanctifier diff [OPTIONS] <GIT_REF>`
+
+###### **Arguments:**
+
+* `<GIT_REF>` — Git reference to compare against (e.g., origin/main, HEAD~1, commit-sha)
+
+###### **Options:**
+
+* `-p`, `--path <PATH>` — Path to the contract directory or Cargo.toml
+
+  Default value: `.`
+* `--fail-on-new` — Exit with non-zero code if new findings are detected
+* `-f`, `--format <FORMAT>` — Output format (text, json)
+
+  Default value: `text`
+* `--vuln-db <VULN_DB>` — Path to a custom vulnerability database JSON file
 
 
 
@@ -128,6 +201,26 @@ Generate a Graphviz DOT call graph of cross-contract calls (env.invoke_contract)
 Check for and download the latest Sanctifier binary
 
 **Usage:** `sanctifier update`
+
+
+
+## `sanctifier watch`
+
+Watch source files and re-run analysis automatically on change (debounced)
+
+**Usage:** `sanctifier watch [OPTIONS]`
+
+###### **Options:**
+
+* `-p`, `--path <PATH>` — Path to a contract directory, workspace, or single `.rs` file to watch
+
+  Default value: `.`
+* `-d`, `--debounce <DEBOUNCE>` — Debounce window in milliseconds before re-running after a change
+
+  Default value: `300`
+* `-f`, `--format <FORMAT>` — Output format passed through to `analyze` (text | json)
+
+  Default value: `text`
 
 
 

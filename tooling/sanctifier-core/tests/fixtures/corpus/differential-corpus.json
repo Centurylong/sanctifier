@@ -1,0 +1,148 @@
+{
+  "schema_version": 1,
+  "description": "Shared differential-testing corpus for issue #503. Maps each canonical bug class in the Soroban vulnerability gallery to the equivalent default detectors in Slither and Aderyn, records the finding codes Sanctifier actually emits today (ground truth, verified against the committed gallery snapshots), and classifies the overlap. Consumed by tests/differential_test.rs and scripts/differential-test.sh.",
+  "methodology": [
+    "Sanctifier targets Stellar Soroban (Rust/WASM); Slither and Aderyn target Solidity/EVM. A line-for-line cross-run is therefore impossible, so checks are compared at the *vulnerability-class* level ('where checks overlap', per the issue).",
+    "The Soroban side of the corpus reuses the canonical gallery (tests/fixtures/gallery, issue #388): ten bug classes, each a minimal vulnerable contract paired with a fixed counterpart.",
+    "The EVM side provides minimal Solidity mirrors (tests/fixtures/corpus/solidity) for the classes that have a direct EVM analogue, so Slither/Aderyn can be run live when those tools are installed (see scripts/differential-test.sh).",
+    "sanctifier.observed_codes is the set of finding codes the default RuleRegistry emits on the *vulnerable* fixture today. It is asserted by the harness and kept in lock-step with the gallery snapshots.",
+    "slither.detectors / aderyn.detectors list the closest default detectors each tool ships for the same class (from their published detector catalogs). expected=true means that tool flags the class out of the box."
+  ],
+  "sanctifier_rule_to_code": {
+    "auth_gap": "S001",
+    "panic_detection": "S002",
+    "arithmetic_overflow": "S003",
+    "ledger_size": "S004",
+    "unhandled_result": "S009",
+    "hardcoded_addr": "S012",
+    "edge_amount": "S013",
+    "unused_variable": "S015",
+    "error_code_collision": "S016",
+    "fee_rounding": "S017",
+    "missing_ttl": "S006",
+    "SANCT_TTL_MISSING": "S006",
+    "arg_dos": "SANCT_ARG_DOS",
+    "SANCT_ARG_DOS": "SANCT_ARG_DOS",
+    "dynamic_target": "SANCT_DYNAMIC_TARGET",
+    "SANCT_DYNAMIC_TARGET": "SANCT_DYNAMIC_TARGET"
+  },
+  "overlap_legend": {
+    "shared-covered": "Class has an EVM analogue and Sanctifier already flags it.",
+    "shared-sanctifier-gap": "Slither and/or Aderyn flag the class by default, but Sanctifier has no detector yet (planned).",
+    "divergent-approach": "Class exists in both worlds but the tools handle it differently (e.g. the EVM compiler subsumes the check).",
+    "soroban-specific": "Class is unique to Soroban; Slither/Aderyn have no equivalent.",
+    "mutual-gap": "Class is real in both worlds but none of the three tools flags it by default."
+  },
+  "corpus": [
+    {
+      "bug_class": "reinit",
+      "title": "Re-initialization (unauthenticated initializer)",
+      "soroban": { "vulnerable": "reinit_vulnerable.rs", "fixed": "reinit_fixed.rs" },
+      "solidity": null,
+      "sanctifier": { "ideal_code": "S001", "observed_codes": ["S001"], "status": "flagged" },
+      "slither": { "detectors": [], "expected": false },
+      "aderyn": { "detectors": ["unprotected-initializer"], "expected": true },
+      "overlap": "shared-covered",
+      "notes": "Sanctifier flags the missing require_auth on the state-mutating initializer (auth_gap). Aderyn has a dedicated unprotected-initializer detector; Slither's core ruleset has no generic initializer-protection detector (it relies on OZ Initializable patterns)."
+    },
+    {
+      "bug_class": "upgrade_auth",
+      "title": "Unchecked upgrade authorization",
+      "soroban": { "vulnerable": "upgrade_auth_vulnerable.rs", "fixed": "upgrade_auth_fixed.rs" },
+      "solidity": { "vulnerable": "unprotected_upgrade_vulnerable.sol", "fixed": "unprotected_upgrade_fixed.sol" },
+      "sanctifier": { "ideal_code": "S010", "observed_codes": ["S001"], "status": "surfaced" },
+      "slither": { "detectors": ["unprotected-upgrade"], "expected": true },
+      "aderyn": { "detectors": ["centralization-risk", "unprotected-initializer"], "expected": true },
+      "overlap": "shared-covered",
+      "notes": "No dedicated S010 upgrade detector yet; the underlying unauthenticated admin setter is surfaced via S001 auth_gap. Slither's unprotected-upgrade is the direct analogue."
+    },
+    {
+      "bug_class": "reentrancy",
+      "title": "CEI violation / reentrancy",
+      "soroban": { "vulnerable": "reentrancy_vulnerable.rs", "fixed": "reentrancy_fixed.rs" },
+      "solidity": { "vulnerable": "reentrancy_vulnerable.sol", "fixed": "reentrancy_fixed.sol" },
+      "sanctifier": { "ideal_code": "S006", "observed_codes": [], "status": "planned" },
+      "slither": { "detectors": ["reentrancy-eth", "reentrancy-no-eth", "reentrancy-benign"], "expected": true },
+      "aderyn": { "detectors": ["state-change-after-external-call"], "expected": true },
+      "overlap": "shared-sanctifier-gap",
+      "notes": "Both EVM tools flag interaction-before-effect. Sanctifier has no CEI/reentrancy detector yet; the vulnerable fixture currently produces an empty result (the regression baseline for the planned S006 detector)."
+    },
+    {
+      "bug_class": "unbounded_loop",
+      "title": "Unbounded loop / DoS by gas exhaustion",
+      "soroban": { "vulnerable": "unbounded_loop_vulnerable.rs", "fixed": "unbounded_loop_fixed.rs" },
+      "solidity": { "vulnerable": "unbounded_loop_vulnerable.sol", "fixed": "unbounded_loop_fixed.sol" },
+      "sanctifier": { "ideal_code": "SANCT_ARG_DOS", "observed_codes": ["SANCT_ARG_DOS"], "status": "flagged" },
+      "slither": { "detectors": ["calls-loop", "costly-loop"], "expected": true },
+      "aderyn": { "detectors": ["costly-operations-inside-loops"], "expected": true },
+      "overlap": "shared-covered",
+      "notes": "Sanctifier flags caller-controlled Vec/Map argument iteration without a visible length cap via SANCT_ARG_DOS. Slither and Aderyn cover analogous EVM loop-cost patterns."
+    },
+    {
+      "bug_class": "missing_ttl",
+      "title": "Missing storage TTL bump (state archival)",
+      "soroban": { "vulnerable": "missing_ttl_vulnerable.rs", "fixed": "missing_ttl_fixed.rs" },
+      "solidity": null,
+      "sanctifier": { "ideal_code": "S006", "observed_codes": ["S006"], "status": "flagged" },
+      "slither": { "detectors": [], "expected": false },
+      "aderyn": { "detectors": [], "expected": false },
+      "overlap": "soroban-specific",
+      "notes": "Soroban archives ledger entries whose TTL is not extended. There is no EVM analogue, so neither Slither nor Aderyn can have an equivalent check. Sanctifier now flags direct persistent/instance storage access that lacks a matching TTL extension."
+    },
+    {
+      "bug_class": "weak_randomness",
+      "title": "Weak / predictable randomness",
+      "soroban": { "vulnerable": "weak_randomness_vulnerable.rs", "fixed": "weak_randomness_fixed.rs" },
+      "solidity": { "vulnerable": "weak_randomness_vulnerable.sol", "fixed": "weak_randomness_fixed.sol" },
+      "sanctifier": { "ideal_code": "S006", "observed_codes": [], "status": "planned" },
+      "slither": { "detectors": ["weak-prng"], "expected": true },
+      "aderyn": { "detectors": ["weak-randomness"], "expected": true },
+      "overlap": "shared-sanctifier-gap",
+      "notes": "Deriving randomness from ledger/block values is flagged by both EVM tools. Sanctifier has no PRNG detector yet; planned under S006."
+    },
+    {
+      "bug_class": "integer_overflow",
+      "title": "Unchecked integer overflow",
+      "soroban": { "vulnerable": "integer_overflow_vulnerable.rs", "fixed": "integer_overflow_fixed.rs" },
+      "solidity": null,
+      "sanctifier": { "ideal_code": "S003", "observed_codes": ["S003"], "status": "flagged" },
+      "slither": { "detectors": [], "expected": false },
+      "aderyn": { "detectors": [], "expected": false },
+      "overlap": "divergent-approach",
+      "notes": "Sanctifier flags unchecked +/-/* on Rust integers (which wrap in release builds). On Solidity >=0.8 the compiler inserts overflow checks, so Slither/Aderyn do not flag plain arithmetic by default (an explicit `unchecked { }` block is required to reintroduce the risk, and is not flagged by their default rulesets). Genuine divergence: Sanctifier is stricter here because the Soroban toolchain does not check by default."
+    },
+    {
+      "bug_class": "allowance_race",
+      "title": "Allowance race / approve TOCTOU",
+      "soroban": { "vulnerable": "allowance_race_vulnerable.rs", "fixed": "allowance_race_fixed.rs" },
+      "solidity": null,
+      "sanctifier": { "ideal_code": "S006", "observed_codes": [], "status": "planned" },
+      "slither": { "detectors": [], "expected": false },
+      "aderyn": { "detectors": [], "expected": false },
+      "overlap": "mutual-gap",
+      "notes": "The ERC-20 approve front-running race is well known but none of the three default rulesets flags it (Slither and Aderyn leave it to increase/decreaseAllowance conventions). Real but mutually uncovered."
+    },
+    {
+      "bug_class": "oracle_staleness",
+      "title": "Oracle price staleness",
+      "soroban": { "vulnerable": "oracle_staleness_vulnerable.rs", "fixed": "oracle_staleness_fixed.rs" },
+      "solidity": null,
+      "sanctifier": { "ideal_code": "S006", "observed_codes": [], "status": "planned" },
+      "slither": { "detectors": [], "expected": false },
+      "aderyn": { "detectors": [], "expected": false },
+      "overlap": "mutual-gap",
+      "notes": "Consuming a price feed without a freshness/heartbeat check. Not in any of the three default rulesets (typically a semgrep/custom rule in EVM tooling). Real but mutually uncovered."
+    },
+    {
+      "bug_class": "confused_deputy",
+      "title": "Confused-deputy authorization",
+      "soroban": { "vulnerable": "confused_deputy_vulnerable.rs", "fixed": "confused_deputy_fixed.rs" },
+      "solidity": { "vulnerable": "confused_deputy_vulnerable.sol", "fixed": "confused_deputy_fixed.sol" },
+      "sanctifier": { "ideal_code": "S001", "observed_codes": [], "status": "planned" },
+      "slither": { "detectors": ["arbitrary-send-eth", "tx-origin"], "expected": true },
+      "aderyn": { "detectors": ["arbitrary-from-in-transfer-from"], "expected": true },
+      "overlap": "shared-sanctifier-gap",
+      "notes": "The vulnerable contract authenticates the wrong party (it calls require_auth, just on an attacker-influenced address), so the presence-only auth_gap detector stays silent (empty result). Refining S001 into a confused-deputy / arbitrary-from check is the action item; Aderyn's arbitrary-from-in-transfer-from is the closest analogue."
+    }
+  ]
+}

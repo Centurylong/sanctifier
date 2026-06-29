@@ -4,10 +4,18 @@ version = "0.1.0"
 edition = "2021"
 
 [lib]
-crate-type = ["rlib"]
+crate-type = ["cdylib", "rlib"]
+name = "amm_pool"
+
+[dependencies]
+soroban-sdk = { workspace = true }
 
 [dev-dependencies]
 proptest = "1.4"
+soroban-sdk = { workspace = true, features = ["testutils"] }
+
+# Kani verification dependencies
+[target.'cfg(kani)'.dependencies]
 
 [profile.release]
 opt-level = "z"

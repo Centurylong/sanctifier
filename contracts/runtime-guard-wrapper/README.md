@@ -207,6 +207,18 @@ First: Event name (e.g., "guard_wrapper", "pre_exec_guard")
 Second: Status (e.g., "success", "passed", "failure")
 ```
 
+### Invariant audit events (`inv_fail`)
+
+In addition to the wrapper-emitted events above, the wrapper now drives every runtime invariant check through the `guard_invariant_result!` macro from the `sanctifier-guards` crate. When a runtime invariant breaks, the macro publishes a separate audit-trail event with topic `inv_fail` and a data payload that carries the failing condition source. Indexers can subscribe to the single `inv_fail` topic to observe invariant violations across every contract that uses the macro, then decode the data payload to identify which condition broke.
+
+The wrapper currently wires the macro at three sites:
+
+1. `pre_execution_guards`: asserts the wrapped contract address is configured, returning `GuardError::WrappedContractMissing` and emitting `inv_fail` if it is not.
+2. `validate_storage_integrity`: asserts the wrapper's critical instance-storage keys are still present between calls, returning `GuardError::StorageIntegrityViolated` on a missing key.
+3. `verify_storage_invariants`: asserts the `invariants_checked` counter strictly advanced after a guarded call, returning `GuardError::InvariantCounterStuck` on a stuck counter.
+
+The `GuardError` enum is exposed at the crate root so callers can compare returned errors against typed variants. See `tooling/sanctifier-guards/README.md` for the macro's design notes.
+
 ## Integration Guide
 
 ### 1. Build the Contract

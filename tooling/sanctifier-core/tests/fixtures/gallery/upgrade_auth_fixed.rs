@@ -15,5 +15,6 @@ impl UpgradeAuthFixed {
     pub fn set_upgrade_admin(env: Env, caller: Address, new_admin: Address) {
         caller.require_auth();
         env.storage().instance().set(&ADMIN, &new_admin);
+        env.storage().instance().extend_ttl(100, 1000);
     }
 }

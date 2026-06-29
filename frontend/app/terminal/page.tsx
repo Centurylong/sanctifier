@@ -68,7 +68,7 @@ export default function TerminalPage() {
                     <div className="space-y-2">
                         <h1 className="text-3xl font-bold tracking-tight">Analysis Terminal</h1>
                         <p className="max-w-2xl" style={{ color: "var(--muted-foreground)" }}>
-                            Monitor your contract's security analysis in real-time. This interactive terminal
+                            Monitor your contract&apos;s security analysis in real-time. This interactive terminal
                             streams live logs directly from the Sanctifier core engine.
                         </p>
                     </div>

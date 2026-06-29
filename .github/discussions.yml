@@ -1,0 +1,21 @@
+# GitHub Discussions category configuration.
+# Enable Discussions on the repo settings page, then these categories will appear.
+categories:
+  - name: Announcements
+    description: Project news and releases. Only maintainers can post.
+    format: announcement
+  - name: Q&A
+    description: Ask questions about using Sanctifier or Soroban security.
+    format: question
+    # Optional reference for first-time posters
+    # See: .github/DISCUSSIONS_ONBOARDING_GUIDE.md
+
+  - name: Ideas
+    description: Propose features or changes before opening an issue.
+    format: open
+  - name: Show and tell
+    description: Share projects, findings, or integrations built with Sanctifier.
+    format: open
+  - name: General
+    description: Everything else.
+    format: open

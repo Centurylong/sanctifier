@@ -1,9 +1,13 @@
+pub mod arg_dos;
 pub mod arithmetic_overflow;
 pub mod auth_gap;
+pub mod dynamic_target;
 pub mod edge_amount;
 pub mod error_code_collision;
+pub mod fee_rounding;
 pub mod hardcoded_addr;
 pub mod ledger_size;
+pub mod missing_ttl;
 pub mod panic_detection;
 pub mod unhandled_result;
 pub mod unused_variable;
@@ -123,6 +127,10 @@ impl RuleRegistry {
         registry.register(hardcoded_addr::HardcodedAddrRule::new());
         registry.register(error_code_collision::ErrorCodeCollisionRule::new());
         registry.register(edge_amount::EdgeAmountRule::new());
+        registry.register(fee_rounding::FeeRoundingRule::new());
+        registry.register(missing_ttl::MissingTtlRule::new());
+        registry.register(arg_dos::ArgDosRule::new());
+        registry.register(dynamic_target::DynamicTargetRule::new());
         registry
     }
 }

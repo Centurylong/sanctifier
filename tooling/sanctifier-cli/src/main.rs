@@ -6,7 +6,9 @@ use std::path::{Path, PathBuf};
 
 mod branding;
 mod commands;
+mod score;
 pub mod vulndb;
+pub mod zk;
 
 #[derive(Parser)]
 #[command(name = "sanctifier")]
@@ -20,8 +22,14 @@ struct Cli {
 pub enum Commands {
     /// Analyze a Soroban contract for vulnerabilities
     Analyze(commands::analyze::AnalyzeArgs),
+    /// Snapshot current findings into .sanctify-baseline.json (use --update to refresh)
+    Baseline(commands::baseline::BaselineArgs),
+    /// Generate (or verify) a zero-knowledge attestation that a scan passed a score threshold
+    Attest(commands::attest::AttestArgs),
     /// Generate a dynamic Sanctifier status badge
     Badge(commands::badge::BadgeArgs),
+    /// Compare findings between working tree and a git reference
+    Diff(commands::diff::DiffArgs),
     /// Generate a security report
     Report {
         /// Output file path
@@ -42,6 +50,8 @@ pub enum Commands {
     },
     /// Check for and download the latest Sanctifier binary
     Update,
+    /// Watch source files and re-run analysis automatically on change (debounced)
+    Watch(commands::watch::WatchArgs),
     /// Verify #[sanctify::invariant] declarations across a contract or workspace
     Verify(commands::verify::VerifyArgs),
     /// Run SMT-based formal verification on Soroban token contract invariants
@@ -66,8 +76,20 @@ fn main() -> anyhow::Result<()> {
             }
             commands::analyze::exec(args)?;
         }
+        Commands::Baseline(args) => {
+            commands::baseline::exec(args)?;
+        }
+        Commands::Attest(args) => {
+            commands::attest::exec(args)?;
+        }
         Commands::Badge(args) => {
             commands::badge::exec(args)?;
+        }
+        Commands::Diff(args) => {
+            if args.format != "json" {
+                branding::print_logo();
+            }
+            commands::diff::exec(args)?;
         }
         Commands::Report { output } => {
             if let Some(p) = output {
@@ -126,6 +148,9 @@ fn main() -> anyhow::Result<()> {
         }
         Commands::Update => {
             commands::update::exec()?;
+        }
+        Commands::Watch(args) => {
+            commands::watch::exec(args)?;
         }
         Commands::Verify(args) => {
             commands::verify::exec(args)?;

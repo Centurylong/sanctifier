@@ -1,0 +1,49 @@
+name: Issue Labeler
+
+on:
+  issues:
+    types: [opened, edited]
+
+permissions:
+  issues: write
+
+jobs:
+  label:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/github-script@v7
+        with:
+          script: |
+            const body = context.payload.issue.body ?? '';
+            const pick = (heading) => {
+              const re = new RegExp(`### ${heading}\\s*\\n+([^\\n]+)`, 'i');
+              const m = body.match(re);
+              return m ? m[1].trim() : null;
+            };
+
+            const areaMap = {
+              'sanctifier-core (static analysis)': 'area: core',
+              'sanctifier-cli (CLI tool)': 'area: cli',
+              'runtime-guard (Soroban contracts)': 'area: contracts',
+              'frontend': 'area: frontend',
+              'docs': 'area: docs',
+              'ci/cd': 'area: ci',
+            };
+
+            const labels = [];
+            const area = pick('Area');
+            const difficulty = pick('Difficulty');
+            const priority = pick('Priority');
+
+            if (area && areaMap[area]) labels.push(areaMap[area]);
+            if (difficulty) labels.push(`difficulty: ${difficulty}`);
+            if (priority) labels.push(`priority: ${priority}`);
+
+            if (!labels.length) return;
+
+            await github.rest.issues.addLabels({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.payload.issue.number,
+              labels,
+            });

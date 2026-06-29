@@ -15,5 +15,6 @@ impl ReinitVulnerable {
     // overwrite the admin. Mutates storage with no prior read and no auth.
     pub fn initialize(env: Env, admin: Address) {
         env.storage().instance().set(&ADMIN, &admin);
+        env.storage().instance().extend_ttl(100, 1000);
     }
 }
