@@ -209,7 +209,7 @@ pub fn exec(args: AnalyzeArgs) -> anyhow::Result<()> {
         if let Some((file_path, line_num)) = extract_line_and_file(raw_location) {
             let supps = get_suppressions(&file_path);
             for (s_line, s_code, _) in supps {
-                if s_code == code && (s_line == &line_num || *s_line + 1 == line_num) {
+                if s_code == code && (*s_line == line_num || *s_line + 1 == line_num) {
                     return true;
                 }
             }
@@ -244,7 +244,7 @@ pub fn exec(args: AnalyzeArgs) -> anyhow::Result<()> {
     vuln_matches.retain(|m| {
         let supps = get_suppressions(&m.file);
         !supps.iter().any(|(s_line, s_code, _)| {
-            s_code == m.vuln_id && (*s_line == m.line || *s_line + 1 == m.line)
+            *s_code == m.vuln_id && (*s_line == m.line || *s_line + 1 == m.line)
         })
     });
 
