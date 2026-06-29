@@ -25,6 +25,7 @@ This document contains the help content for the `sanctifier` command-line progra
 * [`sanctifier cve show`↴](#sanctifier-cve-show)
 * [`sanctifier cve export`↴](#sanctifier-cve-export)
 * [`sanctifier cve serve`↴](#sanctifier-cve-serve)
+* [`sanctifier symbolic`↴](#sanctifier-symbolic)
 
 ## `sanctifier`
 
@@ -47,6 +48,7 @@ Stellar Soroban Security & Formal Verification Suite
 * `verify` — Verify #[sanctify::invariant] declarations across a contract or workspace
 * `prove` — Run SMT-based formal verification on Soroban token contract invariants
 * `cve` — Search, list, show, and export the public Soroban/Stellar CVE database
+* `symbolic` — Run path-enumeration symbolic execution prototype to detect always-revert functions
 
 
 
@@ -369,6 +371,20 @@ Start a local HTTP server exposing GET /api/vulndb
 * `-p`, `--port <PORT>` — Port to listen on
 
   Default value: `7654`
+
+
+
+## `sanctifier symbolic`
+
+Run path-enumeration symbolic execution prototype to detect always-revert functions
+
+**Usage:** `sanctifier symbolic [PATH]`
+
+###### **Arguments:**
+
+* `<PATH>` — Path to the contract directory or file
+
+  Default value: `.`
 
 
 
