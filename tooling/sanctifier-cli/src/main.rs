@@ -58,6 +58,9 @@ pub enum Commands {
     Prove(commands::prove::ProveArgs),
     /// Search, list, show, and export the public Soroban/Stellar CVE database
     Cve(commands::cve::CveArgs),
+    /// Run path-enumeration symbolic execution prototype to detect always-revert functions
+    Symbolic(commands::symbolic::SymbolicArgs),
+
     /// (internal) Regenerate the Markdown CLI reference from the clap definitions.
     ///
     /// Prints the reference to stdout. Hidden from `--help`; used by the docs
@@ -81,6 +84,10 @@ fn main() -> anyhow::Result<()> {
         Commands::Baseline(args) => {
             commands::baseline::exec(args)?;
         }
+        Commands::Symbolic(args) => {
+            commands::symbolic::exec(args)?;
+        }
+
         Commands::Attest(args) => {
             commands::attest::exec(args)?;
         }

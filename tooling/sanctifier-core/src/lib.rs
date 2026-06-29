@@ -9,6 +9,7 @@ pub mod patcher;
 pub mod rules;
 #[cfg(feature = "smt")]
 pub mod smt;
+pub mod symbolic;
 mod storage_collision;
 use std::collections::{HashMap, HashSet};
 use syn::spanned::Spanned;
@@ -473,6 +474,39 @@ impl Analyzer {
         let estimator = gas_estimator::GasEstimator::new();
         estimator.estimate_contract(source)
     }
+
+    pub fn scan_symbolic_paths(&self, source: &str) -> Vec<symbolic::SymbolicIssue> {
+        with_panic_guard(|| self.scan_symbolic_paths_impl(source))
+    }
+
+    fn scan_symbolic_paths_impl(&self, source: &str) -> Vec<symbolic::SymbolicIssue> {
+        let file = match parse_str::<File>(source) {
+            Ok(f) => f,
+            Err(_) => return vec![],
+        };
+        
+        let mut analyzer = symbolic::SymbolicAnalyzer::new();
+        for item in &file.items {
+            if let Item::Fn(func) = item {
+                analyzer.analyze_function(func);
+            } else if let Item::Impl(i) = item {
+                for impl_item in &i.items {
+                    if let syn::ImplItem::Fn(func) = impl_item {
+                        // Create a synthetic ItemFn for the ImplItem::Fn
+                        let mut synthetic_func = syn::ItemFn {
+                            attrs: func.attrs.clone(),
+                            vis: func.vis.clone(),
+                            sig: func.sig.clone(),
+                            block: Box::new(func.block.clone()),
+                        };
+                        analyzer.analyze_function(&synthetic_func);
+                    }
+                }
+            }
+        }
+        analyzer.issues
+    }
+
 
     fn scan_auth_gaps_impl(&self, source: &str) -> Vec<String> {
         let file = match parse_str::<File>(source) {
