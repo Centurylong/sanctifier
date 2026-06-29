@@ -1,5 +1,6 @@
 use serde::{Deserialize, Serialize};
 use std::panic::catch_unwind;
+pub mod baseline;
 pub mod finding_codes;
 pub mod gas_estimator;
 pub mod gas_report;
@@ -9,7 +10,8 @@ pub mod rules;
 #[cfg(feature = "smt")]
 pub mod smt;
 mod storage_collision;
-use std::collections::HashSet;
+pub mod symbolic;
+use std::collections::{HashMap, HashSet};
 use syn::spanned::Spanned;
 use syn::visit::{self, Visit};
 use syn::{parse_str, Fields, File, Item, Meta, Type};
@@ -473,6 +475,38 @@ impl Analyzer {
         estimator.estimate_contract(source)
     }
 
+    pub fn scan_symbolic_paths(&self, source: &str) -> Vec<symbolic::SymbolicIssue> {
+        with_panic_guard(|| self.scan_symbolic_paths_impl(source))
+    }
+
+    fn scan_symbolic_paths_impl(&self, source: &str) -> Vec<symbolic::SymbolicIssue> {
+        let file = match parse_str::<File>(source) {
+            Ok(f) => f,
+            Err(_) => return vec![],
+        };
+
+        let mut analyzer = symbolic::SymbolicAnalyzer::new();
+        for item in &file.items {
+            if let Item::Fn(func) = item {
+                analyzer.analyze_function(func);
+            } else if let Item::Impl(i) = item {
+                for impl_item in &i.items {
+                    if let syn::ImplItem::Fn(func) = impl_item {
+                        // Create a synthetic ItemFn for the ImplItem::Fn
+                        let synthetic_func = syn::ItemFn {
+                            attrs: func.attrs.clone(),
+                            vis: func.vis.clone(),
+                            sig: func.sig.clone(),
+                            block: Box::new(func.block.clone()),
+                        };
+                        analyzer.analyze_function(&synthetic_func);
+                    }
+                }
+            }
+        }
+        analyzer.issues
+    }
+
     fn scan_auth_gaps_impl(&self, source: &str) -> Vec<String> {
         let file = match parse_str::<File>(source) {
             Ok(f) => f,
@@ -931,6 +965,7 @@ impl Analyzer {
             issues: Vec::new(),
             current_fn: None,
             seen: HashSet::new(),
+            var_types: HashMap::new(),
         };
         visitor.visit_file(&file);
         visitor.issues
