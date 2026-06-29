@@ -12,13 +12,33 @@
 //! - Event emission for security-critical operations.
 //! - Gas and performance metrics collection.
 
-use soroban_sdk::{contract, contractimpl, Address, Env, Error, IntoVal, Symbol, Val, Vec};
+use sanctifier_guards::guard_invariant_result;
+use soroban_sdk::{
+    contract, contracterror, contractimpl, Address, Env, Error, IntoVal, Symbol, Val, Vec,
+};
 
 const WRAPPED_CONTRACT_ADDRESS: &str = "wrapped_contract_addr";
 const CALL_LOG: &str = "call_log";
 const INVARIANTS_CHECKED: &str = "invariants_checked";
 const GUARD_FAILURES: &str = "guard_failures";
 const EXECUTION_METRICS: &str = "exec_metrics";
+
+/// Typed error codes the wrapper traps with when a runtime invariant breaks.
+/// Each variant maps to a single, named invariant inside the guard sites so
+/// indexers reading the `inv_fail` event can correlate the trapped error
+/// code with the condition source carried in the event payload.
+#[contracterror]
+#[derive(Copy, Clone, Debug, Eq, PartialEq, PartialOrd, Ord)]
+#[repr(u32)]
+pub enum GuardError {
+    /// Wrapped contract address not configured before execute_guarded.
+    WrappedContractMissing = 1,
+    /// Storage integrity pre-check failed: a critical key was absent.
+    StorageIntegrityViolated = 2,
+    /// Post-execution invariant broke: the invariants_checked counter
+    /// failed to advance, which means a guard site silently bypassed.
+    InvariantCounterStuck = 3,
+}
 
 /// Guard configuration for runtime validation
 #[derive(Clone, Debug)]
@@ -129,17 +149,17 @@ impl RuntimeGuardWrapper {
 
     /// Pre-execution validation guards
     fn pre_execution_guards(env: Env) -> Result<(), Error> {
-        // Check invariant: wrapped contract should be set
+        // Invariant: wrapped contract address must be configured. The Result
+        // form of guard_invariant! publishes the `inv_fail` audit-trail event
+        // and returns the typed error so the wrapper can surface it through
+        // its outer `Result<Val, Error>` signature.
         let wrapped = env
             .storage()
             .instance()
             .get::<Symbol, Address>(&Symbol::new(&env, WRAPPED_CONTRACT_ADDRESS));
-        if wrapped.is_none() {
-            Self::emit_guard_event(env, "pre_exec_guard", "wrapped_contract_not_set");
-            return Err(Error::from_contract_error(1));
-        }
+        guard_invariant_result!(&env, wrapped.is_some(), GuardError::WrappedContractMissing);
 
-        // Check invariant: storage should not be corrupted
+        // Invariant: storage layout has not been corrupted between calls.
         Self::validate_storage_integrity(env.clone())?;
 
         Ok(())
@@ -158,16 +178,18 @@ impl RuntimeGuardWrapper {
 
     /// Validate that storage integrity is maintained
     fn validate_storage_integrity(env: Env) -> Result<(), Error> {
-        // Check critical storage keys exist
         let instance_storage = env.storage().instance();
 
-        // Validate that required keys are accessible
+        // Invariant: critical instance-storage keys are still present after
+        // any prior contract call. If they vanished, the wrapper itself has
+        // been compromised; surface the typed error with the audit event.
         let wrapped_addr: Option<Address> =
             instance_storage.get(&Symbol::new(&env, WRAPPED_CONTRACT_ADDRESS));
-
-        if wrapped_addr.is_none() {
-            return Err(Error::from_contract_error(2));
-        }
+        guard_invariant_result!(
+            &env,
+            wrapped_addr.is_some(),
+            GuardError::StorageIntegrityViolated
+        );
 
         Ok(())
     }
@@ -180,8 +202,18 @@ impl RuntimeGuardWrapper {
         let checked_count: u32 = persistent
             .get(&Symbol::new(&env, INVARIANTS_CHECKED))
             .unwrap_or(0);
+        let next_count = checked_count + 1;
+        persistent.set(&Symbol::new(&env, INVARIANTS_CHECKED), &next_count);
 
-        persistent.set(&Symbol::new(&env, INVARIANTS_CHECKED), &(checked_count + 1));
+        // Invariant: the post-execution counter has strictly advanced. If it
+        // failed to, a guard site bypassed the storage write or some racing
+        // state wrote a stale value. Emitting `inv_fail` here gives indexers
+        // an explicit signal that the counter contract is no longer sound.
+        guard_invariant_result!(
+            &env,
+            next_count > checked_count,
+            GuardError::InvariantCounterStuck
+        );
 
         Ok(())
     }

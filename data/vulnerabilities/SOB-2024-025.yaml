@@ -1,0 +1,26 @@
+id: SOB-2024-025
+title: Instance Storage Capacity DoS
+description: |
+  Writing unbounded user-controlled data to instance storage (tight size budget) causes
+  all reads/writes to fail contract-wide once the limit is exceeded.
+cvss: 6.5
+severity: medium
+category: storage
+affected_versions: "soroban-sdk <=20.5.0"
+pattern: |
+  storage\(\)\.instance\(\)\.set\(&DataKey::\w+\(\w+\)
+poc_exploit: |
+  // Attacker registers 63KB username;
+  // subsequent instance storage writes fail
+patch: |
+  // Use persistent storage for per-user data:
+  env.storage().persistent().set(&DataKey::Balance(user), &amount);
+recommendation: Reserve instance storage for small bounded global state.
+references:
+  - https://soroban.stellar.org/docs/fundamentals/storing-data
+tags:
+  - storage
+  - instance
+  - dos
+  - capacity
+related_cves: []

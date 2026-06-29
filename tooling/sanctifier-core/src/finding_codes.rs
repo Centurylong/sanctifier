@@ -16,6 +16,8 @@ pub const EDGE_AMOUNT: &str = "S013";
 pub const DEPRECATED_SDK: &str = "S014";
 pub const DEAD_CODE: &str = "S015";
 pub const ERROR_CODE_COLLISION: &str = "S016";
+pub const FEE_ROUNDING: &str = "S017";
+pub const ARG_DOS: &str = "SANCT_ARG_DOS";
 
 #[derive(Debug, Clone, Serialize)]
 pub struct FindingCode {
@@ -106,6 +108,18 @@ pub fn all_finding_codes() -> Vec<FindingCode> {
             code: ERROR_CODE_COLLISION,
             category: "code_hygiene",
             description: "Inconsistent or duplicate discriminants in #[contracterror] enum",
+        },
+        FindingCode {
+            code: FEE_ROUNDING,
+            category: "arithmetic",
+            description:
+                "Fee/interest calculation using integer division rounds to zero for micro-amounts, enabling fee-evasion attacks",
+        },
+        FindingCode {
+            code: ARG_DOS,
+            category: "denial_of_service",
+            description:
+                "Contract entrypoint iterates over a Vec or Map argument without a visible length cap",
         },
     ]
 }
