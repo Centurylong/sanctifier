@@ -11,6 +11,29 @@ Sanctifier now uses a unified finding code system across `sanctifier-core` and `
 | `S005` | storage_keys | Potential storage key collision |
 | `S006` | unsafe_patterns | Potentially unsafe language/runtime pattern |
 | `S007` | custom_rule | User-defined custom rule match |
+| `SANCT_UNWRAP` | panic_handling | `unwrap` / `expect` / risky `unwrap_or_default` inside `#[contractimpl]` entrypoints; replace with typed errors or explicit domain defaults |
+
+## Detector catalog
+
+### `SANCT_UNWRAP`
+
+Flags `unwrap()`, `expect(..)`, and risky `unwrap_or_default()` calls inside
+Soroban `#[contractimpl]` entrypoints. In an entrypoint, an attacker-triggered
+missing value can abort the whole transaction or silently turn absent financial
+state into a default value.
+
+```rust
+#[contractimpl]
+impl Token {
+    pub fn balance(env: Env, id: Address) -> i128 {
+        env.storage().persistent().get(&DataKey::Balance(id)).unwrap_or_default()
+    }
+}
+```
+
+Prefer explicit handling: return a typed `Result`, map missing state to a
+domain-specific `Error`, or use an explicit default such as `unwrap_or(0)` only
+when zero is the intended contract state.
 
 ## Where codes appear
 
