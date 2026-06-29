@@ -1,0 +1,24 @@
+id: SOL-2024-007
+title: Unbounded Loop Over Storage
+description: |
+  Iterating over unbounded collections from storage can exhaust the CPU instruction budget,
+  making functions permanently uncallable.
+cvss: 7.5
+severity: high
+category: resource
+affected_versions: "soroban-sdk <=20.5.0"
+pattern: |
+  for\s+\w+\s+in\s+\w+\.iter\(\)\s*\{
+poc_exploit: |
+  for _ in 0..10_000 { contract.add_entry(&env, entry.clone()); }
+patch: |
+  for item in items.iter().take(100) { /* process */ }
+recommendation: Use pagination or set a maximum iteration limit.
+references:
+  - https://soroban.stellar.org/docs/fundamentals/fees-and-metering
+tags:
+  - dos
+  - loop
+  - resource
+  - cpu-limit
+related_cves: []

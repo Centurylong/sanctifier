@@ -18,7 +18,7 @@ are not compiled or deployed.
 | 2 | Unchecked upgrade auth | `S010` upgrade_risk | `upgrade_auth_vulnerable.rs` | `upgrade_auth_fixed.rs` | ⚠️ surfaced via `S001` auth_gap |
 | 3 | CEI / reentrancy | `S006` unsafe_pattern | `reentrancy_vulnerable.rs` | `reentrancy_fixed.rs` | 🔜 planned detector |
 | 4 | Unbounded loop | `S006` unsafe_pattern | `unbounded_loop_vulnerable.rs` | `unbounded_loop_fixed.rs` | 🔜 planned detector |
-| 5 | Missing TTL bump | `S006` unsafe_pattern | `missing_ttl_vulnerable.rs` | `missing_ttl_fixed.rs` | 🔜 planned detector |
+| 5 | Missing TTL bump | `S006` unsafe_pattern | `missing_ttl_vulnerable.rs` | `missing_ttl_fixed.rs` | ✅ default detector |
 | 6 | Weak randomness | `S006` unsafe_pattern | `weak_randomness_vulnerable.rs` | `weak_randomness_fixed.rs` | 🔜 planned detector |
 | 7 | Integer overflow | `S003` arithmetic_overflow | `integer_overflow_vulnerable.rs` | `integer_overflow_fixed.rs` | ✅ flagged today |
 | 8 | Allowance race (TOCTOU) | `S006` unsafe_pattern | `allowance_race_vulnerable.rs` | `allowance_race_fixed.rs` | 🔜 planned detector |
