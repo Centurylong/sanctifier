@@ -18,6 +18,7 @@ pub const DEAD_CODE: &str = "S015";
 pub const ERROR_CODE_COLLISION: &str = "S016";
 pub const FEE_ROUNDING: &str = "S017";
 pub const ARG_DOS: &str = "SANCT_ARG_DOS";
+pub const CALL_IN_LOOP: &str = "SANCT_CALL_IN_LOOP";
 
 #[derive(Debug, Clone, Serialize)]
 pub struct FindingCode {
@@ -120,6 +121,12 @@ pub fn all_finding_codes() -> Vec<FindingCode> {
             category: "denial_of_service",
             description:
                 "Contract entrypoint iterates over a Vec or Map argument without a visible length cap",
+        },
+        FindingCode {
+            code: CALL_IN_LOOP,
+            category: "denial_of_service",
+            description:
+                "Cross-contract invoke inside a loop can be griefed or exhaust gas for the whole batch",
         },
     ]
 }

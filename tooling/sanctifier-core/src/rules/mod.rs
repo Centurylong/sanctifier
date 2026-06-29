@@ -1,6 +1,7 @@
 pub mod arg_dos;
 pub mod arithmetic_overflow;
 pub mod auth_gap;
+pub mod call_in_loop;
 pub mod edge_amount;
 pub mod error_code_collision;
 pub mod fee_rounding;
@@ -129,6 +130,7 @@ impl RuleRegistry {
         registry.register(fee_rounding::FeeRoundingRule::new());
         registry.register(missing_ttl::MissingTtlRule::new());
         registry.register(arg_dos::ArgDosRule::new());
+        registry.register(call_in_loop::CallInLoopRule::new());
         registry
     }
 }
