@@ -6,8 +6,8 @@ static ALLOC: wee_alloc::WeeAlloc = wee_alloc::WeeAlloc::INIT;
 
 use ark_bls12_381::{Bls12_381, Fr};
 use ark_groth16::{Groth16, Proof, VerifyingKey};
-use ark_snark::SNARK;
 use ark_serialize::CanonicalDeserialize;
+use ark_snark::SNARK;
 use soroban_sdk::{contract, contractimpl, contracttype, Bytes, Env};
 
 #[contract]
@@ -24,14 +24,12 @@ impl ZkVerifierContract {
         if env.storage().instance().has(&DataKey::VerifyingKey) {
             panic!("Already initialized");
         }
-        env.storage().instance().set(&DataKey::VerifyingKey, &vk_bytes);
+        env.storage()
+            .instance()
+            .set(&DataKey::VerifyingKey, &vk_bytes);
     }
 
-    pub fn verify(
-        env: Env,
-        proof_bytes: Bytes,
-        public_inputs_bytes: Bytes,
-    ) -> bool {
+    pub fn verify(env: Env, proof_bytes: Bytes, public_inputs_bytes: Bytes) -> bool {
         let vk_bytes: Bytes = env
             .storage()
             .instance()
@@ -40,12 +38,16 @@ impl ZkVerifierContract {
 
         let mut vk_slice = [0u8; 1024];
         let vk_len = vk_bytes.len() as usize;
-        if vk_len > vk_slice.len() { return false; }
+        if vk_len > vk_slice.len() {
+            return false;
+        }
         vk_bytes.copy_into_slice(&mut vk_slice[..vk_len]);
 
         let mut proof_slice = [0u8; 512];
         let proof_len = proof_bytes.len() as usize;
-        if proof_len > proof_slice.len() { return false; }
+        if proof_len > proof_slice.len() {
+            return false;
+        }
         proof_bytes.copy_into_slice(&mut proof_slice[..proof_len]);
 
         let vk = match VerifyingKey::<Bls12_381>::deserialize_compressed(&vk_slice[..vk_len]) {
