@@ -1,0 +1,20 @@
+---
+source: tooling/sanctifier-core/tests/detector_snapshots.rs
+assertion_line: 30
+expression: findings
+---
+- rule_name: SANCT_UNWRAP
+  severity: Warning
+  message: "SANCT_UNWRAP: `unwrap` in contract entrypoint `admin` can abort transactions or hide missing state"
+  location: "admin:14"
+  suggestion: "Replace `unwrap` on `env . storage () . instance () . get (& \"admin\")` with typed Result handling, an explicit default, or a domain-specific Error"
+- rule_name: SANCT_UNWRAP
+  severity: Warning
+  message: "SANCT_UNWRAP: `expect` in contract entrypoint `config` can abort transactions or hide missing state"
+  location: "config:21"
+  suggestion: "Replace `expect` on `env . storage () . persistent () . get (& \"config\")` with typed Result handling, an explicit default, or a domain-specific Error"
+- rule_name: SANCT_UNWRAP
+  severity: Warning
+  message: "SANCT_UNWRAP: `unwrap_or_default` in contract entrypoint `balance` can abort transactions or hide missing state"
+  location: "balance:28"
+  suggestion: "Replace `unwrap_or_default` on `env . storage () . persistent () . get (& (\"balance\" , id))` with typed Result handling, an explicit default, or a domain-specific Error"
