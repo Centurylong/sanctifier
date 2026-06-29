@@ -31,6 +31,7 @@ name = "amm-pool"
 version = "0.1.0"
 dependencies = [
  "proptest",
+ "soroban-sdk",
 ]
 
 [[package]]
@@ -53,6 +54,12 @@ name = "anstyle"
 version = "1.0.13"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "5192cca8006f1fd4f7237516f40fa183bb07f8fbdfedaa0036de5ea9b0b45e78"
+
+[[package]]
+name = "anyhow"
+version = "1.0.102"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "7f202df86484c868dbad7eaa557ef785d5c66295e41b460ef922eca0723b842c"
 
 [[package]]
 name = "arbitrary"
@@ -521,9 +528,9 @@ dependencies = [
 
 [[package]]
 name = "derive_arbitrary"
-version = "1.4.2"
+version = "1.3.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1e567bd82dcff979e4b03460c307b3cdc9e96fde3d73bed1496d2bc75d9dd62a"
+checksum = "67e77553c4162a157adbf834ebae5b415acbecbeafc7a74b0e886657506a7611"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -1358,6 +1365,7 @@ name = "runtime-guard-wrapper"
 version = "0.1.0"
 dependencies = [
  "sanctifier-core",
+ "sanctifier-guards",
  "soroban-sdk",
 ]
 
@@ -1432,17 +1440,36 @@ dependencies = [
 name = "sanctifier-core"
 version = "0.1.0"
 dependencies = [
+ "anyhow",
  "criterion",
+ "hex",
  "insta",
  "proc-macro2",
  "quote",
  "regex",
  "serde",
  "serde_json",
+ "sha2",
  "soroban-sdk",
  "syn",
  "thiserror",
  "z3",
+]
+
+[[package]]
+name = "sanctifier-guards"
+version = "0.1.0"
+dependencies = [
+ "soroban-sdk",
+]
+
+[[package]]
+name = "sanctify-macros"
+version = "0.1.0"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn",
 ]
 
 [[package]]
@@ -1464,6 +1491,14 @@ name = "semver"
 version = "1.0.27"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d767eb0aabc880b29956c35734170f26ed551a859dbd361d140cdbeca61ab1e2"
+
+[[package]]
+name = "sep41-token-invariants"
+version = "0.1.0"
+dependencies = [
+ "sanctify-macros",
+ "soroban-sdk",
+]
 
 [[package]]
 name = "serde"
@@ -1896,6 +1931,14 @@ checksum = "be4d6b5f19ff7664e8c98d03e2139cb510db9b0a60b55f8e8709b689d939b6bc"
 dependencies = [
  "serde",
  "serde_json",
+]
+
+[[package]]
+name = "token-invariants"
+version = "0.1.0"
+dependencies = [
+ "sanctify-macros",
+ "soroban-sdk",
 ]
 
 [[package]]

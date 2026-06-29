@@ -1,16 +1,27 @@
-use clap::{Parser, Subcommand};
-use colored::*;
+use clap::{CommandFactory, Parser, Subcommand};
+use clap_complete::Shell;
 use sanctifier_core::{callgraph_to_dot, Analyzer, SanctifyConfig};
 use std::fs;
 use std::path::{Path, PathBuf};
 
 mod branding;
 mod commands;
+mod config;
+mod logging;
+mod reporter;
 pub mod vulndb;
+pub mod zk;
+
+use tracing::{error, info};
 
 #[derive(Parser)]
 #[command(name = "sanctifier")]
-#[command(about = "Stellar Soroban Security & Formal Verification Suite", long_about = None)]
+#[command(about = "Stellar Soroban Security & Formal Verification Suite")]
+#[command(after_help = "EXIT CODES:
+  0 - No findings (or all findings are below the --fail-on threshold)
+  1 - Findings found at or above the --fail-on severity
+  2 - Internal error (invalid config, parse failure, etc.)")]
+#[command(version)]
 struct Cli {
     #[command(subcommand)]
     command: Commands,
@@ -20,17 +31,27 @@ struct Cli {
 pub enum Commands {
     /// Analyze a Soroban contract for vulnerabilities
     Analyze(commands::analyze::AnalyzeArgs),
+    /// Snapshot current findings into .sanctify-baseline.json (use --update to refresh)
+    Baseline(commands::baseline::BaselineArgs),
+    /// Generate (or verify) a zero-knowledge attestation that a scan passed a score threshold
+    Attest(commands::attest::AttestArgs),
     /// Generate a dynamic Sanctifier status badge
     Badge(commands::badge::BadgeArgs),
+    /// Compare findings between working tree and a git reference
+    Diff(commands::diff::DiffArgs),
     /// Generate a security report
     Report {
         /// Output file path
         #[arg(short, long)]
         output: Option<std::path::PathBuf>,
+
+        /// Output format (table, json, sarif, junit)
+        #[arg(short, long, default_value = "json")]
+        format: String,
     },
     /// Initialize Sanctifier in a new project
     Init(commands::init::InitArgs),
-    /// Generate a Graphviz DOT call graph of cross-contract calls (env.invoke_contract)
+    /// Generate a Graphviz DOT call graph of cross-contract calls
     Callgraph {
         /// Path to a contract directory, workspace directory, or a single .rs file
         #[arg(default_value = ".")]
@@ -42,42 +63,63 @@ pub enum Commands {
     },
     /// Check for and download the latest Sanctifier binary
     Update,
-    /// Verify #[sanctify::invariant] declarations across a contract or workspace
-    Verify(commands::verify::VerifyArgs),
-    /// Run SMT-based formal verification on Soroban token contract invariants
-    Prove(commands::prove::ProveArgs),
-    /// (internal) Regenerate the Markdown CLI reference from the clap definitions.
-    ///
-    /// Prints the reference to stdout. Hidden from `--help`; used by the docs
-    /// staleness check in CI to guarantee `docs/cli.md` never drifts from the
-    /// parser. Regenerate locally with:
-    ///   `cargo run -q -p sanctifier-cli -- generate-docs > docs/cli.md`
-    #[command(hide = true)]
-    GenerateDocs,
+    /// Explain a finding code (e.g., S001, S002)
+    Explain(commands::explain::ExplainArgs),
+    /// Generate shell completions
+    Completions {
+        /// Shell type (bash, zsh, fish, powershell)
+        shell: Shell,
+    },
 }
 
-fn main() -> anyhow::Result<()> {
+fn main() {
     let cli = Cli::parse();
 
+    // Initialize logging early, before any subcommand runs
+    logging::init_logging(0, false);
+
+    let exit_code = match run(cli) {
+        Ok(code) => code,
+        Err(e) => {
+            error!("{}", e);
+            eprintln!("Error: {}", e);
+            2
+        }
+    };
+
+    std::process::exit(exit_code);
+}
+
+fn run(cli: Cli) -> anyhow::Result<i32> {
     match cli.command {
         Commands::Analyze(args) => {
             if args.format != "json" {
                 branding::print_logo();
             }
             commands::analyze::exec(args)?;
+            Ok(0)
+        }
+        Commands::Baseline(args) => {
+            commands::baseline::exec(args)?;
+        }
+        Commands::Attest(args) => {
+            commands::attest::exec(args)?;
         }
         Commands::Badge(args) => {
             commands::badge::exec(args)?;
+            Ok(0)
         }
-        Commands::Report { output } => {
+        Commands::Report { output, format: _ } => {
             if let Some(p) = output {
-                println!("Report saved to {:?}", p);
+                info!("Report saved to {:?}", p);
             } else {
                 println!("Report printed to stdout.");
             }
+            Ok(0)
         }
         Commands::Init(args) => {
             commands::init::exec(args, None)?;
+            Ok(0)
         }
         Commands::Callgraph { path, output } => {
             let config = load_config(&path);
@@ -114,18 +156,33 @@ fn main() -> anyhow::Result<()> {
 
             let dot = callgraph_to_dot(&edges);
             if let Err(e) = fs::write(&output, dot) {
-                eprintln!("{} Failed to write DOT file: {}", "❌".red(), e);
-                std::process::exit(1);
+                error!("Failed to write DOT file: {}", e);
+                eprintln!("{} Failed to write DOT file: {}", "❌", e);
+                return Ok(2);
             }
+            info!("Wrote call graph to {:?} ({} edges)", output, edges.len());
             println!(
                 "{} Wrote call graph to {:?} ({} edges)",
-                "✅".green(),
-                output,
-                edges.len()
+                "✅", output, edges.len()
             );
+            Ok(0)
         }
         Commands::Update => {
             commands::update::exec()?;
+            Ok(0)
+        }
+        Commands::Explain(args) => {
+            commands::explain::exec(args)?;
+            Ok(0)
+        }
+        Commands::Completions { shell } => {
+            let mut cmd = Cli::command();
+            let mut stdout = std::io::stdout();
+            clap_complete::generate(shell, &mut cmd, "sanctifier", &mut stdout);
+            Ok(0)
+        }
+        Commands::Watch(args) => {
+            commands::watch::exec(args)?;
         }
         Commands::Verify(args) => {
             commands::verify::exec(args)?;
@@ -149,8 +206,6 @@ fn main() -> anyhow::Result<()> {
             print!("{}", clap_markdown::help_markdown::<Cli>());
         }
     }
-
-    Ok(())
 }
 
 fn collect_rs_files(dir: &Path, config: &SanctifyConfig, out: &mut Vec<PathBuf>) {
