@@ -27,6 +27,7 @@
 //! The pure state-transition logic is verified with
 //! [Kani](https://model-checking.github.io/kani/).
 //! Run `cargo kani` to replay the proofs locally.
+#![allow(unexpected_cfgs)]
 #![no_std]
 
 use soroban_sdk::{symbol_short, Env, Symbol};
