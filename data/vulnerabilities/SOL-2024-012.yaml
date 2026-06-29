@@ -1,0 +1,22 @@
+id: SOL-2024-012
+title: Integer Overflow in Token Arithmetic
+description: |
+  Unchecked arithmetic in token balance calculations can silently overflow, producing
+  incorrect balances and enabling theft.
+cvss: 7.5
+severity: high
+category: arithmetic
+affected_versions: "soroban-sdk <=20.5.0"
+pattern: |
+  balance\s*\+\s*amount(?!\s*\.\s*checked_add)
+poc_exploit: |
+  contract.deposit(&env, i128::MAX); // i128::MAX + 1 wraps to i128::MIN
+patch: |
+  let new_balance = balance.checked_add(amount).ok_or(Error::Overflow)?;
+recommendation: Always use checked arithmetic for token balances.
+references: []
+tags:
+  - arithmetic
+  - overflow
+  - token
+related_cves: []

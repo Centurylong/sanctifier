@@ -1,0 +1,23 @@
+id: SOL-2024-002
+title: Missing Auth on Token Transfer
+description: |
+  Token transfer function modifies balances without verifying the caller's authorization,
+  enabling anyone to drain funds.
+cvss: 9.8
+severity: critical
+category: access-control
+affected_versions: "soroban-sdk <=20.5.0"
+pattern: |
+  fn\s+transfer\s*\([^)]*\)\s*\{(?:(?!require_auth).)*balance
+poc_exploit: |
+  contract.transfer(&env, victim.clone(), attacker.clone(), 1_000_000);
+patch: |
+  from.require_auth(); // before any balance update
+recommendation: Call from.require_auth() before modifying balances in transfer functions.
+references:
+  - https://soroban.stellar.org/docs/fundamentals/authorization
+tags:
+  - token
+  - transfer
+  - authorization
+related_cves: []

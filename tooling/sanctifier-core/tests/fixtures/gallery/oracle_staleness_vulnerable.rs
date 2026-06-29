@@ -13,6 +13,7 @@ impl OracleStalenessVulnerable {
     // expired price can be used for critical pricing/liquidation math.
     pub fn get_price(env: Env, asset: Symbol) -> i128 {
         let price: i128 = env.storage().persistent().get(&asset).unwrap_or(0);
+        env.storage().persistent().extend_ttl(&asset, 100, 1000);
         price
     }
 }
