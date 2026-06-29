@@ -1,0 +1,25 @@
+id: SOL-2024-009
+title: Missing Allowance Check in transfer_from
+description: |
+  Spending tokens on behalf of another user without verifying the approved allowance enables
+  unauthorized token transfers.
+cvss: 8.6
+severity: high
+category: access-control
+affected_versions: "soroban-sdk <=20.5.0"
+pattern: |
+  fn\s+transfer_from\s*\([^)]*\)\s*\{(?:(?!allowance|get_allowance).)*balance
+poc_exploit: |
+  contract.transfer_from(&env, spender, victim, attacker, victim_balance);
+patch: |
+  let allowance = get_allowance(&env, &from, &spender);
+  if allowance < amount { panic!("insufficient allowance"); }
+  set_allowance(&env, &from, &spender, allowance - amount);
+recommendation: Always verify and decrement the spender's allowance in transfer_from.
+references: []
+tags:
+  - token
+  - allowance
+  - transfer-from
+  - access-control
+related_cves: []

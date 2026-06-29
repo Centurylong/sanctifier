@@ -13,6 +13,11 @@ impl AllowanceRaceVulnerable {
     // the change and spend the old allowance plus the new one (ERC20-style race).
     pub fn approve(env: Env, owner: Address, spender: Address, amount: i128) {
         owner.require_auth();
-        env.storage().persistent().set(&(owner, spender), &amount);
+        env.storage()
+            .persistent()
+            .set(&(owner.clone(), spender.clone()), &amount);
+        env.storage()
+            .persistent()
+            .extend_ttl(&(owner.clone(), spender.clone()), 100, 1000);
     }
 }
