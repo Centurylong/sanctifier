@@ -3,7 +3,7 @@ use colored::*;
 use sanctifier_core::Analyzer;
 use sanctifier_core::SanctifyConfig;
 use std::fs;
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 
 #[derive(Args, Debug)]
 pub struct SymbolicArgs {
