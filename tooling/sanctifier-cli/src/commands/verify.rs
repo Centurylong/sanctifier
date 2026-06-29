@@ -4,6 +4,7 @@ use sanctifier_core::{
     invariant::{InvariantDecl, InvariantVerifyResult, SmtInvariantVerifier},
     Analyzer, SanctifyConfig,
 };
+use std::fs;
 use std::path::{Path, PathBuf};
 
 #[derive(Args)]
@@ -24,6 +25,32 @@ pub struct VerifyArgs {
     /// Suppress the summary line at the end of human-readable output.
     #[arg(long, default_value_t = false)]
     pub quiet: bool,
+}
+
+/// Load `.sanctify.toml` by searching upward from `path`, falling back to defaults.
+pub(crate) fn load_config(path: &Path) -> SanctifyConfig {
+    let mut current = if path.is_file() {
+        path.parent()
+            .map(|p| p.to_path_buf())
+            .unwrap_or_else(|| PathBuf::from("."))
+    } else {
+        path.to_path_buf()
+    };
+
+    loop {
+        let config_path = current.join(".sanctify.toml");
+        if config_path.exists() {
+            if let Ok(content) = fs::read_to_string(&config_path) {
+                if let Ok(config) = toml::from_str(&content) {
+                    return config;
+                }
+            }
+        }
+        if !current.pop() {
+            break;
+        }
+    }
+    SanctifyConfig::default()
 }
 
 /// Recursively collect every `.rs` file under `dir`, skipping paths that
@@ -48,8 +75,7 @@ pub(crate) fn collect_rs_files(dir: &Path, ignore: &[String], out: &mut Vec<Path
 }
 
 /// Scan `path` (file or directory) and return all invariant declarations found.
-pub(crate) fn discover_invariants(path: &Path) -> Vec<InvariantDecl> {
-    let config = SanctifyConfig::default();
+pub(crate) fn discover_invariants(path: &Path, config: &SanctifyConfig) -> Vec<InvariantDecl> {
     let analyzer = Analyzer::new(config.clone());
 
     let mut rs_files: Vec<PathBuf> = Vec::new();
@@ -88,8 +114,17 @@ pub(crate) fn run_verification(
     verifier.verify_all(&decls)
 }
 
+/// Build the `cargo kani` hint string, including `--unwind N` when configured.
+fn kani_hint(unwind: Option<u32>) -> String {
+    match unwind {
+        Some(n) => format!("cargo kani --unwind {} --target-dir /tmp/kani", n),
+        None => "cargo kani --target-dir /tmp/kani".to_string(),
+    }
+}
+
 pub fn exec(args: VerifyArgs) -> anyhow::Result<()> {
-    let decls = discover_invariants(&args.path);
+    let config = load_config(&args.path);
+    let decls = discover_invariants(&args.path, &config);
 
     if decls.is_empty() {
         if !args.json {
@@ -151,7 +186,7 @@ pub fn exec(args: VerifyArgs) -> anyhow::Result<()> {
                 println!(
                     "         {} run: {}",
                     "→".blue(),
-                    "cargo kani --target-dir /tmp/kani".dimmed()
+                    kani_hint(config.kani_unwind).dimmed()
                 );
             }
             println!();

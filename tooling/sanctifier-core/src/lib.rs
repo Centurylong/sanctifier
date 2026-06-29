@@ -275,6 +275,11 @@ pub struct SanctifyConfig {
     pub strict_mode: bool,
     #[serde(default)]
     pub custom_rules: Vec<CustomRule>,
+    /// Maximum loop unwinding bound passed to Kani via `--unwind N` and emitted
+    /// as `#[kani::unwind(N)]` on generated proof harnesses.
+    /// When absent Kani's default (unbounded) behaviour is used.
+    #[serde(default)]
+    pub kani_unwind: Option<u32>,
 }
 
 fn default_ignore_paths() -> Vec<String> {
@@ -308,6 +313,7 @@ impl Default for SanctifyConfig {
             approaching_threshold: default_approaching_threshold(),
             strict_mode: false,
             custom_rules: vec![],
+            kani_unwind: None,
         }
     }
 }

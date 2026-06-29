@@ -26,6 +26,7 @@ z3 = { version = "0.12.1", optional = true }
 [dev-dependencies]
 criterion = "0.5.1"
 insta = { version = "1.40", features = ["yaml"] }
+toml = "0.8"
 
 [[bench]]
 name = "benchmark"
