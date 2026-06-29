@@ -22,7 +22,9 @@
     "missing_ttl": "S006",
     "SANCT_TTL_MISSING": "S006",
     "arg_dos": "SANCT_ARG_DOS",
-    "SANCT_ARG_DOS": "SANCT_ARG_DOS"
+    "SANCT_ARG_DOS": "SANCT_ARG_DOS",
+    "sanct_unwrap": "SANCT_UNWRAP",
+    "SANCT_UNWRAP": "SANCT_UNWRAP"
   },
   "overlap_legend": {
     "shared-covered": "Class has an EVM analogue and Sanctifier already flags it.",

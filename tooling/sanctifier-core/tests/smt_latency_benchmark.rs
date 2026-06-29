@@ -1,3 +1,5 @@
+#![cfg(feature = "smt")]
+
 use sanctifier_core::smt::run_smt_latency_benchmark;
 use std::fs;
 use std::path::PathBuf;
