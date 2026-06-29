@@ -493,7 +493,7 @@ impl Analyzer {
                 for impl_item in &i.items {
                     if let syn::ImplItem::Fn(func) = impl_item {
                         // Create a synthetic ItemFn for the ImplItem::Fn
-                        let mut synthetic_func = syn::ItemFn {
+                        let synthetic_func = syn::ItemFn {
                             attrs: func.attrs.clone(),
                             vis: func.vis.clone(),
                             sig: func.sig.clone(),

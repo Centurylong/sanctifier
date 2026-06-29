@@ -1,5 +1,4 @@
 use serde::Serialize;
-use std::collections::VecDeque;
 use syn::{Expr, ItemFn, Stmt};
 
 /// Issue found by the symbolic execution prototype.
@@ -26,13 +25,14 @@ pub struct PathState {
 /// A simple symbolic execution / path-enumeration prototype.
 /// It operates on the `syn` AST, specifically evaluating `if` branches
 /// and looking for `panic!` or `unwrap()` calls that represent reverts.
+#[derive(Default)]
 pub struct SymbolicAnalyzer {
     pub issues: Vec<SymbolicIssue>,
 }
 
 impl SymbolicAnalyzer {
     pub fn new() -> Self {
-        Self { issues: Vec::new() }
+        Self::default()
     }
 
     pub fn analyze_function(&mut self, func: &ItemFn) {
@@ -49,15 +49,11 @@ impl SymbolicAnalyzer {
             paths = self.step_stmts(&paths, stmt);
         }
 
-        let mut has_success = false;
         let mut always_reverts = true;
 
         for path in &paths {
             if path.status != PathStatus::Reverted {
                 always_reverts = false;
-            }
-            if path.status == PathStatus::Active || path.status == PathStatus::Returned {
-                has_success = true;
             }
         }
 
@@ -102,9 +98,6 @@ impl SymbolicAnalyzer {
                     }
                 }
                 Stmt::Item(_) => {
-                    next_paths.push(path.clone());
-                }
-                _ => {
                     next_paths.push(path.clone());
                 }
             }
@@ -173,7 +166,7 @@ impl SymbolicAnalyzer {
                 ret_path.status = PathStatus::Returned;
                 next_paths.push(ret_path);
             }
-            Expr::Call(expr_call) => {
+            Expr::Call(_expr_call) => {
                 // simple fallthrough for generic function calls
                 next_paths.push(path.clone());
             }
