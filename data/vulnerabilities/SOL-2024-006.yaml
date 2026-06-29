@@ -1,0 +1,26 @@
+id: SOL-2024-006
+title: Unprotected Mint Function
+description: |
+  Token mint function without access control allows any caller to create arbitrary supply,
+  enabling infinite inflation attacks.
+cvss: 9.8
+severity: critical
+category: access-control
+affected_versions: "soroban-sdk <=20.5.0"
+pattern: |
+  fn\s+mint\s*\([^)]*\)\s*\{(?:(?!require_auth).)*total_supply
+poc_exploit: |
+  contract.mint(&env, attacker.clone(), i128::MAX);
+patch: |
+  fn mint(env: Env, to: Address, amount: i128) {
+      get_admin(&env).require_auth();
+      // ... mint logic
+  }
+recommendation: Restrict minting to authorized addresses using require_auth().
+references: []
+tags:
+  - token
+  - mint
+  - inflation
+  - access-control
+related_cves: []
