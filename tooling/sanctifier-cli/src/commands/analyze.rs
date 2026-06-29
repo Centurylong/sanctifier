@@ -209,7 +209,7 @@ pub fn exec(args: AnalyzeArgs) -> anyhow::Result<()> {
         if let Some((file_path, line_num)) = extract_line_and_file(raw_location) {
             let supps = get_suppressions(&file_path);
             for (s_line, s_code, _) in supps {
-                if s_code == code && (*s_line == line_num || *s_line + 1 == line_num) {
+                if s_code == code && (s_line == line_num || s_line + 1 == line_num) {
                     return true;
                 }
             }
