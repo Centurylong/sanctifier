@@ -13,6 +13,7 @@ members = [
     "contracts/kani-poc",
     "contracts/token-invariants",
     "contracts/sep41-token-invariants",
+    "contracts/zk-verifier",
 ]
 resolver = "2"
 
