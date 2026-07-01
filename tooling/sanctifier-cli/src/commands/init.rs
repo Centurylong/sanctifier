@@ -1,14 +1,31 @@
 use clap::Args;
 use colored::Colorize;
+use rust_embed::RustEmbed;
 use sanctifier_core::{CustomRule, SanctifyConfig};
 use std::fs;
 use std::path::{Path, PathBuf};
+
+#[derive(RustEmbed)]
+#[folder = "templates/"]
+struct TemplateAssets;
 
 #[derive(Args, Debug)]
 pub struct InitArgs {
     /// Force overwrite existing configuration file
     #[arg(short, long)]
     pub force: bool,
+
+    /// Template to scaffold (e.g. token, amm, rbac, timelock)
+    #[arg(short, long)]
+    pub template: Option<String>,
+
+    /// List available templates
+    #[arg(long)]
+    pub list: bool,
+
+    /// Name of the generated project
+    #[arg(short, long)]
+    pub name: Option<String>,
 }
 
 pub struct ConfigGenerator;
@@ -82,11 +99,61 @@ impl OutputFormatter {
 pub fn exec(args: InitArgs, path: Option<PathBuf>) -> anyhow::Result<()> {
     use std::env;
 
+    if args.list {
+        println!("Available templates:");
+        println!("  - token    : Basic SEP-41 token implementation");
+        println!("  - amm      : Constant product AMM");
+        println!("  - rbac     : Role-based access control");
+        println!("  - timelock : Simple timelock contract");
+        return Ok(());
+    }
+
     // Get target directory
-    let target_dir = match path {
+    let mut target_dir = match path {
         Some(p) => p,
         None => env::current_dir()?,
     };
+
+    if let Some(template_name) = &args.template {
+        let valid_templates = ["token", "amm", "rbac", "timelock"];
+        if !valid_templates.contains(&template_name.as_str()) {
+            anyhow::bail!("Unknown template '{}'. Use --list to see available templates.", template_name);
+        }
+
+        let project_name = args.name.clone().unwrap_or_else(|| template_name.clone());
+        target_dir = target_dir.join(&project_name);
+        if !target_dir.exists() {
+            fs::create_dir_all(&target_dir)?;
+        }
+
+        // Extract templates
+        for file in TemplateAssets::iter() {
+            let file_path = file.as_ref();
+            if file_path.starts_with(template_name) {
+                let relative_path = file_path.strip_prefix(&format!("{}/", template_name)).unwrap();
+                let is_cargo_toml = relative_path == "Cargo.toml.template";
+                let dest_path = if is_cargo_toml {
+                    target_dir.join("Cargo.toml")
+                } else {
+                    target_dir.join(relative_path)
+                };
+
+                if let Some(parent) = dest_path.parent() {
+                    fs::create_dir_all(parent)?;
+                }
+
+                let content = TemplateAssets::get(file_path).unwrap();
+                if is_cargo_toml {
+                    let content_str = std::str::from_utf8(content.data.as_ref())?;
+                    let new_content = content_str.replace("{{name}}", &project_name);
+                    fs::write(&dest_path, new_content)?;
+                } else {
+                    fs::write(&dest_path, content.data.as_ref())?;
+                }
+            }
+        }
+        println!("{} Scaffolded template '{}' into {}", "✓".green(), template_name, target_dir.display());
+    }
 
     // Check for existing config file
     if FileWriter::config_exists(&target_dir) && !args.force {
@@ -262,7 +329,7 @@ mod tests {
     #[test]
     fn test_exec_creates_config_in_temp_dir() {
         let temp_dir = TempDir::new().unwrap();
-        let args = InitArgs { force: false };
+        let args = InitArgs { force: false, template: None, list: false, name: None };
 
         // Execute init command
         let result = exec(args, Some(temp_dir.path().to_path_buf()));
@@ -288,7 +355,7 @@ mod tests {
         // Create existing file
         fs::write(&config_path, "existing content").unwrap();
 
-        let args = InitArgs { force: false };
+        let args = InitArgs { force: false, template: None, list: false, name: None };
 
         // Change to temp directory
         let original_dir = std::env::current_dir().unwrap();
@@ -314,7 +381,7 @@ mod tests {
         // Create existing file
         fs::write(&config_path, "existing content").unwrap();
 
-        let args = InitArgs { force: true };
+        let args = InitArgs { force: true, template: None, list: false, name: None };
 
         // Execute init command
         let result = exec(args, Some(temp_dir.path().to_path_buf()));

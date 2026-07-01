@@ -180,6 +180,9 @@ Initialize Sanctifier in a new project
 ###### **Options:**
 
 * `-f`, `--force` — Force overwrite existing configuration file
+* `-t`, `--template <TEMPLATE>` — Template to scaffold (e.g. token, amm, rbac, timelock)
+* `--list` — List available templates
+* `-n`, `--name <NAME>` — Name of the generated project
 
 
 
