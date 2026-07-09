@@ -1,0 +1,15 @@
+---
+source: tooling/sanctifier-core/tests/detector_snapshots.rs
+assertion_line: 31
+expression: findings
+---
+- rule_name: SANCT_LEDGER_SECONDS_CONFUSION
+  severity: Info
+  message: "SANCT_LEDGER_SECONDS_CONFUSION: likely ledger-vs-seconds unit confusion in mixed ledger/seconds math"
+  location: "vesting_end_ledger:14"
+  suggestion: "Keep ledger sequence counts and wall-clock seconds/timestamps in separate variables, and convert explicitly with a documented ledger-time assumption"
+- rule_name: SANCT_LEDGER_SECONDS_CONFUSION
+  severity: Info
+  message: "SANCT_LEDGER_SECONDS_CONFUSION: likely ledger-vs-seconds unit confusion in TTL/ledger API argument"
+  location: "bump_ttl:19"
+  suggestion: "Keep ledger sequence counts and wall-clock seconds/timestamps in separate variables, and convert explicitly with a documented ledger-time assumption"
