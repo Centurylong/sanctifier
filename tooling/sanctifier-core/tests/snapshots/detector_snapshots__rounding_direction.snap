@@ -1,0 +1,14 @@
+---
+source: tooling/sanctifier-core/tests/detector_snapshots.rs
+expression: findings
+---
+- rule_name: SANCT_ROUNDING_DIRECTION
+  severity: Warning
+  message: "SANCT_ROUNDING_DIRECTION: related financial functions use inconsistent rounding directions: `deposit` uses up, `withdraw` uses down, `claim_reward` uses down"
+  location: "impl:3"
+  suggestion: "Define a single rounding policy for related financial flows, document who receives any remainder, and use explicit helpers such as `mul_div_floor` or `mul_div_ceil` consistently"
+- rule_name: SANCT_ROUNDING_DIRECTION
+  severity: Warning
+  message: "SANCT_ROUNDING_DIRECTION: financial function `settle_fee` mixes rounding directions (down, up)"
+  location: "settle_fee:4"
+  suggestion: "Define a single rounding policy for related financial flows, document who receives any remainder, and use explicit helpers such as `mul_div_floor` or `mul_div_ceil` consistently"
