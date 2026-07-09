@@ -11,9 +11,30 @@ Sanctifier now uses a unified finding code system across `sanctifier-core` and `
 | `S005` | storage_keys | Potential storage key collision |
 | `S006` | unsafe_patterns | Potentially unsafe language/runtime pattern |
 | `S007` | custom_rule | User-defined custom rule match |
+| `SANCT_TEMPORARY_PERSISTENT_STORAGE` | storage_lifetime | Durable contract state is written to temporary storage |
 | `SANCT_UNWRAP` | panic_handling | `unwrap` / `expect` / risky `unwrap_or_default` inside `#[contractimpl]` entrypoints; replace with typed errors or explicit domain defaults |
 
 ## Detector catalog
+
+### `SANCT_TEMPORARY_PERSISTENT_STORAGE`
+
+Flags Soroban `#[contractimpl]` entrypoints that store durable contract state in
+`env.storage().temporary()`. Temporary storage can expire, so balances,
+allowances, owner/admin/config values, reserves, supply, shares, and positions
+should use persistent or instance storage instead.
+
+```rust
+#[contractimpl]
+impl Token {
+    pub fn set_balance(env: Env, user: Address, balance: i128) {
+        env.storage().temporary().set(&("balance", user), &balance);
+    }
+}
+```
+
+Use temporary storage only for intentionally ephemeral values such as caches,
+previews, scratch/session state, or other transient data. If a value is durable,
+move it to persistent or instance storage and manage TTL explicitly.
 
 ### `SANCT_UNWRAP`
 

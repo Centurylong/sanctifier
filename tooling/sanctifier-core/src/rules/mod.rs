@@ -9,6 +9,7 @@ pub mod ledger_size;
 pub mod missing_ttl;
 pub mod panic_detection;
 pub mod sanct_unwrap;
+pub mod temporary_persistent_storage;
 pub mod unhandled_result;
 pub mod unused_variable;
 
@@ -128,6 +129,7 @@ impl RuleRegistry {
         registry.register(error_code_collision::ErrorCodeCollisionRule::new());
         registry.register(edge_amount::EdgeAmountRule::new());
         registry.register(fee_rounding::FeeRoundingRule::new());
+        registry.register(temporary_persistent_storage::TemporaryPersistentStorageRule::new());
         registry.register(missing_ttl::MissingTtlRule::new());
         registry.register(arg_dos::ArgDosRule::new());
         registry.register(sanct_unwrap::SanctUnwrapRule::new());

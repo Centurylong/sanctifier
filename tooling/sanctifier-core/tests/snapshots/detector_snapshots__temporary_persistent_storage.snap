@@ -1,0 +1,15 @@
+---
+source: tooling/sanctifier-core/tests/detector_snapshots.rs
+assertion_line: 30
+expression: findings
+---
+- rule_name: SANCT_TEMPORARY_PERSISTENT_STORAGE
+  severity: Warning
+  message: "SANCT_TEMPORARY_PERSISTENT_STORAGE: `set_balance` stores durable `balance` data in temporary storage"
+  location: "set_balance:8"
+  suggestion: "Use persistent or instance storage for durable balances/config, or rename/suppress if the value is intentionally ephemeral"
+- rule_name: SANCT_TEMPORARY_PERSISTENT_STORAGE
+  severity: Warning
+  message: "SANCT_TEMPORARY_PERSISTENT_STORAGE: `configure_admin` stores durable `admin` data in temporary storage"
+  location: "configure_admin:12"
+  suggestion: "Use persistent or instance storage for durable balances/config, or rename/suppress if the value is intentionally ephemeral"
