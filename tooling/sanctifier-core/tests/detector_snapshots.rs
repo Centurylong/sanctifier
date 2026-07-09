@@ -13,7 +13,8 @@
 //! See `tooling/sanctifier-core/tests/README.md` for the full guide.
 
 use sanctifier_core::rules::{
-    arg_dos::ArgDosRule, arithmetic_overflow::ArithmeticOverflowRule, auth_gap::AuthGapRule,
+    address_validation::AddressValidationRule, arg_dos::ArgDosRule,
+    arithmetic_overflow::ArithmeticOverflowRule, auth_gap::AuthGapRule,
     edge_amount::EdgeAmountRule, error_code_collision::ErrorCodeCollisionRule,
     fee_rounding::FeeRoundingRule, hardcoded_addr::HardcodedAddrRule, ledger_size::LedgerSizeRule,
     missing_ttl::MissingTtlRule, panic_detection::PanicDetectionRule,
@@ -121,6 +122,15 @@ fn snapshot_fee_rounding() {
 }
 
 #[test]
+fn snapshot_address_validation() {
+    assert_detector_snapshot(
+        "address_validation",
+        &AddressValidationRule::new(),
+        include_str!("fixtures/detectors/address_validation.rs"),
+    );
+}
+
+#[test]
 fn snapshot_missing_ttl() {
     assert_detector_snapshot(
         "missing_ttl",
@@ -169,4 +179,17 @@ fn sanct_unwrap_detector_is_registered_in_default_rules() {
     assert!(findings
         .iter()
         .all(|finding| finding.rule_name == "SANCT_UNWRAP"));
+}
+
+#[test]
+fn address_validation_detector_is_registered_in_default_rules() {
+    let findings = RuleRegistry::with_default_rules().run_by_name(
+        include_str!("fixtures/detectors/address_validation.rs"),
+        "address_validation",
+    );
+
+    assert_eq!(findings.len(), 3, "{findings:#?}");
+    assert!(findings
+        .iter()
+        .all(|finding| finding.rule_name == "SANCT_ADDRESS_VALIDATION"));
 }

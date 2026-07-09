@@ -17,6 +17,7 @@ pub const DEPRECATED_SDK: &str = "S014";
 pub const DEAD_CODE: &str = "S015";
 pub const ERROR_CODE_COLLISION: &str = "S016";
 pub const FEE_ROUNDING: &str = "S017";
+pub const ADDRESS_VALIDATION: &str = "SANCT_ADDRESS_VALIDATION";
 pub const ARG_DOS: &str = "SANCT_ARG_DOS";
 pub const SANCT_UNWRAP: &str = "SANCT_UNWRAP";
 
@@ -117,6 +118,12 @@ pub fn all_finding_codes() -> Vec<FindingCode> {
                 "Fee/interest calculation using integer division rounds to zero for micro-amounts, enabling fee-evasion attacks",
         },
         FindingCode {
+            code: ADDRESS_VALIDATION,
+            category: "input_validation",
+            description:
+                "Sensitive Address parameter is stored or used without explicit invalid-address validation",
+        },
+        FindingCode {
             code: ARG_DOS,
             category: "denial_of_service",
             description:
@@ -153,6 +160,7 @@ mod tests {
         assert!(codes.iter().any(|c| c.code == STORAGE_COLLISION));
         assert!(codes.iter().any(|c| c.code == UNSAFE_PATTERN));
         assert!(codes.iter().any(|c| c.code == CUSTOM_RULE_MATCH));
+        assert!(codes.iter().any(|c| c.code == ADDRESS_VALIDATION));
         assert!(codes.iter().any(|c| c.code == SANCT_UNWRAP));
     }
 }

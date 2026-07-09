@@ -1,0 +1,20 @@
+---
+source: tooling/sanctifier-core/tests/detector_snapshots.rs
+assertion_line: 31
+expression: findings
+---
+- rule_name: SANCT_ADDRESS_VALIDATION
+  severity: Warning
+  message: "SANCT_ADDRESS_VALIDATION: Address parameter `admin` in `set_admin` is not explicitly validated"
+  location: "set_admin:7"
+  suggestion: "Validate `admin` with an explicit zero-address/invalid-address guard before storing it or moving value"
+- rule_name: SANCT_ADDRESS_VALIDATION
+  severity: Warning
+  message: "SANCT_ADDRESS_VALIDATION: Address parameter `asset` in `configure_asset` is not explicitly validated"
+  location: "configure_asset:11"
+  suggestion: "Validate `asset` with an explicit zero-address/invalid-address guard before storing it or moving value"
+- rule_name: SANCT_ADDRESS_VALIDATION
+  severity: Warning
+  message: "SANCT_ADDRESS_VALIDATION: Address parameter `recipient` in `configure_asset` is not explicitly validated"
+  location: "configure_asset:11"
+  suggestion: "Validate `recipient` with an explicit zero-address/invalid-address guard before storing it or moving value"

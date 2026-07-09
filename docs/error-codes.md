@@ -11,9 +11,33 @@ Sanctifier now uses a unified finding code system across `sanctifier-core` and `
 | `S005` | storage_keys | Potential storage key collision |
 | `S006` | unsafe_patterns | Potentially unsafe language/runtime pattern |
 | `S007` | custom_rule | User-defined custom rule match |
+| `SANCT_ADDRESS_VALIDATION` | input_validation | Sensitive `Address` parameter is stored or used without explicit invalid-address validation |
 | `SANCT_UNWRAP` | panic_handling | `unwrap` / `expect` / risky `unwrap_or_default` inside `#[contractimpl]` entrypoints; replace with typed errors or explicit domain defaults |
 
 ## Detector catalog
+
+### `SANCT_ADDRESS_VALIDATION`
+
+Flags Soroban `#[contractimpl]` entrypoints such as admin, owner, asset, token,
+recipient, or transfer setters that accept an `Address` and then store or use it
+without an explicit invalid-address or zero-address guard.
+
+```rust
+#[contractimpl]
+impl Config {
+    pub fn set_admin(env: Env, admin: Address) {
+        env.storage().instance().set(&DataKey::Admin, &admin);
+    }
+}
+```
+
+Validate sensitive addresses before persisting them or moving value. The detector
+recognizes local helpers such as `validate_address(&admin)`, `ensure_valid_address`,
+`reject_zero_address`, and direct `is_zero` / `Address::zero` guards. Use
+`sanctifier:ignore[SANCT_ADDRESS_VALIDATION]` on the line before an intentional
+exception. `require_auth` alone is not treated as address validation because it
+proves authorization, not that the supplied address is a safe configuration
+target.
 
 ### `SANCT_UNWRAP`
 
