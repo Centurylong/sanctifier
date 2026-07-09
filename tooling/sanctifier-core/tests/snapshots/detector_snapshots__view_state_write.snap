@@ -1,0 +1,19 @@
+---
+source: tooling/sanctifier-core/tests/detector_snapshots.rs
+expression: findings
+---
+- rule_name: SANCT_VIEW_STATE_WRITE
+  severity: Warning
+  message: "SANCT_VIEW_STATE_WRITE: getter-like function `get_balance` writes persistent storage with `set`"
+  location: "get_balance:7"
+  suggestion: "Keep getter/read functions side-effect free, or rename this entrypoint to make the storage mutation explicit"
+- rule_name: SANCT_VIEW_STATE_WRITE
+  severity: Warning
+  message: "SANCT_VIEW_STATE_WRITE: getter-like function `preview_rewards` writes temporary storage with `remove`"
+  location: "preview_rewards:12"
+  suggestion: "Keep getter/read functions side-effect free, or rename this entrypoint to make the storage mutation explicit"
+- rule_name: SANCT_VIEW_STATE_WRITE
+  severity: Warning
+  message: "SANCT_VIEW_STATE_WRITE: getter-like function `quote_status` writes instance storage with `extend_ttl`"
+  location: "quote_status:17"
+  suggestion: "Keep getter/read functions side-effect free, or rename this entrypoint to make the storage mutation explicit"

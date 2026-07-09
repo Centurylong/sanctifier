@@ -11,6 +11,7 @@ pub mod panic_detection;
 pub mod sanct_unwrap;
 pub mod unhandled_result;
 pub mod unused_variable;
+pub mod view_state_write;
 
 use serde::Serialize;
 use std::any::Any;
@@ -131,6 +132,7 @@ impl RuleRegistry {
         registry.register(missing_ttl::MissingTtlRule::new());
         registry.register(arg_dos::ArgDosRule::new());
         registry.register(sanct_unwrap::SanctUnwrapRule::new());
+        registry.register(view_state_write::ViewStateWriteRule::new());
         registry
     }
 }
