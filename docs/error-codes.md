@@ -11,9 +11,30 @@ Sanctifier now uses a unified finding code system across `sanctifier-core` and `
 | `S005` | storage_keys | Potential storage key collision |
 | `S006` | unsafe_patterns | Potentially unsafe language/runtime pattern |
 | `S007` | custom_rule | User-defined custom rule match |
+| `SANCT_TIMELOCK_PARAMETER_CHANGE` | governance | Critical parameter setter applies immediately without a visible timelock |
 | `SANCT_UNWRAP` | panic_handling | `unwrap` / `expect` / risky `unwrap_or_default` inside `#[contractimpl]` entrypoints; replace with typed errors or explicit domain defaults |
 
 ## Detector catalog
+
+### `SANCT_TIMELOCK_PARAMETER_CHANGE`
+
+Flags Soroban `#[contractimpl]` entrypoints that directly update critical
+governance or risk parameters such as fees, rates, reserve limits, caps, oracles,
+treasury addresses, or upgrade settings without a visible timelock.
+
+```rust
+#[contractimpl]
+impl Config {
+    pub fn set_fee_rate(env: Env, fee_rate: u32) {
+        env.storage().instance().set(&DataKey::FeeRate, &fee_rate);
+    }
+}
+```
+
+Prefer a scheduled change flow: store a pending value, record an ETA or delay,
+and expose a separate execute step after the timelock has elapsed. This advisory
+recognizes common schedule, pending, ETA, delay, queue, proposal, and timelock
+patterns.
 
 ### `SANCT_UNWRAP`
 

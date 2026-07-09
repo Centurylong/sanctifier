@@ -1,0 +1,15 @@
+---
+source: tooling/sanctifier-core/tests/detector_snapshots.rs
+assertion_line: 30
+expression: findings
+---
+- rule_name: SANCT_TIMELOCK_PARAMETER_CHANGE
+  severity: Info
+  message: "SANCT_TIMELOCK_PARAMETER_CHANGE: `set_fee_rate` updates `fee` without a visible timelock"
+  location: "set_fee_rate:7"
+  suggestion: Route critical parameter changes through a scheduled pending value with a delay and an execute step
+- rule_name: SANCT_TIMELOCK_PARAMETER_CHANGE
+  severity: Info
+  message: "SANCT_TIMELOCK_PARAMETER_CHANGE: `update_oracle` updates `oracle` without a visible timelock"
+  location: "update_oracle:11"
+  suggestion: Route critical parameter changes through a scheduled pending value with a delay and an execute step

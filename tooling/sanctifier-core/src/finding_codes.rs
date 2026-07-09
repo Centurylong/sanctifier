@@ -18,6 +18,7 @@ pub const DEAD_CODE: &str = "S015";
 pub const ERROR_CODE_COLLISION: &str = "S016";
 pub const FEE_ROUNDING: &str = "S017";
 pub const ARG_DOS: &str = "SANCT_ARG_DOS";
+pub const TIMELOCK_PARAMETER_CHANGE: &str = "SANCT_TIMELOCK_PARAMETER_CHANGE";
 pub const SANCT_UNWRAP: &str = "SANCT_UNWRAP";
 
 #[derive(Debug, Clone, Serialize)]
@@ -123,6 +124,12 @@ pub fn all_finding_codes() -> Vec<FindingCode> {
                 "Contract entrypoint iterates over a Vec or Map argument without a visible length cap",
         },
         FindingCode {
+            code: TIMELOCK_PARAMETER_CHANGE,
+            category: "governance",
+            description:
+                "Critical parameter setter applies immediately without a visible timelock",
+        },
+        FindingCode {
             code: SANCT_UNWRAP,
             category: "panic_handling",
             description:
@@ -153,6 +160,7 @@ mod tests {
         assert!(codes.iter().any(|c| c.code == STORAGE_COLLISION));
         assert!(codes.iter().any(|c| c.code == UNSAFE_PATTERN));
         assert!(codes.iter().any(|c| c.code == CUSTOM_RULE_MATCH));
+        assert!(codes.iter().any(|c| c.code == TIMELOCK_PARAMETER_CHANGE));
         assert!(codes.iter().any(|c| c.code == SANCT_UNWRAP));
     }
 }
