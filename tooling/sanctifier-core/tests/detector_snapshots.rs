@@ -17,8 +17,8 @@ use sanctifier_core::rules::{
     edge_amount::EdgeAmountRule, error_code_collision::ErrorCodeCollisionRule,
     fee_rounding::FeeRoundingRule, hardcoded_addr::HardcodedAddrRule, ledger_size::LedgerSizeRule,
     missing_ttl::MissingTtlRule, panic_detection::PanicDetectionRule,
-    sanct_unwrap::SanctUnwrapRule, unhandled_result::UnhandledResultRule,
-    unused_variable::UnusedVariableRule, Rule, RuleRegistry,
+    reserve_withdrawal_auth::ReserveWithdrawalAuthRule, sanct_unwrap::SanctUnwrapRule,
+    unhandled_result::UnhandledResultRule, unused_variable::UnusedVariableRule, Rule, RuleRegistry,
 };
 
 /// Run a detector against its fixture and snapshot the resulting findings.
@@ -139,6 +139,15 @@ fn snapshot_arg_dos() {
 }
 
 #[test]
+fn snapshot_reserve_withdrawal_auth() {
+    assert_detector_snapshot(
+        "reserve_withdrawal_auth",
+        &ReserveWithdrawalAuthRule::new(),
+        include_str!("fixtures/detectors/reserve_withdrawal_auth.rs"),
+    );
+}
+
+#[test]
 fn snapshot_sanct_unwrap() {
     assert_detector_snapshot(
         "sanct_unwrap",
@@ -169,4 +178,17 @@ fn sanct_unwrap_detector_is_registered_in_default_rules() {
     assert!(findings
         .iter()
         .all(|finding| finding.rule_name == "SANCT_UNWRAP"));
+}
+
+#[test]
+fn reserve_withdrawal_auth_detector_is_registered_in_default_rules() {
+    let findings = RuleRegistry::with_default_rules().run_by_name(
+        include_str!("fixtures/detectors/reserve_withdrawal_auth.rs"),
+        "reserve_withdrawal_auth",
+    );
+
+    assert_eq!(findings.len(), 2, "{findings:#?}");
+    assert!(findings
+        .iter()
+        .all(|finding| finding.rule_name == "SANCT_RESERVE_WITHDRAWAL_AUTH"));
 }

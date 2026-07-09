@@ -1,0 +1,15 @@
+---
+source: tooling/sanctifier-core/tests/detector_snapshots.rs
+assertion_line: 31
+expression: findings
+---
+- rule_name: SANCT_RESERVE_WITHDRAWAL_AUTH
+  severity: Warning
+  message: "SANCT_RESERVE_WITHDRAWAL_AUTH: reserve/treasury withdrawal path `withdraw_reserve` is missing admin authorization and nonce/replay guard"
+  location: "withdraw_reserve:14"
+  suggestion: Require the admin signer and bind the withdrawal to a consumed nonce before moving reserve funds
+- rule_name: SANCT_RESERVE_WITHDRAWAL_AUTH
+  severity: Warning
+  message: "SANCT_RESERVE_WITHDRAWAL_AUTH: reserve/treasury withdrawal path `sweep_treasury` is missing nonce/replay guard"
+  location: "sweep_treasury:19"
+  suggestion: Require the admin signer and bind the withdrawal to a consumed nonce before moving reserve funds
