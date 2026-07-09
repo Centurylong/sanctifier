@@ -1,0 +1,14 @@
+---
+source: tooling/sanctifier-core/tests/detector_snapshots.rs
+expression: findings
+---
+- rule_name: SANCT_DIV_BEFORE_MUL
+  severity: Warning
+  message: "SANCT_DIV_BEFORE_MUL: division-before-multiplication in money-like integer math can truncate before scaling"
+  location: "payout:5"
+  suggestion: "Prefer overflow-safe multiply-first math such as `amount.checked_mul(rate)?.checked_div(denominator)?`, or a dedicated mul-div helper"
+- rule_name: SANCT_DIV_BEFORE_MUL
+  severity: Warning
+  message: "SANCT_DIV_BEFORE_MUL: division-before-multiplication in money-like integer math can truncate before scaling"
+  location: "fee:9"
+  suggestion: "Prefer overflow-safe multiply-first math such as `amount.checked_mul(rate)?.checked_div(denominator)?`, or a dedicated mul-div helper"

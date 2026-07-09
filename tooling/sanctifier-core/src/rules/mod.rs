@@ -1,6 +1,7 @@
 pub mod arg_dos;
 pub mod arithmetic_overflow;
 pub mod auth_gap;
+pub mod division_before_multiplication;
 pub mod edge_amount;
 pub mod error_code_collision;
 pub mod fee_rounding;
@@ -128,6 +129,7 @@ impl RuleRegistry {
         registry.register(error_code_collision::ErrorCodeCollisionRule::new());
         registry.register(edge_amount::EdgeAmountRule::new());
         registry.register(fee_rounding::FeeRoundingRule::new());
+        registry.register(division_before_multiplication::DivisionBeforeMultiplicationRule::new());
         registry.register(missing_ttl::MissingTtlRule::new());
         registry.register(arg_dos::ArgDosRule::new());
         registry.register(sanct_unwrap::SanctUnwrapRule::new());

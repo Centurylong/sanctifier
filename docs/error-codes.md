@@ -11,6 +11,7 @@ Sanctifier now uses a unified finding code system across `sanctifier-core` and `
 | `S005` | storage_keys | Potential storage key collision |
 | `S006` | unsafe_patterns | Potentially unsafe language/runtime pattern |
 | `S007` | custom_rule | User-defined custom rule match |
+| `SANCT_DIV_BEFORE_MUL` | arithmetic | Money-like integer math divides before multiplying and can lose precision |
 | `SANCT_UNWRAP` | panic_handling | `unwrap` / `expect` / risky `unwrap_or_default` inside `#[contractimpl]` entrypoints; replace with typed errors or explicit domain defaults |
 
 ## Detector catalog
@@ -34,6 +35,20 @@ impl Token {
 Prefer explicit handling: return a typed `Result`, map missing state to a
 domain-specific `Error`, or use an explicit default such as `unwrap_or(0)` only
 when zero is the intended contract state.
+
+### `SANCT_DIV_BEFORE_MUL`
+
+Flags money-like integer expressions such as `amount / total_shares *
+pool_balance`, where integer division truncates before the value is scaled.
+
+Prefer an overflow-safe multiply-first form or a dedicated mul-div helper:
+
+```rust
+let payout = amount
+    .checked_mul(pool_balance)
+    .and_then(|value| value.checked_div(total_shares))
+    .ok_or(Error::MathOverflow)?;
+```
 
 ## Where codes appear
 

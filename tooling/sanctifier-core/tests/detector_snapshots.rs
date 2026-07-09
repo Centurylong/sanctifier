@@ -14,11 +14,11 @@
 
 use sanctifier_core::rules::{
     arg_dos::ArgDosRule, arithmetic_overflow::ArithmeticOverflowRule, auth_gap::AuthGapRule,
-    edge_amount::EdgeAmountRule, error_code_collision::ErrorCodeCollisionRule,
-    fee_rounding::FeeRoundingRule, hardcoded_addr::HardcodedAddrRule, ledger_size::LedgerSizeRule,
-    missing_ttl::MissingTtlRule, panic_detection::PanicDetectionRule,
-    sanct_unwrap::SanctUnwrapRule, unhandled_result::UnhandledResultRule,
-    unused_variable::UnusedVariableRule, Rule, RuleRegistry,
+    division_before_multiplication::DivisionBeforeMultiplicationRule, edge_amount::EdgeAmountRule,
+    error_code_collision::ErrorCodeCollisionRule, fee_rounding::FeeRoundingRule,
+    hardcoded_addr::HardcodedAddrRule, ledger_size::LedgerSizeRule, missing_ttl::MissingTtlRule,
+    panic_detection::PanicDetectionRule, sanct_unwrap::SanctUnwrapRule,
+    unhandled_result::UnhandledResultRule, unused_variable::UnusedVariableRule, Rule, RuleRegistry,
 };
 
 /// Run a detector against its fixture and snapshot the resulting findings.
@@ -121,6 +121,15 @@ fn snapshot_fee_rounding() {
 }
 
 #[test]
+fn snapshot_division_before_multiplication() {
+    assert_detector_snapshot(
+        "division_before_multiplication",
+        &DivisionBeforeMultiplicationRule::new(),
+        include_str!("fixtures/detectors/division_before_multiplication.rs"),
+    );
+}
+
+#[test]
 fn snapshot_missing_ttl() {
     assert_detector_snapshot(
         "missing_ttl",
@@ -169,4 +178,17 @@ fn sanct_unwrap_detector_is_registered_in_default_rules() {
     assert!(findings
         .iter()
         .all(|finding| finding.rule_name == "SANCT_UNWRAP"));
+}
+
+#[test]
+fn division_before_multiplication_detector_is_registered_in_default_rules() {
+    let findings = RuleRegistry::with_default_rules().run_by_name(
+        include_str!("fixtures/detectors/division_before_multiplication.rs"),
+        "division_before_multiplication",
+    );
+
+    assert_eq!(findings.len(), 2, "{findings:#?}");
+    assert!(findings
+        .iter()
+        .all(|finding| finding.rule_name == "SANCT_DIV_BEFORE_MUL"));
 }
