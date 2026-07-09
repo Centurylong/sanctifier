@@ -19,6 +19,7 @@ pub const ERROR_CODE_COLLISION: &str = "S016";
 pub const FEE_ROUNDING: &str = "S017";
 pub const ARG_DOS: &str = "SANCT_ARG_DOS";
 pub const SANCT_UNWRAP: &str = "SANCT_UNWRAP";
+pub const SYMBOL_SHORT_LENGTH: &str = "SANCT_SYMBOL_SHORT_LENGTH";
 
 #[derive(Debug, Clone, Serialize)]
 pub struct FindingCode {
@@ -128,6 +129,11 @@ pub fn all_finding_codes() -> Vec<FindingCode> {
             description:
                 "Contract entrypoint uses unwrap, expect, or a risky unwrap_or_default fallback",
         },
+        FindingCode {
+            code: SYMBOL_SHORT_LENGTH,
+            category: "code_hygiene",
+            description: "symbol_short! literal exceeds Soroban's 9-byte limit",
+        },
     ]
 }
 
@@ -154,5 +160,6 @@ mod tests {
         assert!(codes.iter().any(|c| c.code == UNSAFE_PATTERN));
         assert!(codes.iter().any(|c| c.code == CUSTOM_RULE_MATCH));
         assert!(codes.iter().any(|c| c.code == SANCT_UNWRAP));
+        assert!(codes.iter().any(|c| c.code == SYMBOL_SHORT_LENGTH));
     }
 }

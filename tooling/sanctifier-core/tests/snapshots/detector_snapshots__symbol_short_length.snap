@@ -1,0 +1,14 @@
+---
+source: tooling/sanctifier-core/tests/detector_snapshots.rs
+expression: findings
+---
+- rule_name: SANCT_SYMBOL_SHORT_LENGTH
+  severity: Warning
+  message: "SANCT_SYMBOL_SHORT_LENGTH: symbol_short! literal `TOO_LONG_KEY` is 12 bytes, exceeding the 9-byte limit"
+  location: "symbol_short!:5"
+  suggestion: "Use `Symbol::new(&env, \"...\")` for symbols longer than 9 bytes"
+- rule_name: SANCT_SYMBOL_SHORT_LENGTH
+  severity: Warning
+  message: "SANCT_SYMBOL_SHORT_LENGTH: symbol_short! literal `POSITION_ID` is 11 bytes, exceeding the 9-byte limit"
+  location: "symbol_short!:9"
+  suggestion: "Use `Symbol::new(&env, \"...\")` for symbols longer than 9 bytes"
