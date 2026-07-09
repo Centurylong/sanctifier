@@ -11,9 +11,30 @@ Sanctifier now uses a unified finding code system across `sanctifier-core` and `
 | `S005` | storage_keys | Potential storage key collision |
 | `S006` | unsafe_patterns | Potentially unsafe language/runtime pattern |
 | `S007` | custom_rule | User-defined custom rule match |
+| `SANCT_OWNERSHIP_TRANSFER` | access_control | Owner/admin control is transferred in one step without a pending accept flow |
 | `SANCT_UNWRAP` | panic_handling | `unwrap` / `expect` / risky `unwrap_or_default` inside `#[contractimpl]` entrypoints; replace with typed errors or explicit domain defaults |
 
 ## Detector catalog
+
+### `SANCT_OWNERSHIP_TRANSFER`
+
+Flags Soroban `#[contractimpl]` entrypoints that directly replace owner/admin
+control with a supplied `Address` in one call. A single-call transfer can
+permanently hand control to a wrong, dead, or unprepared address.
+
+```rust
+#[contractimpl]
+impl Admin {
+    pub fn transfer_ownership(env: Env, new_owner: Address) {
+        env.storage().instance().set(&DataKey::Owner, &new_owner);
+    }
+}
+```
+
+Prefer a two-step handover: store `new_owner` as a pending owner/admin, then
+require the new address to call an `accept_ownership` / `accept_admin` entrypoint
+before control changes. The detector recognizes pending-owner writes and
+accept-style functions as the intended two-step pattern.
 
 ### `SANCT_UNWRAP`
 
