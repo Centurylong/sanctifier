@@ -1,0 +1,19 @@
+---
+source: tooling/sanctifier-core/tests/detector_snapshots.rs
+expression: findings
+---
+- rule_name: SANCT_EAGER_UNWRAP_OR
+  severity: Warning
+  message: "SANCT_EAGER_UNWRAP_OR: `unwrap_or` in `eager_fn_call` eagerly evaluates `expensive_default (& env)` even when the option/result has a value"
+  location: "eager_fn_call:8"
+  suggestion: "Use `unwrap_or_else(|| expensive_default (& env))` so the default is only computed on the fallback path"
+- rule_name: SANCT_EAGER_UNWRAP_OR
+  severity: Warning
+  message: "SANCT_EAGER_UNWRAP_OR: `unwrap_or` in `eager_method_call` eagerly evaluates `fallback . build ()` even when the option/result has a value"
+  location: "eager_method_call:13"
+  suggestion: "Use `unwrap_or_else(|| fallback . build ())` so the default is only computed on the fallback path"
+- rule_name: SANCT_EAGER_UNWRAP_OR
+  severity: Warning
+  message: "SANCT_EAGER_UNWRAP_OR: `unwrap_or` in `eager_block` eagerly evaluates `{ let value = expensive_default (& env) ; value }` even when the option/result has a value"
+  location: "eager_block:17"
+  suggestion: "Use `unwrap_or_else(|| { let value = expensive_default (& env) ; value })` so the default is only computed on the fallback path"
