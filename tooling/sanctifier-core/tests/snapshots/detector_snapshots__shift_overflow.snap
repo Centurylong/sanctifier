@@ -1,0 +1,15 @@
+---
+source: tooling/sanctifier-core/tests/detector_snapshots.rs
+assertion_line: 30
+expression: findings
+---
+- rule_name: SANCT_SHIFT_OVERFLOW
+  severity: Warning
+  message: "SANCT_SHIFT_OVERFLOW: `<<` uses a shift amount without a visible bound below 64 bits"
+  location: "variable_left_shift:14"
+  suggestion: Check the shift amount against the left operand bit width before shifting
+- rule_name: SANCT_SHIFT_OVERFLOW
+  severity: Warning
+  message: "SANCT_SHIFT_OVERFLOW: `>>` uses a shift amount without a visible bound below 32 bits"
+  location: "literal_right_shift:19"
+  suggestion: Check the shift amount against the left operand bit width before shifting

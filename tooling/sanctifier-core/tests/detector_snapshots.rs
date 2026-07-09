@@ -17,8 +17,8 @@ use sanctifier_core::rules::{
     edge_amount::EdgeAmountRule, error_code_collision::ErrorCodeCollisionRule,
     fee_rounding::FeeRoundingRule, hardcoded_addr::HardcodedAddrRule, ledger_size::LedgerSizeRule,
     missing_ttl::MissingTtlRule, panic_detection::PanicDetectionRule,
-    sanct_unwrap::SanctUnwrapRule, unhandled_result::UnhandledResultRule,
-    unused_variable::UnusedVariableRule, Rule, RuleRegistry,
+    sanct_unwrap::SanctUnwrapRule, shift_overflow::ShiftOverflowRule,
+    unhandled_result::UnhandledResultRule, unused_variable::UnusedVariableRule, Rule, RuleRegistry,
 };
 
 /// Run a detector against its fixture and snapshot the resulting findings.
@@ -148,6 +148,15 @@ fn snapshot_sanct_unwrap() {
 }
 
 #[test]
+fn snapshot_shift_overflow() {
+    assert_detector_snapshot(
+        "shift_overflow",
+        &ShiftOverflowRule::new(),
+        include_str!("fixtures/detectors/shift_overflow.rs"),
+    );
+}
+
+#[test]
 fn arg_dos_detector_flags_only_uncapped_argument_iteration() {
     let findings = RuleRegistry::with_default_rules()
         .run_by_name(include_str!("fixtures/detectors/arg_dos.rs"), "arg_dos");
@@ -169,4 +178,17 @@ fn sanct_unwrap_detector_is_registered_in_default_rules() {
     assert!(findings
         .iter()
         .all(|finding| finding.rule_name == "SANCT_UNWRAP"));
+}
+
+#[test]
+fn shift_overflow_detector_is_registered_in_default_rules() {
+    let findings = RuleRegistry::with_default_rules().run_by_name(
+        include_str!("fixtures/detectors/shift_overflow.rs"),
+        "shift_overflow",
+    );
+
+    assert_eq!(findings.len(), 2, "{findings:#?}");
+    assert!(findings
+        .iter()
+        .all(|finding| finding.rule_name == "SANCT_SHIFT_OVERFLOW"));
 }
