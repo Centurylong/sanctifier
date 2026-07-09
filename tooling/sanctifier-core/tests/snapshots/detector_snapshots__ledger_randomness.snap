@@ -1,0 +1,14 @@
+---
+source: tooling/sanctifier-core/tests/detector_snapshots.rs
+expression: findings
+---
+- rule_name: SANCT_LEDGER_RANDOMNESS
+  severity: Warning
+  message: "SANCT_LEDGER_RANDOMNESS: ledger value is reduced with `%`; ledger sequence/timestamp is predictable and manipulable as randomness"
+  location: "pick_winner:7"
+  suggestion: "Use commit-reveal, a VRF/oracle, or a user-independent entropy source instead of `env.ledger().sequence()` or `timestamp()`"
+- rule_name: SANCT_LEDGER_RANDOMNESS
+  severity: Warning
+  message: "SANCT_LEDGER_RANDOMNESS: ledger value flows into a randomness-like helper; ledger sequence/timestamp is predictable and manipulable as randomness"
+  location: "random_seed:11"
+  suggestion: "Use commit-reveal, a VRF/oracle, or a user-independent entropy source instead of `env.ledger().sequence()` or `timestamp()`"
