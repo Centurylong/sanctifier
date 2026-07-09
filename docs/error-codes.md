@@ -11,9 +11,31 @@ Sanctifier now uses a unified finding code system across `sanctifier-core` and `
 | `S005` | storage_keys | Potential storage key collision |
 | `S006` | unsafe_patterns | Potentially unsafe language/runtime pattern |
 | `S007` | custom_rule | User-defined custom rule match |
+| `SANCT_CROSS_CONTRACT_RETURN` | cross_contract_calls | Cross-contract call return value is discarded instead of checked |
 | `SANCT_UNWRAP` | panic_handling | `unwrap` / `expect` / risky `unwrap_or_default` inside `#[contractimpl]` entrypoints; replace with typed errors or explicit domain defaults |
 
 ## Detector catalog
+
+### `SANCT_CROSS_CONTRACT_RETURN`
+
+Flags Soroban `#[contractimpl]` entrypoints that discard the return value from
+`Env::invoke_contract` or a generated contract client call. Ignoring the return
+value can hide a failed authorization, stale state, or failed downstream action
+while the caller continues as if the external call succeeded.
+
+```rust
+#[contractimpl]
+impl Vault {
+    pub fn withdraw(env: Env, token: Address, to: Address) {
+        let token_client = TokenClient::new(&env, &token);
+        token_client.transfer(&env.current_contract_address(), &to, &100);
+    }
+}
+```
+
+Store, return, or explicitly validate the cross-contract call result before
+continuing. If a call is intentionally fire-and-forget, suppress it next to the
+line with `sanctifier:ignore[SANCT_CROSS_CONTRACT_RETURN]` and a justification.
 
 ### `SANCT_UNWRAP`
 

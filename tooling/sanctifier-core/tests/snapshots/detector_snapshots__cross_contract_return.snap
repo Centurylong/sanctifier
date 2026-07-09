@@ -1,0 +1,20 @@
+---
+source: tooling/sanctifier-core/tests/detector_snapshots.rs
+assertion_line: 30
+expression: findings
+---
+- rule_name: SANCT_CROSS_CONTRACT_RETURN
+  severity: Warning
+  message: "SANCT_CROSS_CONTRACT_RETURN: cross-contract call return value is discarded in `unchecked`"
+  location: "unchecked:26"
+  suggestion: "Store, return, or explicitly validate the result of `token_client . transfer (& from , & to , & 10)` before continuing"
+- rule_name: SANCT_CROSS_CONTRACT_RETURN
+  severity: Warning
+  message: "SANCT_CROSS_CONTRACT_RETURN: cross-contract call return value is discarded in `unchecked`"
+  location: "unchecked:27"
+  suggestion: "Store, return, or explicitly validate the result of `env . invoke_contract :: < i128 > (& token , & Symbol :: new (& env , \"balance\") , Vec :: new...` before continuing"
+- rule_name: SANCT_CROSS_CONTRACT_RETURN
+  severity: Warning
+  message: "SANCT_CROSS_CONTRACT_RETURN: cross-contract call return value is discarded in `unchecked`"
+  location: "unchecked:28"
+  suggestion: "Store, return, or explicitly validate the result of `token_client . balance (& to)` before continuing"

@@ -18,6 +18,7 @@ pub const DEAD_CODE: &str = "S015";
 pub const ERROR_CODE_COLLISION: &str = "S016";
 pub const FEE_ROUNDING: &str = "S017";
 pub const ARG_DOS: &str = "SANCT_ARG_DOS";
+pub const CROSS_CONTRACT_RETURN: &str = "SANCT_CROSS_CONTRACT_RETURN";
 pub const SANCT_UNWRAP: &str = "SANCT_UNWRAP";
 
 #[derive(Debug, Clone, Serialize)]
@@ -123,6 +124,11 @@ pub fn all_finding_codes() -> Vec<FindingCode> {
                 "Contract entrypoint iterates over a Vec or Map argument without a visible length cap",
         },
         FindingCode {
+            code: CROSS_CONTRACT_RETURN,
+            category: "cross_contract_calls",
+            description: "Cross-contract call return value is discarded instead of checked",
+        },
+        FindingCode {
             code: SANCT_UNWRAP,
             category: "panic_handling",
             description:
@@ -153,6 +159,7 @@ mod tests {
         assert!(codes.iter().any(|c| c.code == STORAGE_COLLISION));
         assert!(codes.iter().any(|c| c.code == UNSAFE_PATTERN));
         assert!(codes.iter().any(|c| c.code == CUSTOM_RULE_MATCH));
+        assert!(codes.iter().any(|c| c.code == CROSS_CONTRACT_RETURN));
         assert!(codes.iter().any(|c| c.code == SANCT_UNWRAP));
     }
 }
