@@ -14,11 +14,11 @@
 
 use sanctifier_core::rules::{
     arg_dos::ArgDosRule, arithmetic_overflow::ArithmeticOverflowRule, auth_gap::AuthGapRule,
-    edge_amount::EdgeAmountRule, error_code_collision::ErrorCodeCollisionRule,
-    fee_rounding::FeeRoundingRule, hardcoded_addr::HardcodedAddrRule, ledger_size::LedgerSizeRule,
-    missing_ttl::MissingTtlRule, panic_detection::PanicDetectionRule,
-    sanct_unwrap::SanctUnwrapRule, unhandled_result::UnhandledResultRule,
-    unused_variable::UnusedVariableRule, Rule, RuleRegistry,
+    bps_magic_denominator::BpsMagicDenominatorRule, edge_amount::EdgeAmountRule,
+    error_code_collision::ErrorCodeCollisionRule, fee_rounding::FeeRoundingRule,
+    hardcoded_addr::HardcodedAddrRule, ledger_size::LedgerSizeRule, missing_ttl::MissingTtlRule,
+    panic_detection::PanicDetectionRule, sanct_unwrap::SanctUnwrapRule,
+    unhandled_result::UnhandledResultRule, unused_variable::UnusedVariableRule, Rule, RuleRegistry,
 };
 
 /// Run a detector against its fixture and snapshot the resulting findings.
@@ -121,6 +121,15 @@ fn snapshot_fee_rounding() {
 }
 
 #[test]
+fn snapshot_bps_magic_denominator() {
+    assert_detector_snapshot(
+        "bps_magic_denominator",
+        &BpsMagicDenominatorRule::new(),
+        include_str!("fixtures/detectors/bps_magic_denominator.rs"),
+    );
+}
+
+#[test]
 fn snapshot_missing_ttl() {
     assert_detector_snapshot(
         "missing_ttl",
@@ -169,4 +178,17 @@ fn sanct_unwrap_detector_is_registered_in_default_rules() {
     assert!(findings
         .iter()
         .all(|finding| finding.rule_name == "SANCT_UNWRAP"));
+}
+
+#[test]
+fn bps_magic_denominator_detector_is_registered_in_default_rules() {
+    let findings = RuleRegistry::with_default_rules().run_by_name(
+        include_str!("fixtures/detectors/bps_magic_denominator.rs"),
+        "bps_magic_denominator",
+    );
+
+    assert_eq!(findings.len(), 2, "{findings:#?}");
+    assert!(findings
+        .iter()
+        .all(|finding| finding.rule_name == "SANCT_BPS_MAGIC_DENOMINATOR"));
 }

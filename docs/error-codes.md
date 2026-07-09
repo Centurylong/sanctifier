@@ -11,6 +11,7 @@ Sanctifier now uses a unified finding code system across `sanctifier-core` and `
 | `S005` | storage_keys | Potential storage key collision |
 | `S006` | unsafe_patterns | Potentially unsafe language/runtime pattern |
 | `S007` | custom_rule | User-defined custom rule match |
+| `SANCT_BPS_MAGIC_DENOMINATOR` | arithmetic | Basis-point math uses a hardcoded or suspicious denominator instead of a named constant |
 | `SANCT_UNWRAP` | panic_handling | `unwrap` / `expect` / risky `unwrap_or_default` inside `#[contractimpl]` entrypoints; replace with typed errors or explicit domain defaults |
 
 ## Detector catalog
@@ -34,6 +35,17 @@ impl Token {
 Prefer explicit handling: return a typed `Result`, map missing state to a
 domain-specific `Error`, or use an explicit default such as `unwrap_or(0)` only
 when zero is the intended contract state.
+
+### `SANCT_BPS_MAGIC_DENOMINATOR`
+
+Flags basis-point style math that divides by a raw denominator such as `10_000`
+or by a suspicious nearby scale such as `1_000`. Hardcoded denominators make it
+easy to mix percent, bps, and custom-rate units.
+
+```rust
+const BASIS_POINTS_DENOMINATOR: i128 = 10_000;
+let fee = amount * fee_bps / BASIS_POINTS_DENOMINATOR;
+```
 
 ## Where codes appear
 

@@ -1,0 +1,14 @@
+---
+source: tooling/sanctifier-core/tests/detector_snapshots.rs
+expression: findings
+---
+- rule_name: SANCT_BPS_MAGIC_DENOMINATOR
+  severity: Warning
+  message: "SANCT_BPS_MAGIC_DENOMINATOR: hardcoded basis-point denominator `10_000` should use a named constant"
+  location: "hardcoded_fee:7"
+  suggestion: "Define and reuse a named constant such as `const BASIS_POINTS_DENOMINATOR: i128 = 10_000;` and validate any non-10_000 denominator against the intended unit"
+- rule_name: SANCT_BPS_MAGIC_DENOMINATOR
+  severity: Warning
+  message: "SANCT_BPS_MAGIC_DENOMINATOR: suspicious denominator `1000` in bps-like math may not match the expected 10_000 basis-point scale"
+  location: "suspicious_interest:11"
+  suggestion: "Define and reuse a named constant such as `const BASIS_POINTS_DENOMINATOR: i128 = 10_000;` and validate any non-10_000 denominator against the intended unit"
