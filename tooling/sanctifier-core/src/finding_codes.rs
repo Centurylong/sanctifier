@@ -19,6 +19,7 @@ pub const ERROR_CODE_COLLISION: &str = "S016";
 pub const FEE_ROUNDING: &str = "S017";
 pub const ARG_DOS: &str = "SANCT_ARG_DOS";
 pub const SANCT_UNWRAP: &str = "SANCT_UNWRAP";
+pub const ZERO_DENOMINATOR: &str = "SANCT_ZERO_DENOMINATOR";
 
 #[derive(Debug, Clone, Serialize)]
 pub struct FindingCode {
@@ -128,6 +129,12 @@ pub fn all_finding_codes() -> Vec<FindingCode> {
             description:
                 "Contract entrypoint uses unwrap, expect, or a risky unwrap_or_default fallback",
         },
+        FindingCode {
+            code: ZERO_DENOMINATOR,
+            category: "arithmetic",
+            description:
+                "Division or modulo operation uses a denominator without a visible zero guard",
+        },
     ]
 }
 
@@ -154,5 +161,6 @@ mod tests {
         assert!(codes.iter().any(|c| c.code == UNSAFE_PATTERN));
         assert!(codes.iter().any(|c| c.code == CUSTOM_RULE_MATCH));
         assert!(codes.iter().any(|c| c.code == SANCT_UNWRAP));
+        assert!(codes.iter().any(|c| c.code == ZERO_DENOMINATOR));
     }
 }

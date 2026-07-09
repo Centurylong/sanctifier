@@ -1,0 +1,15 @@
+---
+source: tooling/sanctifier-core/tests/detector_snapshots.rs
+assertion_line: 30
+expression: findings
+---
+- rule_name: SANCT_ZERO_DENOMINATOR
+  severity: Warning
+  message: "SANCT_ZERO_DENOMINATOR: `/` uses a denominator without a visible non-zero guard"
+  location: "price_per_share:14"
+  suggestion: "Check the denominator with `!= 0` or `> 0` before dividing or taking modulo"
+- rule_name: SANCT_ZERO_DENOMINATOR
+  severity: Warning
+  message: "SANCT_ZERO_DENOMINATOR: `%` uses a denominator without a visible non-zero guard"
+  location: "epoch_offset:19"
+  suggestion: "Check the denominator with `!= 0` or `> 0` before dividing or taking modulo"

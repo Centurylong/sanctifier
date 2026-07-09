@@ -18,7 +18,7 @@ use sanctifier_core::rules::{
     fee_rounding::FeeRoundingRule, hardcoded_addr::HardcodedAddrRule, ledger_size::LedgerSizeRule,
     missing_ttl::MissingTtlRule, panic_detection::PanicDetectionRule,
     sanct_unwrap::SanctUnwrapRule, unhandled_result::UnhandledResultRule,
-    unused_variable::UnusedVariableRule, Rule, RuleRegistry,
+    unused_variable::UnusedVariableRule, zero_denominator::ZeroDenominatorRule, Rule, RuleRegistry,
 };
 
 /// Run a detector against its fixture and snapshot the resulting findings.
@@ -148,6 +148,15 @@ fn snapshot_sanct_unwrap() {
 }
 
 #[test]
+fn snapshot_zero_denominator() {
+    assert_detector_snapshot(
+        "zero_denominator",
+        &ZeroDenominatorRule::new(),
+        include_str!("fixtures/detectors/zero_denominator.rs"),
+    );
+}
+
+#[test]
 fn arg_dos_detector_flags_only_uncapped_argument_iteration() {
     let findings = RuleRegistry::with_default_rules()
         .run_by_name(include_str!("fixtures/detectors/arg_dos.rs"), "arg_dos");
@@ -169,4 +178,17 @@ fn sanct_unwrap_detector_is_registered_in_default_rules() {
     assert!(findings
         .iter()
         .all(|finding| finding.rule_name == "SANCT_UNWRAP"));
+}
+
+#[test]
+fn zero_denominator_detector_is_registered_in_default_rules() {
+    let findings = RuleRegistry::with_default_rules().run_by_name(
+        include_str!("fixtures/detectors/zero_denominator.rs"),
+        "zero_denominator",
+    );
+
+    assert_eq!(findings.len(), 2, "{findings:#?}");
+    assert!(findings
+        .iter()
+        .all(|finding| finding.rule_name == "SANCT_ZERO_DENOMINATOR"));
 }
