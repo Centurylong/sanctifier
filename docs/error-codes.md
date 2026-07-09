@@ -11,9 +11,31 @@ Sanctifier now uses a unified finding code system across `sanctifier-core` and `
 | `S005` | storage_keys | Potential storage key collision |
 | `S006` | unsafe_patterns | Potentially unsafe language/runtime pattern |
 | `S007` | custom_rule | User-defined custom rule match |
+| `SANCT_REINITIALIZATION_GUARD` | initialization | Initialize entrypoint writes deployment-time state without an already-initialized guard |
 | `SANCT_UNWRAP` | panic_handling | `unwrap` / `expect` / risky `unwrap_or_default` inside `#[contractimpl]` entrypoints; replace with typed errors or explicit domain defaults |
 
 ## Detector catalog
+
+### `SANCT_REINITIALIZATION_GUARD`
+
+Flags Soroban `#[contractimpl]` initialization entrypoints that write
+deployment-time state such as admin, owner, config, treasury, or initialized
+flags without first checking that the contract has not already been initialized.
+
+```rust
+#[contractimpl]
+impl Contract {
+    pub fn initialize(env: Env, admin: Address) {
+        env.storage().instance().set(&DataKey::Admin, &admin);
+    }
+}
+```
+
+Check an initialized flag or an existing owner/admin/config storage key before
+writing deployment-time state, then abort with an `AlreadyInitialized` error or
+equivalent panic. The detector recognizes guards such as `.has(...)`,
+`contains_key(...)`, `is_initialized(...)`, and `AlreadyInitialized`-style
+branches.
 
 ### `SANCT_UNWRAP`
 

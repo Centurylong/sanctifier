@@ -8,6 +8,7 @@ pub mod hardcoded_addr;
 pub mod ledger_size;
 pub mod missing_ttl;
 pub mod panic_detection;
+pub mod reinitialization_guard;
 pub mod sanct_unwrap;
 pub mod unhandled_result;
 pub mod unused_variable;
@@ -128,6 +129,7 @@ impl RuleRegistry {
         registry.register(error_code_collision::ErrorCodeCollisionRule::new());
         registry.register(edge_amount::EdgeAmountRule::new());
         registry.register(fee_rounding::FeeRoundingRule::new());
+        registry.register(reinitialization_guard::ReinitializationGuardRule::new());
         registry.register(missing_ttl::MissingTtlRule::new());
         registry.register(arg_dos::ArgDosRule::new());
         registry.register(sanct_unwrap::SanctUnwrapRule::new());

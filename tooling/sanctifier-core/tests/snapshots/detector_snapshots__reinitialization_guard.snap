@@ -1,0 +1,15 @@
+---
+source: tooling/sanctifier-core/tests/detector_snapshots.rs
+assertion_line: 30
+expression: findings
+---
+- rule_name: SANCT_REINITIALIZATION_GUARD
+  severity: Warning
+  message: "SANCT_REINITIALIZATION_GUARD: `initialize` writes initialization state without an already-initialized guard"
+  location: "initialize:7"
+  suggestion: Check an initialized flag or existing admin/config storage key before writing deployment-time state
+- rule_name: SANCT_REINITIALIZATION_GUARD
+  severity: Warning
+  message: "SANCT_REINITIALIZATION_GUARD: `init_config` writes initialization state without an already-initialized guard"
+  location: "init_config:12"
+  suggestion: Check an initialized flag or existing admin/config storage key before writing deployment-time state
