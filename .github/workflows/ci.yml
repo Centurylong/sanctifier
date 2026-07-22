@@ -77,9 +77,23 @@ jobs:
 
       - name: Detector golden snapshots (insta)
         # Fails the build if any detector's findings differ from its reviewed
-        # snapshot. Regenerate locally with `cargo insta test` then review with
-        # `cargo insta review` (see tooling/sanctifier-core/tests/README.md).
+        # snapshot. This ensures detector changes are transparent and reviewed.
+        # 
+        # To review snapshot changes locally:
+        #   1. Run: .\scripts\review-snapshots.ps1 -TestOnly
+        #   2. Review diffs: .\scripts\review-snapshots.ps1 -Review
+        #   3. See docs/SNAPSHOT_REVIEW_WORKFLOW.md for full guide
         run: cargo insta test -p sanctifier-core --all-features --check --unreferenced reject
+
+      - name: Show snapshot diffs on failure
+        if: failure()
+        run: |
+          echo "::error::Snapshot tests failed. Detector output has changed."
+          echo "::error::Review the changes locally using:"
+          echo "::error::  .\\scripts\\review-snapshots.ps1 -TestOnly"
+          echo "::error::  .\\scripts\\review-snapshots.ps1 -Review"
+          echo "::error::See docs/SNAPSHOT_REVIEW_WORKFLOW.md for detailed guidance."
+          exit 1
 
       - name: Install tarpaulin
         run: cargo install cargo-tarpaulin || true

@@ -45,6 +45,25 @@ pending `*.snap.new` file next to the existing snapshot.
 
 Install the helper once: `cargo install cargo-insta`.
 
+### Using the review script (recommended)
+
+The project provides a PowerShell script for streamlined snapshot review:
+
+```powershell
+# Run snapshot tests to detect changes
+.\scripts\review-snapshots.ps1 -TestOnly
+
+# List pending snapshot files
+.\scripts\review-snapshots.ps1 -ListPending
+
+# Interactively review pending changes
+.\scripts\review-snapshots.ps1 -Review
+```
+
+See [docs/SNAPSHOT_REVIEW_WORKFLOW.md](../../../docs/SNAPSHOT_REVIEW_WORKFLOW.md) for the complete guide.
+
+### Using cargo-insta directly
+
 ```bash
 # Interactively accept/reject each pending change:
 cargo insta review
