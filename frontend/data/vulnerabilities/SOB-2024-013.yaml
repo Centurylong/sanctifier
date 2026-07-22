@@ -1,0 +1,27 @@
+id: SOB-2024-013
+title: Stale Price Oracle Data
+description: |
+  Using oracle prices without validating freshness allows attackers to exploit price latency
+  for undercollateralized borrows or incorrect liquidations.
+cvss: 8.2
+severity: high
+category: oracle
+affected_versions: "soroban-sdk <=20.5.0"
+pattern: |
+  get_price\(\)|oracle\.price\(|fetch_price\(
+poc_exploit: |
+  // Oracle shows $1.00 but actual price is $0.50;
+  // attacker borrows against overvalued collateral
+patch: |
+  const MAX_PRICE_AGE_SECS: u64 = 60;
+  if env.ledger().timestamp() - oracle_update_time > MAX_PRICE_AGE_SECS {
+      panic!("stale oracle");
+  }
+recommendation: Validate oracle price timestamps and reject prices older than an acceptable threshold.
+references: []
+tags:
+  - oracle
+  - price
+  - defi
+  - staleness
+related_cves: []

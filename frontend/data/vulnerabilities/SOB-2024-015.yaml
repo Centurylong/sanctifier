@@ -1,0 +1,24 @@
+id: SOB-2024-015
+title: Cross-Contract Reentrancy
+description: |
+  Calling an external contract before finalizing own state updates can be re-entered by
+  the callee, corrupting intermediate state.
+cvss: 8.8
+severity: high
+category: reentrancy
+affected_versions: "soroban-sdk <=20.5.0"
+pattern: |
+  \w+_client\.\w+\([^;]+\);\s*\n(?:(?!set_balance|storage\(\)).)*set_balance
+poc_exploit: |
+  // Attacker's contract re-enters victim.withdraw() before balance update;
+  // second call uses original balance
+patch: |
+  set_balance(&env, &user, balance - amount); // update state FIRST
+  token_client.transfer(&env, env.current_contract_address(), user, amount); // then interact
+recommendation: Apply Checks-Effects-Interactions pattern.
+references: []
+tags:
+  - reentrancy
+  - cross-contract
+  - checks-effects-interactions
+related_cves: []
