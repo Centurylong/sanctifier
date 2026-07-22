@@ -1074,6 +1074,9 @@ impl Analyzer {
         total
     }
 
+    // `&self` is not read here, only threaded through the recursive calls; kept
+    // as a method for call-site symmetry with the rest of the visitor.
+    #[allow(clippy::only_used_in_recursion)]
     fn estimate_type_size(&self, ty: &Type) -> usize {
         match ty {
             Type::Path(tp) => {

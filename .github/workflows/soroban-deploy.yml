@@ -39,8 +39,9 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Install stable Rust toolchain
-        uses: dtolnay/rust-toolchain@stable
+      - name: Install pinned Rust toolchain
+        # Pinned to 1.85.0 — see ci.yml for rationale (ethnum 1.5.0 / base64ct edition2024).
+        uses: dtolnay/rust-toolchain@1.85.0
         with:
           targets: wasm32-unknown-unknown
           components: rustfmt, clippy
