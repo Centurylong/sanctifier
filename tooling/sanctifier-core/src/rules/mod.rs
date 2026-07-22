@@ -5,6 +5,7 @@ pub mod edge_amount;
 pub mod error_code_collision;
 pub mod fee_rounding;
 pub mod hardcoded_addr;
+pub mod init_hardcoded_admin;
 pub mod ledger_size;
 pub mod missing_ttl;
 pub mod panic_detection;
@@ -131,6 +132,7 @@ impl RuleRegistry {
         registry.register(missing_ttl::MissingTtlRule::new());
         registry.register(arg_dos::ArgDosRule::new());
         registry.register(sanct_unwrap::SanctUnwrapRule::new());
+        registry.register(init_hardcoded_admin::InitHardcodedAdminRule::new());
         registry
     }
 }

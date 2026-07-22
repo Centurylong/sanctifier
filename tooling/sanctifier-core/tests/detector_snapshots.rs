@@ -15,7 +15,8 @@
 use sanctifier_core::rules::{
     arg_dos::ArgDosRule, arithmetic_overflow::ArithmeticOverflowRule, auth_gap::AuthGapRule,
     edge_amount::EdgeAmountRule, error_code_collision::ErrorCodeCollisionRule,
-    fee_rounding::FeeRoundingRule, hardcoded_addr::HardcodedAddrRule, ledger_size::LedgerSizeRule,
+    fee_rounding::FeeRoundingRule, hardcoded_addr::HardcodedAddrRule,
+    init_hardcoded_admin::InitHardcodedAdminRule, ledger_size::LedgerSizeRule,
     missing_ttl::MissingTtlRule, panic_detection::PanicDetectionRule,
     sanct_unwrap::SanctUnwrapRule, unhandled_result::UnhandledResultRule,
     unused_variable::UnusedVariableRule, Rule, RuleRegistry,
@@ -144,6 +145,15 @@ fn snapshot_sanct_unwrap() {
         "sanct_unwrap",
         &SanctUnwrapRule::new(),
         include_str!("fixtures/detectors/sanct_unwrap.rs"),
+    );
+}
+
+#[test]
+fn snapshot_init_hardcoded_admin() {
+    assert_detector_snapshot(
+        "init_hardcoded_admin",
+        &InitHardcodedAdminRule::new(),
+        include_str!("fixtures/detectors/init_hardcoded_admin.rs"),
     );
 }
 

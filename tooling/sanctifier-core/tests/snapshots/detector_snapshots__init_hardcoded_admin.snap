@@ -1,0 +1,14 @@
+---
+source: tooling/sanctifier-core/tests/detector_snapshots.rs
+expression: findings
+---
+- rule_name: SANCT_INIT_HARDCODED_ADMIN
+  severity: Warning
+  message: "SANCT_INIT_HARDCODED_ADMIN: Hardcoded address literal `GA7QYNF7SOWQ3GLR2BGMZEHXAVIRZA4KVWLTJJFC7MGXUA74P7UJVSGZ` in initialization function `initialize`"
+  location: "initialize:14"
+  suggestion: "Require the admin address as a formal parameter (e.g., admin: Address) instead of hardcoding address literals or default values."
+- rule_name: SANCT_INIT_HARDCODED_ADMIN
+  severity: Warning
+  message: "SANCT_INIT_HARDCODED_ADMIN: Hardcoded byte array literal in initialization function without formal admin parameter `init`"
+  location: "init:20"
+  suggestion: "Require the admin address as a formal parameter (e.g., admin: Address) instead of hardcoding address literals or default values."
