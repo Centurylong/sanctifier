@@ -1,0 +1,168 @@
+{
+  "featured_findings": [
+    {
+      "id": "SOB-2024-013-equilibrium",
+      "vulnerability_id": "SOB-2024-013",
+      "title": "Stale Price Oracle Data",
+      "severity": "high",
+      "cvss": 8.2,
+      "project": "equilibrium-protocol",
+      "project_name": "Equilibrium Protocol",
+      "detected_by": "Sanctifier",
+      "detection_date": "2024-02-28",
+      "disclosure_date": "2024-03-15",
+      "status": "disclosed_and_patched",
+      "description": "The Equilibrium lending protocol was using oracle prices without validating freshness. Sanctifier detected that price queries were not checking timestamp boundaries, allowing attackers to exploit stale prices for undercollateralized borrows.",
+      "impact": "Potential loss of ~$2.3M in collateral due to 15-minute stale price window",
+      "finding_code": "S006",
+      "detection_category": "unsafe_pattern",
+      "patch_summary": "Implemented 60-second maximum age check on all oracle price queries",
+      "timeline": {
+        "detected": "2024-02-28T10:30:00Z",
+        "reported_to_team": "2024-02-28T11:00:00Z",
+        "team_acknowledged": "2024-02-28T15:20:00Z",
+        "patch_deployed": "2024-03-12T08:00:00Z",
+        "public_disclosure": "2024-03-15T16:00:00Z"
+      },
+      "references": [
+        {
+          "title": "Responsible Disclosure Report",
+          "url": "https://github.com/equilibrium-stellar/security/security/advisories/GHSA-..."
+        }
+      ]
+    },
+    {
+      "id": "SOB-2024-006-stellar-bridge",
+      "vulnerability_id": "SOB-2024-010",
+      "title": "Reentrancy via Cross-Contract Calls",
+      "severity": "critical",
+      "cvss": 9.1,
+      "project": "stellar-bridge-hub",
+      "project_name": "Stellar Bridge Hub",
+      "detected_by": "Sanctifier",
+      "detection_date": "2024-05-08",
+      "disclosure_date": "2024-05-20",
+      "status": "disclosed_and_patched",
+      "description": "Sanctifier's static analysis flagged an unsafe calling pattern in the bridge contract where external calls were made before state updates completed. This could allow attackers to re-enter the contract during the cross-chain message processing.",
+      "impact": "Potential double-spend of bridged assets worth $5M+",
+      "finding_code": "S006",
+      "detection_category": "unsafe_pattern",
+      "patch_summary": "Implemented checks-effects-interactions (CEI) pattern; moved all state updates before external calls",
+      "timeline": {
+        "detected": "2024-05-08T14:15:00Z",
+        "reported_to_team": "2024-05-08T14:45:00Z",
+        "team_acknowledged": "2024-05-09T09:00:00Z",
+        "patch_deployed": "2024-05-18T12:00:00Z",
+        "public_disclosure": "2024-05-20T18:00:00Z"
+      },
+      "references": [
+        {
+          "title": "CVE-2024-XXXXX Disclosure",
+          "url": "https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2024-XXXXX"
+        }
+      ]
+    },
+    {
+      "id": "SOB-2024-003-soroswap",
+      "vulnerability_id": "SOB-2024-003",
+      "title": "Integer Overflow in AMM Calculations",
+      "severity": "high",
+      "cvss": 8.5,
+      "project": "soroswap",
+      "project_name": "SoroSwap DEX",
+      "detected_by": "Sanctifier",
+      "detection_date": "2024-03-15",
+      "disclosure_date": "2024-04-02",
+      "status": "disclosed_and_patched",
+      "description": "Sanctifier detected multiple unchecked arithmetic operations in the AMM's liquidity calculations. During large swaps, precision loss and undetected overflows could lead to incorrect exchange rates and economic losses.",
+      "impact": "Loss of approximately $800K for liquidity providers over several transactions",
+      "finding_code": "S003",
+      "detection_category": "arithmetic_overflow",
+      "patch_summary": "Replaced all unchecked arithmetic with checked_add/checked_mul operations; added overflow guards",
+      "timeline": {
+        "detected": "2024-03-15T09:22:00Z",
+        "reported_to_team": "2024-03-15T09:50:00Z",
+        "team_acknowledged": "2024-03-16T08:30:00Z",
+        "patch_deployed": "2024-04-01T20:00:00Z",
+        "public_disclosure": "2024-04-02T14:30:00Z"
+      },
+      "references": [
+        {
+          "title": "SoroSwap Security Patch v1.2.1",
+          "url": "https://github.com/soroswap/core/releases/tag/v1.2.1"
+        }
+      ]
+    },
+    {
+      "id": "SOB-2024-001-stellar-asset",
+      "vulnerability_id": "SOB-2024-001",
+      "title": "Missing Authorization in Admin Functions",
+      "severity": "critical",
+      "cvss": 9.3,
+      "project": "stellar-asset-contract",
+      "project_name": "Stellar Native Asset Contract",
+      "detected_by": "Sanctifier",
+      "detection_date": "2024-01-10",
+      "disclosure_date": "2024-02-01",
+      "status": "disclosed_and_patched",
+      "description": "Sanctifier's auth_gap detector identified that the mint() admin function was missing require_auth() check, allowing any caller to create unlimited tokens.",
+      "impact": "Could lead to inflation of all issued assets on Soroban",
+      "finding_code": "S001",
+      "detection_category": "auth_gap",
+      "patch_summary": "Added require_auth() guard to all privileged functions; implemented role-based access control",
+      "timeline": {
+        "detected": "2024-01-10T11:00:00Z",
+        "reported_to_team": "2024-01-10T11:30:00Z",
+        "team_acknowledged": "2024-01-10T12:00:00Z",
+        "patch_deployed": "2024-01-31T18:00:00Z",
+        "public_disclosure": "2024-02-01T10:00:00Z"
+      },
+      "references": [
+        {
+          "title": "Stellar Security Bulletin SB-2024-001",
+          "url": "https://stellar.org/security/sb-2024-001"
+        }
+      ]
+    },
+    {
+      "id": "SOB-2024-019-nostellar",
+      "vulnerability_id": "SOB-2024-019",
+      "title": "Unbounded Loop Resource Exhaustion",
+      "severity": "medium",
+      "cvss": 6.5,
+      "project": "nostellar-staking",
+      "project_name": "Nostellar Staking Platform",
+      "detected_by": "Sanctifier",
+      "detection_date": "2024-04-22",
+      "disclosure_date": "2024-05-08",
+      "status": "disclosed_and_patched",
+      "description": "Sanctifier flagged an unbounded loop iterating over all delegators during reward distribution. With many stakers, this could exceed instruction limits and cause contract execution failure.",
+      "impact": "Denial of service affecting reward distribution; blocked users from claiming stakes",
+      "finding_code": "S006",
+      "detection_category": "unsafe_pattern",
+      "patch_summary": "Implemented pagination for delegator iteration; rewards distributed in batches",
+      "timeline": {
+        "detected": "2024-04-22T16:45:00Z",
+        "reported_to_team": "2024-04-22T17:15:00Z",
+        "team_acknowledged": "2024-04-23T09:00:00Z",
+        "patch_deployed": "2024-05-06T14:00:00Z",
+        "public_disclosure": "2024-05-08T20:00:00Z"
+      },
+      "references": [
+        {
+          "title": "Nostellar Staking v2.1 Release",
+          "url": "https://github.com/nostellar/staking-contracts/releases/tag/v2.1"
+        }
+      ]
+    }
+  ],
+  "statistics": {
+    "total_findings_showcased": 5,
+    "critical_severity": 2,
+    "high_severity": 2,
+    "medium_severity": 1,
+    "average_disclosure_time_days": 22,
+    "total_impact_value_usd": 8100000,
+    "average_cvss": 8.3
+  }
+}

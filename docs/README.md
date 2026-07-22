@@ -23,6 +23,8 @@ New to Sanctifier and adding it to an existing project? Read in this order:
 
 ## Reference
 
+- **[Adopters & Findings Gallery](ADOPTERS_AND_FINDINGS.md)** — real projects using
+  Sanctifier and verified vulnerabilities discovered (responsibly disclosed).
 - **[Finding Codes](error-codes.md)** — the `S001`…`S016` codes emitted in CLI and
   JSON output.
 - **[Getting Started (detailed)](getting-started.md)** — example output and

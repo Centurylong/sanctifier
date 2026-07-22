@@ -1,0 +1,30 @@
+id: SOB-2024-031
+title: Multi-Signer Weight Bypass
+description: |
+  Multisig contracts that check signature count instead of cumulative signer weight allow
+  bypass with multiple low-weight signers.
+cvss: 8.1
+severity: high
+category: access-control
+affected_versions: "soroban-sdk <=20.5.0"
+pattern: |
+  signatures\.len\(\)\s*>=\s*threshold|sig_count\s*>=\s*threshold
+poc_exploit: |
+  // Quorum weight=100; attacker has 3 signers weight=1 each;
+  // 3 signatures pass count check
+patch: |
+  let weight: u32 = signers.iter()
+      .filter(|s| s.has_signed)
+      .map(|s| s.weight)
+      .sum();
+  if weight < threshold {
+      panic!("quorum not reached");
+  }
+recommendation: Enforce weight-based quorum thresholds, not raw signature counts.
+references: []
+tags:
+  - multisig
+  - quorum
+  - weight
+  - authorization
+related_cves: []

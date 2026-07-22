@@ -1,0 +1,29 @@
+id: SOB-2024-016
+title: Storage Key Collision
+description: |
+  Non-namespaced storage keys across different contract modules can cause reads/writes to
+  the same ledger entry from unrelated logic.
+cvss: 6.8
+severity: medium
+category: storage
+affected_versions: "soroban-sdk <=20.5.0"
+pattern: |
+  storage\(\)\.\w+\(\)\.(get|set)\(&["'][^"']+["']
+poc_exploit: |
+  // Module A and Module B both use key "bal";
+  // B's writes overwrite A's entries
+patch: |
+  #[contracttype]
+  pub enum DataKey {
+      Balance(Address),
+      Allowance(Address, Address),
+      TotalSupply,
+  }
+recommendation: Use #[contracttype] enum keys to namespace all storage entries.
+references:
+  - https://soroban.stellar.org/docs/fundamentals/storing-data
+tags:
+  - storage
+  - key-collision
+  - namespace
+related_cves: []

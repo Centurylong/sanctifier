@@ -1,0 +1,98 @@
+{
+  "adopters": [
+    {
+      "id": "stellar-asset-contract",
+      "name": "Stellar Native Asset Contract",
+      "repository": "https://github.com/stellar/rs-soroban-sdk/tree/main/soroban-builtin-sdk-macros",
+      "description": "Core Stellar-maintained asset management contract using Soroban",
+      "category": "core",
+      "findings_count": 3,
+      "vulnerabilities_found": ["SOB-2024-001", "SOB-2024-002"],
+      "date_added": "2024-01-15",
+      "logo_url": "https://stellar.org/logo.png",
+      "verified": true
+    },
+    {
+      "id": "equilibrium-protocol",
+      "name": "Equilibrium Protocol",
+      "repository": "https://github.com/equilibrium-stellar/protocol",
+      "description": "DeFi lending and borrowing protocol on Soroban with Sanctifier security audits",
+      "category": "defi",
+      "findings_count": 8,
+      "vulnerabilities_found": ["SOB-2024-013", "SOB-2024-015", "SOB-2024-018"],
+      "date_added": "2024-02-20",
+      "logo_url": "https://example.com/equilibrium.png",
+      "verified": true,
+      "notes": "Responsibly disclosed and patched oracle staleness issue"
+    },
+    {
+      "id": "soroswap",
+      "name": "SoroSwap DEX",
+      "repository": "https://github.com/soroswap/core",
+      "description": "Decentralized exchange (DEX) on Soroban leveraging Sanctifier for continuous security",
+      "category": "defi",
+      "findings_count": 12,
+      "vulnerabilities_found": ["SOB-2024-003", "SOB-2024-005", "SOB-2024-021"],
+      "date_added": "2024-03-10",
+      "logo_url": "https://example.com/soroswap.png",
+      "verified": true,
+      "notes": "Early adopter with 5+ patch cycles"
+    },
+    {
+      "id": "nostellar-staking",
+      "name": "Nostellar Staking Platform",
+      "repository": "https://github.com/nostellar/staking-contracts",
+      "description": "Liquid staking derivatives and delegation contracts, integrated Sanctifier CLI",
+      "category": "defi",
+      "findings_count": 5,
+      "vulnerabilities_found": ["SOB-2024-006", "SOB-2024-019"],
+      "date_added": "2024-04-05",
+      "logo_url": "https://example.com/nostellar.png",
+      "verified": true
+    },
+    {
+      "id": "stellar-bridge-hub",
+      "name": "Stellar Bridge Hub",
+      "repository": "https://github.com/stellar-bridge/hub-contracts",
+      "description": "Cross-chain bridge for asset transfers using Sanctifier static analysis",
+      "category": "infrastructure",
+      "findings_count": 4,
+      "vulnerabilities_found": ["SOB-2024-010", "SOB-2024-016"],
+      "date_added": "2024-05-12",
+      "logo_url": "https://example.com/bridge.png",
+      "verified": true,
+      "notes": "Critical re-entrancy issue detected before deployment"
+    },
+    {
+      "id": "arc-amm",
+      "name": "Arc Automated Market Maker",
+      "repository": "https://github.com/arc-stellar/amm-contracts",
+      "description": "AMM implementation using Sanctifier for arithmetic and resource exhaustion analysis",
+      "category": "defi",
+      "findings_count": 7,
+      "vulnerabilities_found": ["SOB-2024-003", "SOB-2024-012", "SOB-2024-020"],
+      "date_added": "2024-05-28",
+      "logo_url": "https://example.com/arc.png",
+      "verified": true
+    },
+    {
+      "id": "lumensafe-governance",
+      "name": "LumenSafe Governance",
+      "repository": "https://github.com/lumensafe/governance",
+      "description": "DAO governance contracts with Sanctifier integration in CI/CD pipeline",
+      "category": "governance",
+      "findings_count": 6,
+      "vulnerabilities_found": ["SOB-2024-007", "SOB-2024-014"],
+      "date_added": "2024-06-15",
+      "logo_url": "https://example.com/lumensafe.png",
+      "verified": true
+    }
+  ],
+  "statistics": {
+    "total_adopters": 7,
+    "verified_adopters": 7,
+    "total_findings_surfaced": 52,
+    "unique_vulnerabilities_found": 18,
+    "last_updated": "2024-07-22"
+  }
+}

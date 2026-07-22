@@ -1,0 +1,185 @@
+name: Submit Project to Adopters Gallery
+description: List your Soroban project as a Sanctifier adopter
+title: "Add [Your Project] to Adopters Gallery"
+labels: ["gallery", "adopter", "showcase"]
+assignees: []
+
+body:
+  - type: markdown
+    attributes:
+      value: |
+        # Adopters Gallery Submission
+        
+        Thank you for using Sanctifier! Help showcase real adoption and impact in the Soroban ecosystem by adding your project to our gallery.
+        
+        **📖 Learn more:** See [Gallery Submission Guidelines](../docs/GALLERY_SUBMISSIONS.md)
+
+  - type: text
+    id: project_name
+    attributes:
+      label: Project Name
+      description: The name of your Soroban project
+      placeholder: "e.g., SoroSwap DEX"
+    validations:
+      required: true
+
+  - type: url
+    id: repository
+    attributes:
+      label: Repository URL
+      description: GitHub (or equivalent) repository URL
+      placeholder: "https://github.com/yourorg/your-repo"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: category
+    attributes:
+      label: Project Category
+      description: What type of project is this?
+      options:
+        - "DeFi - DEX/AMM"
+        - "DeFi - Lending/Borrowing"
+        - "DeFi - Staking/Yield"
+        - "DeFi - Derivatives"
+        - "Governance/DAO"
+        - "NFT/Collection"
+        - "Infrastructure/Bridge"
+        - "Tooling/SDK"
+        - "Core/Protocol"
+        - "Other"
+    validations:
+      required: true
+
+  - type: textarea
+    id: description
+    attributes:
+      label: Project Description
+      description: "Brief description of what your project does (1-2 sentences)"
+      placeholder: "Our project is a decentralized exchange on Soroban that enables..."
+      rows: 3
+    validations:
+      required: true
+
+  - type: text
+    id: scans_completed
+    attributes:
+      label: Number of Sanctifier Scans Completed
+      description: "How many times have you run Sanctifier analysis?"
+      placeholder: "5"
+    validations:
+      required: true
+
+  - type: text
+    id: findings_count
+    attributes:
+      label: Total Vulnerabilities Found (optional)
+      description: "How many vulnerabilities has Sanctifier found in your project?"
+      placeholder: "8"
+    validations:
+      required: false
+
+  - type: textarea
+    id: findings_breakdown
+    attributes:
+      label: Findings Breakdown (optional)
+      description: |
+        Brief breakdown of severity levels found (e.g., "2 critical, 4 high, 2 medium")
+        This helps demonstrate the value of Sanctifier and your commitment to security.
+      placeholder: |
+        - Critical: 1
+        - High: 3
+        - Medium: 2
+        - Low: 2
+      rows: 4
+    validations:
+      required: false
+
+  - type: textarea
+    id: findings_disclosed
+    attributes:
+      label: Responsibly Disclosed Findings (optional)
+      description: |
+        Have any vulnerabilities been publicly disclosed? If so, provide links or IDs
+        (e.g., "SOB-2024-013", "Security Advisory", "Blog post")
+        All submissions will follow responsible disclosure timelines.
+      placeholder: "SOB-2024-013 (Stale Oracle), SOB-2024-019 (Loop Exhaustion)"
+      rows: 3
+    validations:
+      required: false
+
+  - type: textarea
+    id: integration_details
+    attributes:
+      label: Sanctifier Integration Details (optional)
+      description: |
+        How is Sanctifier integrated into your workflow?
+        (e.g., "CI/CD via GitHub Actions", "Pre-deployment checks", "Manual analysis")
+      placeholder: "Running Sanctifier in GitHub Actions on all PRs"
+      rows: 3
+    validations:
+      required: false
+
+  - type: url
+    id: logo_url
+    attributes:
+      label: Logo URL (optional)
+      description: "URL to your project logo (for gallery display)"
+      placeholder: "https://example.com/logo.png"
+    validations:
+      required: false
+
+  - type: textarea
+    id: additional_info
+    attributes:
+      label: Additional Information (optional)
+      description: |
+        Anything else you'd like us to know? Notable achievements, team size, 
+        funding, partnerships, etc.
+      placeholder: "We're a venture-backed team focused on..."
+      rows: 3
+    validations:
+      required: false
+
+  - type: checkboxes
+    id: agreements
+    attributes:
+      label: Agreements
+      options:
+        - label: My project uses Sanctifier actively
+          required: true
+        - label: I have permission to represent this project
+          required: true
+        - label: |
+            I commit to responsible disclosure practices for any vulnerabilities 
+            found via Sanctifier (30+ day window, coordination with maintainers)
+          required: false
+        - label: I'm willing to share findings with the community to help others learn
+          required: false
+
+  - type: textarea
+    id: contact
+    attributes:
+      label: Contact Information
+      description: "How can maintainers reach you for verification or follow-ups?"
+      placeholder: |
+        Email: your@email.com
+        GitHub: @yourhandle
+        Discord: YourHandle#1234
+      rows: 3
+    validations:
+      required: true
+
+  - type: markdown
+    attributes:
+      value: |
+        ---
+        
+        ## What Happens Next?
+        
+        1. ✅ Maintainers review your submission
+        2. 🔍 We may ask for proof of Sanctifier integration (can be redacted)
+        3. ✅ Once verified, your project is added to the [Adopters Gallery](../docs/ADOPTERS_AND_FINDINGS.md)
+        4. 📢 Featured in the next release notes
+        
+        **Questions?** Check out the [Gallery Submission Guidelines](../docs/GALLERY_SUBMISSIONS.md)
