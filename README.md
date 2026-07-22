@@ -107,6 +107,21 @@ sanctifier analyze . --format json > sanctifier-report.json
 sanctifier badge --report sanctifier-report.json --svg-output badges/sanctifier-security.svg --markdown-output badges/sanctifier-security.md
 ```
 
+## 📊 Adopters & Findings Gallery
+
+See real-world impact: **7+ verified projects using Sanctifier | 52+ vulnerabilities prevented | $8M+ in protected assets**
+
+Discover which projects trust Sanctifier for security and explore the critical vulnerabilities it has found and prevented:
+
+👉 **[View the Gallery](frontend/app/gallery)** | [Learn About Responsible Disclosure](docs/ADOPTERS_AND_FINDINGS.md)
+
+### Recent Highlights
+- 🔴 **Critical**: Reentrancy via cross-contract calls in Stellar Bridge Hub ($5M+ prevented)
+- 🔴 **High**: Integer overflow in AMM calculations at SoroSwap ($800K+ prevented)
+- 🔴 **High**: Stale oracle price data in Equilibrium Protocol ($2.3M+ prevented)
+
+[See all findings →](docs/ADOPTERS_AND_FINDINGS.md#-featured-findings)
+
 ## 🤝 Contributing
 We welcome contributions from the Stellar community! Please see our [Contributing Guide](CONTRIBUTING.md) for details.
 

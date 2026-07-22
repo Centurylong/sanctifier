@@ -1,0 +1,28 @@
+id: SOB-2024-029
+title: Unchecked Authorization on Burn Function
+description: |
+  Token burn without proper authorization allows any caller to destroy another account's
+  tokens.
+cvss: 9.1
+severity: critical
+category: access-control
+affected_versions: "soroban-sdk <=20.5.0"
+pattern: |
+  fn\s+burn\s*\([^)]*\)\s*\{(?:(?!require_auth).)*balance
+poc_exploit: |
+  contract.burn(&env, victim_address, victim_balance);
+patch: |
+  fn burn(env: Env, from: Address, amount: i128) {
+      from.require_auth();
+      let balance = get_balance(&env, &from);
+      let new_balance = balance.checked_sub(amount).ok_or(Error::InsufficientBalance).unwrap();
+      set_balance(&env, &from, new_balance);
+  }
+recommendation: Token owner must require_auth() before tokens can be burned from their account.
+references: []
+tags:
+  - token
+  - burn
+  - authorization
+  - access-control
+related_cves: []

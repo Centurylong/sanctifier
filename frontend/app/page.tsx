@@ -41,6 +41,16 @@ export default function Home() {
           >
             Security Dashboard
           </Link>
+          <Link
+            href="/gallery"
+            className="rounded-lg border px-6 py-3 font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2"
+            style={{
+              borderColor: "var(--border)",
+              color: "var(--foreground)",
+            }}
+          >
+            Adopters & Findings
+          </Link>
         </div>
       </main>
     </div>

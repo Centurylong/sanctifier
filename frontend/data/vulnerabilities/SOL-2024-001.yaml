@@ -1,0 +1,24 @@
+id: SOL-2024-001
+title: Unprotected Initialization
+description: |
+  Contract initialize/init function lacks access control, allowing anyone to re-initialize
+  and take ownership.
+cvss: 9.8
+severity: critical
+category: access-control
+affected_versions: "soroban-sdk <=20.5.0"
+pattern: |
+  fn\s+(initialize|init)\s*\([^)]*\)\s*\{[^}]*storage\(\)
+poc_exploit: |
+  contract.initialize(attacker_address, &env);
+patch: |
+  if env.storage().instance().has(&DataKey::Admin) { panic!("already initialized"); }
+  admin.require_auth();
+recommendation: Add require_auth() or verify not-yet-initialized before accepting parameters.
+references:
+  - https://soroban.stellar.org/docs/fundamentals/authorization
+tags:
+  - initialization
+  - ownership
+  - access-control
+related_cves: []

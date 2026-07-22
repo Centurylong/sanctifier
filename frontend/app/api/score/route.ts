@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { DEFAULT_FIXTURES } from "../../../lib/score-history/adapter";
-import { rateLimit } from "../../../lib/rate-limit";
+import { DEFAULT_FIXTURES } from "../../lib/score-history/adapter";
+import { rateLimit } from "../../lib/rate-limit";
 
 export async function GET(request: NextRequest) {
   try {
