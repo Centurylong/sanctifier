@@ -178,10 +178,8 @@ pub fn exec(args: AnalyzeArgs) -> anyhow::Result<()> {
                         } else {
                             supps.push((i + 1, code.trim().to_string(), justification.to_string()));
                         }
-                    } else {
-                        if !is_json {
-                            eprintln!("{} Warning: Inline suppression missing justification at {}:{}", "⚠️".yellow(), file_path, i + 1);
-                        }
+                    } else if !is_json {
+                        eprintln!("{} Warning: Inline suppression missing justification at {}:{}", "⚠️".yellow(), file_path, i + 1);
                     }
                 }
             }
