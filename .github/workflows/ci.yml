@@ -18,8 +18,13 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Install stable Rust toolchain
-        uses: dtolnay/rust-toolchain@stable
+      - name: Install pinned Rust toolchain
+        # Pinned to 1.85.0: the transitive dep `ethnum 1.5.0` (via soroban-env-common
+        # 20.3.0) fails to compile on newer rustc (E0512 transmute in its error.rs),
+        # and `base64ct 1.8.3` requires the edition2024 feature stabilized in 1.85.
+        # 1.85.0 is the lowest stable that satisfies both. Do not bump without
+        # re-verifying `cargo clippy -p sanctifier-core` compiles ethnum.
+        uses: dtolnay/rust-toolchain@1.85.0
         with:
           components: rustfmt, clippy
 
