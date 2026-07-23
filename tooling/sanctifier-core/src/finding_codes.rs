@@ -18,6 +18,7 @@ pub const DEAD_CODE: &str = "S015";
 pub const ERROR_CODE_COLLISION: &str = "S016";
 pub const FEE_ROUNDING: &str = "S017";
 pub const ARG_DOS: &str = "SANCT_ARG_DOS";
+pub const BALANCE_EQUALITY: &str = "SANCT_BALANCE_EQ";
 pub const SANCT_UNWRAP: &str = "SANCT_UNWRAP";
 pub const SANCT_VISIBILITY: &str = "SANCT_VISIBILITY";
 pub const UNBOUNDED_STORAGE: &str = "SANCT_UNBOUNDED_STORAGE";
@@ -99,6 +100,12 @@ pub fn all_finding_codes() -> Vec<FindingCode> {
             code: EDGE_AMOUNT,
             category: "code_hygiene",
             description: "Transfer/mint/burn missing amount>0 or from!=to validation guards",
+        },
+        FindingCode {
+            code: BALANCE_EQUALITY,
+            category: "logic",
+            description:
+                "Balance gated against an amount with `==`/`!=` where `>=`/`<=` was likely intended",
         },
         FindingCode {
             code: DEPRECATED_SDK,
