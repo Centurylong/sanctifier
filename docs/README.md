@@ -23,6 +23,8 @@ New to Sanctifier and adding it to an existing project? Read in this order:
 
 ## Reference
 
+- **[Positioning](positioning.md)** — where Sanctifier fits relative to a manual
+  audit and other tools, with an honest scope and limitations statement.
 - **[Finding Codes](error-codes.md)** — the `S001`…`S016` codes emitted in CLI and
   JSON output.
 - **[Getting Started (detailed)](getting-started.md)** — example output and
