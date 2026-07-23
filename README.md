@@ -41,9 +41,26 @@ Deploy runtime guard wrapper contracts to Soroban testnet with continuous valida
 
 ## 📦 Installation (CLI)
 
+**Homebrew** (macOS & Linux) — recommended:
+
 ```bash
-cargo install --path tooling/sanctifier-cli
+brew tap Centurylong/sanctifier
+brew install sanctifier
 ```
+
+**cargo-binstall** — downloads a pre-built binary, no compilation needed:
+
+```bash
+cargo binstall sanctifier-cli
+```
+
+**cargo install** — compiles from source:
+
+```bash
+cargo install --git https://github.com/Centurylong/sanctifier sanctifier-cli
+```
+
+For full installation details (apt, manual download, verification) see [docs/installation.md](docs/installation.md).
 
 ## 🛠 Usage
 

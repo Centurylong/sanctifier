@@ -1,0 +1,169 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+env:
+  CARGO_TERM_COLOR: always
+  # Build z3 from source and link statically so distributed binaries have no
+  # runtime dependency on libz3.
+  Z3_SYS_Z3_LINK_STATIC: "1"
+
+jobs:
+  build:
+    name: Build ${{ matrix.target }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - target: x86_64-unknown-linux-gnu
+            os: ubuntu-22.04
+            archive: tar.gz
+
+          - target: x86_64-apple-darwin
+            os: macos-13
+            archive: tar.gz
+
+          - target: aarch64-apple-darwin
+            os: macos-14
+            archive: tar.gz
+
+          - target: x86_64-pc-windows-msvc
+            os: windows-latest
+            archive: zip
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
+
+      - name: Cache cargo
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/bin/
+            ~/.cargo/registry/index/
+            ~/.cargo/registry/cache/
+            ~/.cargo/git/db/
+            target/
+          key: ${{ runner.os }}-${{ matrix.target }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: ${{ runner.os }}-${{ matrix.target }}-cargo-
+
+      - name: Install build dependencies (Linux)
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y cmake libdbus-1-dev
+
+      - name: Install build dependencies (macOS)
+        if: runner.os == 'macOS'
+        run: brew install cmake
+
+      - name: Install build dependencies (Windows)
+        if: runner.os == 'Windows'
+        run: choco install cmake --installargs 'ADD_CMAKE_TO_PATH=System' -y
+
+      - name: Build
+        shell: bash
+        run: |
+          cd tooling/sanctifier-cli
+          cargo build --release --target ${{ matrix.target }}
+
+      - name: Determine version
+        id: version
+        shell: bash
+        run: echo "version=${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"
+
+      - name: Package (tar.gz)
+        if: matrix.archive == 'tar.gz'
+        shell: bash
+        run: |
+          BIN="tooling/sanctifier-cli/target/${{ matrix.target }}/release/sanctifier"
+          ARCHIVE="sanctifier-${{ steps.version.outputs.version }}-${{ matrix.target }}.tar.gz"
+          tar -czf "$ARCHIVE" -C "$(dirname "$BIN")" "$(basename "$BIN")"
+          echo "ASSET=$ARCHIVE" >> "$GITHUB_ENV"
+
+      - name: Package (zip)
+        if: matrix.archive == 'zip'
+        shell: pwsh
+        run: |
+          $bin  = "tooling\sanctifier-cli\target\${{ matrix.target }}\release\sanctifier.exe"
+          $archive = "sanctifier-${{ steps.version.outputs.version }}-${{ matrix.target }}.zip"
+          Compress-Archive -Path $bin -DestinationPath $archive
+          "ASSET=$archive" | Out-File -FilePath $env:GITHUB_ENV -Append
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.target }}
+          path: ${{ env.ASSET }}
+
+  release:
+    name: Create GitHub release
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          # Use a PAT so the commit pushed from this job can itself trigger CI.
+          # Falls back to GITHUB_TOKEN (won't re-trigger workflows, but still works).
+          token: ${{ secrets.RELEASE_TOKEN || secrets.GITHUB_TOKEN }}
+
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+          merge-multiple: true
+
+      - name: Compute SHA-256 checksums
+        run: |
+          cd artifacts
+          sha256sum * > SHA256SUMS
+          cat SHA256SUMS
+
+      - name: Update Homebrew formula SHA-256 values
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          FORMULA="Formula/sanctifier.rb"
+
+          update_sha() {
+            local target="$1"
+            local placeholder="$2"
+            local archive="artifacts/sanctifier-${VERSION}-${target}.tar.gz"
+            if [[ -f "$archive" ]]; then
+              local sha
+              sha=$(sha256sum "$archive" | awk '{print $1}')
+              sed -i "s/${placeholder}/${sha}/g" "$FORMULA"
+            fi
+          }
+
+          update_sha "x86_64-apple-darwin"       "PLACEHOLDER_X86_64_APPLE_DARWIN"
+          update_sha "aarch64-apple-darwin"       "PLACEHOLDER_AARCH64_APPLE_DARWIN"
+          update_sha "x86_64-unknown-linux-gnu"   "PLACEHOLDER_X86_64_LINUX"
+
+          # Bump the version line in the formula
+          sed -i "s/version \".*\"/version \"${VERSION}\"/" "$FORMULA"
+
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add "$FORMULA"
+          git diff --cached --quiet || git commit -m "chore(release): update Homebrew formula to v${VERSION}"
+          git push
+
+      - name: Create release and upload assets
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            artifacts/*
+          generate_release_notes: true
