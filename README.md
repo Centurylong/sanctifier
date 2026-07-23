@@ -130,5 +130,10 @@ We welcome contributions from the Stellar community! Please see our [Contributin
 ## 🔎 Finding Codes
 Unified finding codes (`S001`...`S007`) are documented in [docs/error-codes.md](docs/error-codes.md).
 
+## 📚 Case Studies
+Worked examples that reproduce a real Soroban bug class, catch it with Sanctifier, apply the fix, and rescan clean:
+
+* [Admin Takeover via Missing `require_auth`](docs/case-studies/admin-takeover.md) — broken access control (`S001`)
+
 ## 📄 License
 MIT
