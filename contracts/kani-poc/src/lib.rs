@@ -69,6 +69,36 @@ pub fn burn_pure(balance: i128, amount: i128) -> Result<i128, &'static str> {
         .ok_or("Insufficient balance to burn")
 }
 
+/// Deliberately **buggy** transfer used as a formal-verification counterexample.
+///
+/// It debits the sender by `amount` but credits the receiver by `amount + 1` — so
+/// every transfer silently *mints* one unit and the total supply grows. This is
+/// the canonical "mint-on-transfer" bug. It exists only to demonstrate that the
+/// conservation proof actually has teeth: `verify_mint_on_transfer_bug_breaks_
+/// conservation` (a `#[kani::should_panic]` harness) proves Kani finds the
+/// violating trace, and `mint_on_transfer_bug_creates_supply` shows it under a
+/// plain unit test. It is compiled only under `kani`/`test`, never in a release
+/// build.
+#[cfg(any(kani, test))]
+pub fn transfer_pure_mint_bug(
+    balance_from: i128,
+    balance_to: i128,
+    amount: i128,
+) -> Result<(i128, i128), &'static str> {
+    if amount <= 0 {
+        return Err("Amount must be positive");
+    }
+    let new_from = balance_from
+        .checked_sub(amount)
+        .ok_or("Insufficient balance")?;
+    // BUG: credits `amount + 1` instead of `amount`, minting one unit per call.
+    let new_to = balance_to
+        .checked_add(amount)
+        .and_then(|v| v.checked_add(1))
+        .ok_or("Receiver balance overflow")?;
+    Ok((new_from, new_to))
+}
+
 // ── Contract (not verified: uses Host types) ────────────────────────────────────
 
 #[contract]
@@ -134,6 +164,49 @@ mod verification {
 
         assert!(new_from == balance_from - amount);
         assert!(new_to == balance_to + amount);
+        assert!(
+            new_from + new_to == balance_from + balance_to,
+            "Conservation of supply"
+        );
+    }
+
+    /// **Counterexample**: a mint-on-transfer bug is *caught* by the conservation
+    /// property.
+    ///
+    /// `transfer_pure_mint_bug` credits the receiver one unit more than it debits
+    /// the sender, so `new_from + new_to == balance_from + balance_to + 1` and the
+    /// conservation equality is violated for **every** admissible input. The
+    /// harness asserts conservation and is marked `#[kani::should_panic]`: the
+    /// proof succeeds precisely because Kani finds a trace where the assertion
+    /// fails. This is the flip side of `verify_transfer_pure_conservation` — it
+    /// demonstrates the conservation harness is non-vacuous and would reject a
+    /// contract that mints value on transfer.
+    ///
+    /// Bounds mirror the passing harness so the two are directly comparable: the
+    /// only difference is the buggy `+ 1`, isolating the defect as the sole cause
+    /// of the violation.
+    #[kani::proof]
+    #[kani::should_panic]
+    fn verify_mint_on_transfer_bug_breaks_conservation() {
+        let balance_from: i128 = kani::any();
+        let balance_to: i128 = kani::any();
+        let amount: i128 = kani::any();
+
+        kani::assume(amount > 0);
+        kani::assume(balance_from >= amount);
+        kani::assume(balance_to >= 0);
+        // Leave head-room for the buggy `+ 1` credit so the overflow guard, not an
+        // i128 overflow, is what the harness exercises.
+        kani::assume(balance_to <= i128::MAX - amount - 1);
+        kani::assume(balance_from <= i128::MAX - balance_to);
+
+        let Ok((new_from, new_to)) = transfer_pure_mint_bug(balance_from, balance_to, amount)
+        else {
+            panic!("buggy transfer failed despite valid preconditions");
+        };
+
+        // This assertion is expected to FAIL (supply grew by one) — that failing
+        // trace is exactly what `should_panic` proves Kani discovers.
         assert!(
             new_from + new_to == balance_from + balance_to,
             "Conservation of supply"
@@ -272,5 +345,33 @@ mod verification {
                 "initialize must succeed on a fresh contract"
             );
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// The correct transfer conserves the two-account total (concrete witness of
+    /// the property `verify_transfer_pure_conservation` proves for all inputs).
+    #[test]
+    fn transfer_conserves_supply() {
+        let (from, to, amount) = (100i128, 40i128, 30i128);
+        let (new_from, new_to) = transfer_pure(from, to, amount).unwrap();
+        assert_eq!(new_from + new_to, from + to);
+    }
+
+    /// The buggy variant breaks conservation by minting one unit per transfer —
+    /// the concrete counterexample behind `verify_mint_on_transfer_bug_breaks_
+    /// conservation`.
+    #[test]
+    fn mint_on_transfer_bug_creates_supply() {
+        let (from, to, amount) = (100i128, 40i128, 30i128);
+        let (new_from, new_to) = transfer_pure_mint_bug(from, to, amount).unwrap();
+        assert_eq!(
+            new_from + new_to,
+            from + to + 1,
+            "buggy transfer must mint exactly one unit"
+        );
     }
 }
