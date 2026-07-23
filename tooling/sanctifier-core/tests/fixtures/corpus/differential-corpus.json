@@ -24,7 +24,9 @@
     "arg_dos": "SANCT_ARG_DOS",
     "SANCT_ARG_DOS": "SANCT_ARG_DOS",
     "sanct_unwrap": "SANCT_UNWRAP",
-    "SANCT_UNWRAP": "SANCT_UNWRAP"
+    "SANCT_UNWRAP": "SANCT_UNWRAP",
+    "sanct_visibility": "SANCT_VISIBILITY",
+    "SANCT_VISIBILITY": "SANCT_VISIBILITY"
   },
   "overlap_legend": {
     "shared-covered": "Class has an EVM analogue and Sanctifier already flags it.",
