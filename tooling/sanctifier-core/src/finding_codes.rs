@@ -26,6 +26,13 @@ pub const ALLOWANCE_RACE: &str = "SANCT_ALLOWANCE_RACE";
 pub const STATE_WRITE_IN_VIEW: &str = "SANCT_STATE_WRITE_IN_VIEW";
 pub const DIVISION_BY_ZERO: &str = "S018";
 
+// ── Source-optional (compiled WASM) checks ────────────────────────────────────
+// Emitted only by `sanctifier wasm`, which analyzes a deployed module directly.
+pub const WASM_NOT_SOROBAN: &str = "W001";
+pub const WASM_NO_EXPORTS: &str = "W002";
+pub const WASM_MISSING_ENV_META: &str = "W003";
+pub const WASM_FLOAT_TYPES: &str = "W004";
+
 #[derive(Debug, Clone, Serialize)]
 pub struct FindingCode {
     pub code: &'static str,
@@ -168,6 +175,29 @@ pub fn all_finding_codes() -> Vec<FindingCode> {
             category: "arithmetic",
             description:
                 "Division or modulo by a non-constant value not proven non-zero, which panics on-chain if zero at runtime",
+        },
+        FindingCode {
+            code: WASM_NOT_SOROBAN,
+            category: "wasm",
+            description:
+                "Compiled module has no Soroban contract spec section; may not be a Soroban contract",
+        },
+        FindingCode {
+            code: WASM_NO_EXPORTS,
+            category: "wasm",
+            description: "Compiled module exports no callable functions",
+        },
+        FindingCode {
+            code: WASM_MISSING_ENV_META,
+            category: "wasm",
+            description:
+                "Compiled module is missing Soroban environment metadata (interface version)",
+        },
+        FindingCode {
+            code: WASM_FLOAT_TYPES,
+            category: "wasm",
+            description:
+                "Compiled module uses floating-point value types, which the Soroban host rejects",
         },
     ]
 }
