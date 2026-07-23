@@ -33,6 +33,9 @@ New to Sanctifier and adding it to an existing project? Read in this order:
 - **[Differential Testing vs Slither/Aderyn](differential-testing.md)** — how
   Sanctifier's coverage compares to established EVM analyzers on overlapping
   checks, with the shared corpus, the overlap matrix, and follow-up gaps.
+- **[Differential Testing vs other Soroban linters](differential-soroban-linters.md)**
+  — the same-platform study vs Soroban-native analyzers (CoinFabrik Scout), a
+  detector-for-detector overlap matrix, agreements/gaps, and follow-ups.
 
 ## How these pages fit together
 
