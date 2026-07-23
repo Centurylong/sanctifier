@@ -16,6 +16,7 @@ pub mod shift_overflow;
 pub mod state_write_in_view;
 pub mod unbounded_storage;
 pub mod unhandled_result;
+pub mod unsigned_underflow;
 pub mod unused_variable;
 pub mod view_panic;
 
@@ -168,6 +169,7 @@ impl RuleRegistry {
         registry.register(allowance_race::AllowanceRaceRule::new());
         registry.register(state_write_in_view::StateWriteInViewRule::new());
         registry.register(division_by_zero::DivisionByZeroRule::new());
+        registry.register(unsigned_underflow::UnsignedUnderflowRule::new());
         registry
     }
 }
