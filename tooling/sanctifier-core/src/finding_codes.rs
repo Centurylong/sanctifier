@@ -24,6 +24,7 @@ pub const UNBOUNDED_STORAGE: &str = "SANCT_UNBOUNDED_STORAGE";
 pub const SANCT_VIEW_PANIC: &str = "SANCT_VIEW_PANIC";
 pub const ALLOWANCE_RACE: &str = "SANCT_ALLOWANCE_RACE";
 pub const STATE_WRITE_IN_VIEW: &str = "SANCT_STATE_WRITE_IN_VIEW";
+pub const DIVISION_BY_ZERO: &str = "S018";
 
 #[derive(Debug, Clone, Serialize)]
 pub struct FindingCode {
@@ -162,6 +163,12 @@ pub fn all_finding_codes() -> Vec<FindingCode> {
             description:
                 "Getter/view-style function performs a storage write; callers expect it to be read-only",
         },
+        FindingCode {
+            code: DIVISION_BY_ZERO,
+            category: "arithmetic",
+            description:
+                "Division or modulo by a non-constant value not proven non-zero, which panics on-chain if zero at runtime",
+        },
     ]
 }
 
@@ -192,5 +199,6 @@ mod tests {
         assert!(codes.iter().any(|c| c.code == UNBOUNDED_STORAGE));
         assert!(codes.iter().any(|c| c.code == SANCT_VIEW_PANIC));
         assert!(codes.iter().any(|c| c.code == ALLOWANCE_RACE));
+        assert!(codes.iter().any(|c| c.code == DIVISION_BY_ZERO));
     }
 }
