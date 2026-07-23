@@ -21,8 +21,8 @@ use sanctifier_core::rules::{
     hardcoded_addr::HardcodedAddrRule, ledger_size::LedgerSizeRule, missing_ttl::MissingTtlRule,
     panic_detection::PanicDetectionRule, sanct_unwrap::SanctUnwrapRule,
     state_write_in_view::StateWriteInViewRule, unbounded_storage::UnboundedStorageRule,
-    unhandled_result::UnhandledResultRule, unused_variable::UnusedVariableRule,
-    view_panic::ViewPanicRule, Rule, RuleRegistry,
+    unhandled_result::UnhandledResultRule, unsigned_underflow::UnsignedUnderflowRule,
+    unused_variable::UnusedVariableRule, view_panic::ViewPanicRule, Rule, RuleRegistry,
 };
 
 /// Run a detector against its fixture and snapshot the resulting findings.
@@ -202,6 +202,15 @@ fn snapshot_division_by_zero() {
         "division_by_zero",
         &DivisionByZeroRule::new(),
         include_str!("fixtures/detectors/division_by_zero.rs"),
+    );
+}
+
+#[test]
+fn snapshot_unsigned_underflow() {
+    assert_detector_snapshot(
+        "unsigned_underflow",
+        &UnsignedUnderflowRule::new(),
+        include_str!("fixtures/detectors/unsigned_underflow.rs"),
     );
 }
 
