@@ -17,6 +17,7 @@ pub const DEPRECATED_SDK: &str = "S014";
 pub const DEAD_CODE: &str = "S015";
 pub const ERROR_CODE_COLLISION: &str = "S016";
 pub const FEE_ROUNDING: &str = "S017";
+pub const EXCESSIVE_CLONE: &str = "S020";
 pub const ARG_DOS: &str = "SANCT_ARG_DOS";
 pub const SANCT_UNWRAP: &str = "SANCT_UNWRAP";
 pub const SANCT_VISIBILITY: &str = "SANCT_VISIBILITY";
@@ -121,6 +122,12 @@ pub fn all_finding_codes() -> Vec<FindingCode> {
             category: "arithmetic",
             description:
                 "Fee/interest calculation using integer division rounds to zero for micro-amounts, enabling fee-evasion attacks",
+        },
+        FindingCode {
+            code: EXCESSIVE_CLONE,
+            category: "gas_efficiency",
+            description:
+                "Gas-wasting clone of the Soroban Env handle where a reference (&env) would suffice",
         },
         FindingCode {
             code: ARG_DOS,

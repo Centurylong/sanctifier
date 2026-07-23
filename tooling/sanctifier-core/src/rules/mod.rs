@@ -5,6 +5,7 @@ pub mod auth_gap;
 pub mod division_by_zero;
 pub mod edge_amount;
 pub mod error_code_collision;
+pub mod excessive_clone;
 pub mod fee_rounding;
 pub mod hardcoded_addr;
 pub mod ledger_size;
@@ -156,6 +157,7 @@ impl RuleRegistry {
         registry.register(error_code_collision::ErrorCodeCollisionRule::new());
         registry.register(edge_amount::EdgeAmountRule::new());
         registry.register(fee_rounding::FeeRoundingRule::new());
+        registry.register(excessive_clone::ExcessiveCloneRule::new());
         registry.register(missing_ttl::MissingTtlRule::new());
         registry.register(arg_dos::ArgDosRule::new());
         registry.register(sanct_unwrap::SanctUnwrapRule::new());
