@@ -23,6 +23,7 @@
     "fee_rounding": "S017",
     "unsigned_underflow": "S019",
     "ledger_seconds": "S021",
+    "excessive_clone": "S020",
     "missing_ttl": "S006",
     "SANCT_TTL_MISSING": "S006",
     "arg_dos": "SANCT_ARG_DOS",

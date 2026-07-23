@@ -19,6 +19,7 @@ pub const ERROR_CODE_COLLISION: &str = "S016";
 pub const FEE_ROUNDING: &str = "S017";
 pub const UNSIGNED_UNDERFLOW: &str = "S019";
 pub const LEDGER_SECONDS: &str = "S021";
+pub const EXCESSIVE_CLONE: &str = "S020";
 pub const ARG_DOS: &str = "SANCT_ARG_DOS";
 pub const BALANCE_EQUALITY: &str = "SANCT_BALANCE_EQ";
 pub const SANCT_UNWRAP: &str = "SANCT_UNWRAP";
@@ -150,6 +151,12 @@ pub fn all_finding_codes() -> Vec<FindingCode> {
             category: "time_logic",
             description:
                 "Ledger sequence number (block counter) mixed with a seconds-magnitude literal; use timestamp() for real-time windows",
+        },
+        FindingCode {
+            code: EXCESSIVE_CLONE,
+            category: "gas_efficiency",
+            description:
+                "Gas-wasting clone of the Soroban Env handle where a reference (&env) would suffice",
         },
         FindingCode {
             code: ARG_DOS,
