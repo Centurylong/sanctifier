@@ -1930,6 +1930,7 @@ dependencies = [
  "colored",
  "ctrlc",
  "curve25519-dalek",
+ "ed25519-dalek",
  "hex",
  "merlin",
  "notify",
