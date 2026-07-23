@@ -9,6 +9,7 @@ pub mod ledger_size;
 pub mod missing_ttl;
 pub mod panic_detection;
 pub mod sanct_unwrap;
+pub mod unbounded_storage;
 pub mod unhandled_result;
 pub mod unused_variable;
 
@@ -97,10 +98,32 @@ impl RuleRegistry {
     }
 
     pub fn run_all(&self, source: &str) -> Vec<RuleViolation> {
-        self.rules
+        let mut violations: Vec<RuleViolation> = self
+            .rules
             .iter()
             .flat_map(|rule| rule.check(source))
-            .collect()
+            .collect();
+
+        // Macro-expansion-aware pass: analyse logic hidden behind simple local
+        // `macro_rules!` wrappers so it isn't a false negative. The expansion is
+        // additive — findings already visible in the original source are
+        // de-duplicated by (rule, message), and code with no expandable macros
+        // is left completely unchanged.
+        if let Some(expanded) = crate::macro_expand::expand_local_macros(source) {
+            let mut seen: std::collections::HashSet<(String, String)> = violations
+                .iter()
+                .map(|v| (v.rule_name.clone(), v.message.clone()))
+                .collect();
+            for rule in &self.rules {
+                for v in rule.check(&expanded) {
+                    if seen.insert((v.rule_name.clone(), v.message.clone())) {
+                        violations.push(v);
+                    }
+                }
+            }
+        }
+
+        violations
     }
 
     pub fn run_by_name(&self, source: &str, name: &str) -> Vec<RuleViolation> {
@@ -132,6 +155,7 @@ impl RuleRegistry {
         registry.register(missing_ttl::MissingTtlRule::new());
         registry.register(arg_dos::ArgDosRule::new());
         registry.register(sanct_unwrap::SanctUnwrapRule::new());
+        registry.register(unbounded_storage::UnboundedStorageRule::new());
         registry
     }
 }

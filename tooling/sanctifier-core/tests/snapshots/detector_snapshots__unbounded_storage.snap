@@ -1,0 +1,14 @@
+---
+source: tooling/sanctifier-core/tests/detector_snapshots.rs
+expression: findings
+---
+- rule_name: SANCT_UNBOUNDED_STORAGE
+  severity: Warning
+  message: "SANCT_UNBOUNDED_STORAGE: `register` grows persistent collection `members` via `push_back` but never prunes entries or caps its length"
+  location: "register:17"
+  suggestion: "Cap `members.len()` before `push_back`, or remove/pop stale entries so the durable `members` entry cannot grow without bound"
+- rule_name: SANCT_UNBOUNDED_STORAGE
+  severity: Warning
+  message: "SANCT_UNBOUNDED_STORAGE: `record_score` grows persistent collection `scores` via `set` but never prunes entries or caps its length"
+  location: "record_score:29"
+  suggestion: "Cap `scores.len()` before `set`, or remove/pop stale entries so the durable `scores` entry cannot grow without bound"

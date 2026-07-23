@@ -117,3 +117,35 @@ jobs:
           ./target/release/sanctifier prove \
             --invariant supply_conserved \
             --no-save
+
+  soroban-sdk-compat:
+    # Compatibility matrix (issue #779): verify each supported soroban-sdk
+    # release compiles against the pinned toolchain. Runs an isolated probe
+    # crate per version so the workspace lockfile is never mutated. Keep this
+    # list in sync with docs/soroban-sdk-compatibility.md.
+    name: soroban-sdk ${{ matrix.soroban-sdk }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        soroban-sdk: ["20.3.0", "20.4.0", "20.5.0"]
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install pinned Rust toolchain
+        uses: dtolnay/rust-toolchain@1.85.0
+
+      - name: Cache cargo registry
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry/index/
+            ~/.cargo/registry/cache/
+            ~/.cargo/git/db/
+          key: ${{ runner.os }}-cargo-compat-${{ matrix.soroban-sdk }}
+          restore-keys: |
+            ${{ runner.os }}-cargo-compat-
+
+      - name: Probe soroban-sdk ${{ matrix.soroban-sdk }}
+        run: ./scripts/soroban-sdk-compat.sh "${{ matrix.soroban-sdk }}"
