@@ -22,7 +22,8 @@ use sanctifier_core::rules::{
     panic_detection::PanicDetectionRule, sanct_unwrap::SanctUnwrapRule,
     shift_overflow::ShiftOverflowRule, state_write_in_view::StateWriteInViewRule,
     unbounded_storage::UnboundedStorageRule, unhandled_result::UnhandledResultRule,
-    unused_variable::UnusedVariableRule, view_panic::ViewPanicRule, Rule, RuleRegistry,
+    unsigned_underflow::UnsignedUnderflowRule, unused_variable::UnusedVariableRule,
+    view_panic::ViewPanicRule, Rule, RuleRegistry,
 };
 
 /// Run a detector against its fixture and snapshot the resulting findings.
@@ -211,6 +212,15 @@ fn snapshot_shift_overflow() {
         "shift_overflow",
         &ShiftOverflowRule::new(),
         include_str!("fixtures/detectors/shift_overflow.rs"),
+    );
+}
+
+#[test]
+fn snapshot_unsigned_underflow() {
+    assert_detector_snapshot(
+        "unsigned_underflow",
+        &UnsignedUnderflowRule::new(),
+        include_str!("fixtures/detectors/unsigned_underflow.rs"),
     );
 }
 
