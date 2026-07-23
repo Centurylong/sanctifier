@@ -1,3 +1,4 @@
+pub mod allowance_race;
 pub mod arg_dos;
 pub mod arithmetic_overflow;
 pub mod auth_gap;
@@ -158,6 +159,7 @@ impl RuleRegistry {
         registry.register(sanct_unwrap::SanctUnwrapRule::new());
         registry.register(unbounded_storage::UnboundedStorageRule::new());
         registry.register(view_panic::ViewPanicRule::new());
+        registry.register(allowance_race::AllowanceRaceRule::new());
         registry
     }
 }
