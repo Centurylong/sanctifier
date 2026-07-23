@@ -34,6 +34,7 @@ detector page and to the relevant [Glossary](../glossary.md) term.
 | [`arg_dos`](arg_dos.md) | [`SANCT_ARG_DOS`](../error-codes.md) | denial_of_service | High | `Vec`/`Map` arguments iterated without a length cap |
 | [`sanct_unwrap`](sanct_unwrap.md) | [`SANCT_UNWRAP`](../error-codes.md) | panic_handling | High | `unwrap`/`expect`/risky default in `#[contractimpl]` entrypoints |
 | [`sanct_visibility`](sanct_visibility.md) | [`SANCT_VISIBILITY`](../error-codes.md) | authentication | High | Helper-shaped state mutator exported without an auth guard |
+| [`unbounded_storage`](unbounded_storage.md) | [`SANCT_UNBOUNDED_STORAGE`](../error-codes.md) | denial_of_service | High | Persistent/instance collection grows with no removal or length cap |
 
 ## Page anatomy
 
