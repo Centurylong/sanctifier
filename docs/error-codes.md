@@ -12,6 +12,7 @@ Sanctifier now uses a unified finding code system across `sanctifier-core` and `
 | `S006` | unsafe_patterns | Potentially unsafe language/runtime pattern |
 | `S007` | custom_rule | User-defined custom rule match |
 | `SANCT_UNWRAP` | panic_handling | `unwrap` / `expect` / risky `unwrap_or_default` inside `#[contractimpl]` entrypoints; replace with typed errors or explicit domain defaults |
+| `SANCT_VISIBILITY` | authentication | Helper-shaped state mutator exposed through `#[contractimpl]` without authorization |
 
 ## Detector catalog
 
@@ -34,6 +35,26 @@ impl Token {
 Prefer explicit handling: return a typed `Result`, map missing state to a
 domain-specific `Error`, or use an explicit default such as `unwrap_or(0)` only
 when zero is the intended contract state.
+
+### `SANCT_VISIBILITY`
+
+Flags public helper-shaped methods inside `#[contractimpl]` that mutate contract
+state without calling `require_auth()` or `require_auth_for_args()`. Leading
+underscores and explicit `helper` or `internal` naming are treated as evidence
+that a method was intended for internal use.
+
+```rust
+#[contractimpl]
+impl Token {
+    pub fn _set_balance(env: Env, owner: Address, amount: i128) {
+        write_balance(&env, &owner, amount);
+    }
+}
+```
+
+Keep helpers private when possible. If a helper is intentionally exposed as a
+contract entrypoint, authenticate the appropriate principal before any state
+mutation.
 
 ## Where codes appear
 

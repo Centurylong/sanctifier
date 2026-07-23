@@ -20,6 +20,7 @@ pub const FEE_ROUNDING: &str = "S017";
 pub const ARG_DOS: &str = "SANCT_ARG_DOS";
 pub const SANCT_UNWRAP: &str = "SANCT_UNWRAP";
 pub const INIT_HARDCODED_ADMIN: &str = "SANCT_INIT_HARDCODED_ADMIN";
+pub const SANCT_VISIBILITY: &str = "SANCT_VISIBILITY";
 
 #[derive(Debug, Clone, Serialize)]
 pub struct FindingCode {
@@ -135,6 +136,12 @@ pub fn all_finding_codes() -> Vec<FindingCode> {
             description:
                 "Initialization function uses hardcoded admin address literal or default value instead of formal argument",
         },
+        FindingCode {
+            code: SANCT_VISIBILITY,
+            category: "authentication",
+            description:
+                "Helper-shaped state mutator is publicly exposed without authorization",
+        },
     ]
 }
 
@@ -161,5 +168,7 @@ mod tests {
         assert!(codes.iter().any(|c| c.code == UNSAFE_PATTERN));
         assert!(codes.iter().any(|c| c.code == CUSTOM_RULE_MATCH));
         assert!(codes.iter().any(|c| c.code == SANCT_UNWRAP));
+        assert!(codes.iter().any(|c| c.code == SANCT_VISIBILITY));
+        assert!(codes.iter().any(|c| c.code == INIT_HARDCODED_ADMIN));
     }
 }

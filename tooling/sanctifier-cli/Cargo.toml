@@ -7,6 +7,19 @@ version = "0.1.0"
 edition = "2021"
 description = "CLI tool for Sanctifier - Stellar Soroban Security Suite"
 license = "MIT"
+homepage = "https://github.com/Centurylong/sanctifier"
+repository = "https://github.com/Centurylong/sanctifier"
+keywords = ["soroban", "stellar", "security", "smart-contracts", "static-analysis"]
+categories = ["command-line-utilities", "development-tools"]
+
+[package.metadata.binstall]
+pkg-url = "https://github.com/Centurylong/sanctifier/releases/download/v{ version }/sanctifier-{ version }-{ target }.tar.gz"
+bin-dir = "sanctifier{ binary-ext }"
+pkg-fmt = "tgz"
+
+[package.metadata.binstall.overrides.x86_64-pc-windows-msvc]
+pkg-url = "https://github.com/Centurylong/sanctifier/releases/download/v{ version }/sanctifier-{ version }-{ target }.zip"
+pkg-fmt = "zip"
 
 [dependencies]
 clap = { version = "4.4", features = ["derive"] }

@@ -12,6 +12,7 @@
 //!
 //! See `tooling/sanctifier-core/tests/README.md` for the full guide.
 
+use sanctifier_core::rules::auth_gap::VisibilityLeakRule;
 use sanctifier_core::rules::{
     arg_dos::ArgDosRule, arithmetic_overflow::ArithmeticOverflowRule, auth_gap::AuthGapRule,
     edge_amount::EdgeAmountRule, error_code_collision::ErrorCodeCollisionRule,
@@ -37,6 +38,15 @@ fn snapshot_auth_gap() {
         "auth_gap",
         &AuthGapRule::new(),
         include_str!("fixtures/detectors/auth_gap.rs"),
+    );
+}
+
+#[test]
+fn snapshot_sanct_visibility() {
+    assert_detector_snapshot(
+        "sanct_visibility",
+        &VisibilityLeakRule::new(),
+        include_str!("fixtures/detectors/sanct_visibility.rs"),
     );
 }
 
@@ -179,4 +189,46 @@ fn sanct_unwrap_detector_is_registered_in_default_rules() {
     assert!(findings
         .iter()
         .all(|finding| finding.rule_name == "SANCT_UNWRAP"));
+}
+
+#[test]
+fn sanct_visibility_flags_only_the_exposed_unauthenticated_helper() {
+    let findings = RuleRegistry::with_default_rules().run_by_name(
+        include_str!("fixtures/detectors/sanct_visibility.rs"),
+        "sanct_visibility",
+    );
+
+    assert_eq!(findings.len(), 8, "{findings:#?}");
+    assert!(findings
+        .iter()
+        .all(|finding| finding.rule_name == "SANCT_VISIBILITY"));
+
+    let messages = findings
+        .iter()
+        .map(|finding| finding.message.as_str())
+        .collect::<Vec<_>>();
+    assert!(messages
+        .iter()
+        .any(|message| message.contains("_set_balance")));
+    assert!(messages
+        .iter()
+        .any(|message| message.contains("_set_balance_conditionally")));
+    assert!(messages
+        .iter()
+        .any(|message| message.contains("helper_increment_balance")));
+    assert!(messages
+        .iter()
+        .any(|message| message.contains("_set_balance_after_validation")));
+    assert!(messages
+        .iter()
+        .any(|message| message.contains("helper_set_via_storage_alias")));
+    assert!(messages
+        .iter()
+        .any(|message| message.contains("helper_set_via_external_storage")));
+    assert!(messages
+        .iter()
+        .any(|message| message.contains("helper_set_after_nested_loop")));
+    assert!(messages
+        .iter()
+        .any(|message| message.contains("internal_set_flag")));
 }

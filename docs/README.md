@@ -28,11 +28,16 @@ New to Sanctifier and adding it to an existing project? Read in this order:
 - **[Getting Started (detailed)](getting-started.md)** — example output and
   finding-by-finding explanations.
 - **[Detector Cookbook](detector-cookbook.md)** — three worked examples of custom detectors (trivial, medium, and data-flow).
+- **[Talks & Workshops](talks/README.md)** — ready-to-present slide deck and
+  live-demo script for demonstrating Sanctifier at conferences and workshops.
 - **[Awesome Soroban Security](awesome-soroban-security.md)** — curated external
   tools, audits, incidents, and learning resources.
 - **[Differential Testing vs Slither/Aderyn](differential-testing.md)** — how
   Sanctifier's coverage compares to established EVM analyzers on overlapping
   checks, with the shared corpus, the overlap matrix, and follow-up gaps.
+- **[Differential Testing vs other Soroban linters](differential-soroban-linters.md)**
+  — the same-platform study vs Soroban-native analyzers (CoinFabrik Scout), a
+  detector-for-detector overlap matrix, agreements/gaps, and follow-ups.
 
 ## How these pages fit together
 
