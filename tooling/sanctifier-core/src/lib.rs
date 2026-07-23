@@ -5,6 +5,7 @@ pub mod finding_codes;
 pub mod gas_estimator;
 pub mod gas_report;
 pub mod invariant;
+pub mod macro_expand;
 pub mod patcher;
 pub mod rules;
 #[cfg(feature = "smt")]
@@ -2455,6 +2456,41 @@ mod tests {
         "#;
         let violations = registry.run_all(source);
         assert!(!violations.is_empty());
+    }
+
+    #[test]
+    fn test_run_all_sees_through_local_macros() {
+        // A `panic!` hidden behind a simple local macro is invisible to
+        // AST-level detectors without expansion. With the macro-expansion pass
+        // wired into `run_all`, it should now be reported.
+        let registry = RuleRegistry::default();
+        let macro_hidden = r#"
+            macro_rules! boom { ($msg:expr) => { panic!($msg); }; }
+            #[contractimpl]
+            impl MyContract {
+                pub fn danger(env: Env) {
+                    boom!("kaboom");
+                }
+            }
+        "#;
+        let violations = registry.run_all(macro_hidden);
+        assert!(
+            violations.iter().any(|v| v.rule_name == "panic_detection"),
+            "macro-hidden panic! should be detected via expansion, got: {:?}",
+            violations.iter().map(|v| &v.rule_name).collect::<Vec<_>>()
+        );
+
+        // Control: with no macros, behaviour is unchanged (no spurious findings
+        // and the expansion pass is a no-op).
+        let clean = r#"
+            #[contractimpl]
+            impl MyContract {
+                pub fn ok(env: Env, a: u64) -> u64 {
+                    a
+                }
+            }
+        "#;
+        assert!(registry.run_all(clean).is_empty());
     }
 
     #[test]
