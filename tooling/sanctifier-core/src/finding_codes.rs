@@ -17,6 +17,7 @@ pub const DEPRECATED_SDK: &str = "S014";
 pub const DEAD_CODE: &str = "S015";
 pub const ERROR_CODE_COLLISION: &str = "S016";
 pub const FEE_ROUNDING: &str = "S017";
+pub const LEDGER_SECONDS: &str = "S021";
 pub const ARG_DOS: &str = "SANCT_ARG_DOS";
 pub const SANCT_UNWRAP: &str = "SANCT_UNWRAP";
 pub const SANCT_VISIBILITY: &str = "SANCT_VISIBILITY";
@@ -121,6 +122,12 @@ pub fn all_finding_codes() -> Vec<FindingCode> {
             category: "arithmetic",
             description:
                 "Fee/interest calculation using integer division rounds to zero for micro-amounts, enabling fee-evasion attacks",
+        },
+        FindingCode {
+            code: LEDGER_SECONDS,
+            category: "time_logic",
+            description:
+                "Ledger sequence number (block counter) mixed with a seconds-magnitude literal; use timestamp() for real-time windows",
         },
         FindingCode {
             code: ARG_DOS,

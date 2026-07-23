@@ -18,11 +18,11 @@ use sanctifier_core::rules::{
     arithmetic_overflow::ArithmeticOverflowRule, auth_gap::AuthGapRule,
     division_by_zero::DivisionByZeroRule, edge_amount::EdgeAmountRule,
     error_code_collision::ErrorCodeCollisionRule, fee_rounding::FeeRoundingRule,
-    hardcoded_addr::HardcodedAddrRule, ledger_size::LedgerSizeRule, missing_ttl::MissingTtlRule,
-    panic_detection::PanicDetectionRule, sanct_unwrap::SanctUnwrapRule,
-    state_write_in_view::StateWriteInViewRule, unbounded_storage::UnboundedStorageRule,
-    unhandled_result::UnhandledResultRule, unused_variable::UnusedVariableRule,
-    view_panic::ViewPanicRule, Rule, RuleRegistry,
+    hardcoded_addr::HardcodedAddrRule, ledger_seconds::LedgerSecondsRule,
+    ledger_size::LedgerSizeRule, missing_ttl::MissingTtlRule, panic_detection::PanicDetectionRule,
+    sanct_unwrap::SanctUnwrapRule, state_write_in_view::StateWriteInViewRule,
+    unbounded_storage::UnboundedStorageRule, unhandled_result::UnhandledResultRule,
+    unused_variable::UnusedVariableRule, view_panic::ViewPanicRule, Rule, RuleRegistry,
 };
 
 /// Run a detector against its fixture and snapshot the resulting findings.
@@ -130,6 +130,15 @@ fn snapshot_fee_rounding() {
         "fee_rounding",
         &FeeRoundingRule::new(),
         include_str!("fixtures/detectors/fee_rounding.rs"),
+    );
+}
+
+#[test]
+fn snapshot_ledger_seconds() {
+    assert_detector_snapshot(
+        "ledger_seconds",
+        &LedgerSecondsRule::new(),
+        include_str!("fixtures/detectors/ledger_seconds.rs"),
     );
 }
 
