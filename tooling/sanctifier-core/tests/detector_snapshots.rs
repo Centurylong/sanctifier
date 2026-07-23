@@ -19,8 +19,8 @@ use sanctifier_core::rules::{
     fee_rounding::FeeRoundingRule, hardcoded_addr::HardcodedAddrRule,
     init_hardcoded_admin::InitHardcodedAdminRule, ledger_size::LedgerSizeRule,
     missing_ttl::MissingTtlRule, panic_detection::PanicDetectionRule,
-    sanct_unwrap::SanctUnwrapRule, unhandled_result::UnhandledResultRule,
-    unused_variable::UnusedVariableRule, Rule, RuleRegistry,
+    sanct_unwrap::SanctUnwrapRule, unbounded_storage::UnboundedStorageRule,
+    unhandled_result::UnhandledResultRule, unused_variable::UnusedVariableRule, Rule, RuleRegistry,
 };
 
 /// Run a detector against its fixture and snapshot the resulting findings.
@@ -165,6 +165,35 @@ fn snapshot_init_hardcoded_admin() {
         &InitHardcodedAdminRule::new(),
         include_str!("fixtures/detectors/init_hardcoded_admin.rs"),
     );
+}
+
+#[test]
+fn snapshot_unbounded_storage() {
+    assert_detector_snapshot(
+        "unbounded_storage",
+        &UnboundedStorageRule::new(),
+        include_str!("fixtures/detectors/unbounded_storage.rs"),
+    );
+}
+
+#[test]
+fn unbounded_storage_detector_flags_only_uncapped_persistent_growth() {
+    let findings = RuleRegistry::with_default_rules().run_by_name(
+        include_str!("fixtures/detectors/unbounded_storage.rs"),
+        "unbounded_storage",
+    );
+
+    assert_eq!(findings.len(), 2, "{findings:#?}");
+    assert!(findings
+        .iter()
+        .all(|finding| finding.rule_name == "SANCT_UNBOUNDED_STORAGE"));
+    assert!(findings.iter().any(
+        |finding| finding.location.contains("register") && finding.message.contains("members")
+    ));
+    assert!(findings
+        .iter()
+        .any(|finding| finding.location.contains("record_score")
+            && finding.message.contains("scores")));
 }
 
 #[test]

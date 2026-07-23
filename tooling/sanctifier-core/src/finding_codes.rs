@@ -21,6 +21,7 @@ pub const ARG_DOS: &str = "SANCT_ARG_DOS";
 pub const SANCT_UNWRAP: &str = "SANCT_UNWRAP";
 pub const INIT_HARDCODED_ADMIN: &str = "SANCT_INIT_HARDCODED_ADMIN";
 pub const SANCT_VISIBILITY: &str = "SANCT_VISIBILITY";
+pub const UNBOUNDED_STORAGE: &str = "SANCT_UNBOUNDED_STORAGE";
 
 #[derive(Debug, Clone, Serialize)]
 pub struct FindingCode {
@@ -139,8 +140,13 @@ pub fn all_finding_codes() -> Vec<FindingCode> {
         FindingCode {
             code: SANCT_VISIBILITY,
             category: "authentication",
+            description: "Helper-shaped state mutator is publicly exposed without authorization",
+        },
+        FindingCode {
+            code: UNBOUNDED_STORAGE,
+            category: "denial_of_service",
             description:
-                "Helper-shaped state mutator is publicly exposed without authorization",
+                "Persistent/instance storage collection grows via append/insert with no removal or length cap",
         },
     ]
 }
@@ -170,5 +176,6 @@ mod tests {
         assert!(codes.iter().any(|c| c.code == SANCT_UNWRAP));
         assert!(codes.iter().any(|c| c.code == SANCT_VISIBILITY));
         assert!(codes.iter().any(|c| c.code == INIT_HARDCODED_ADMIN));
+        assert!(codes.iter().any(|c| c.code == UNBOUNDED_STORAGE));
     }
 }

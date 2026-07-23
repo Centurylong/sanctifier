@@ -28,7 +28,9 @@
     "init_hardcoded_admin": "SANCT_INIT_HARDCODED_ADMIN",
     "SANCT_INIT_HARDCODED_ADMIN": "SANCT_INIT_HARDCODED_ADMIN",
     "sanct_visibility": "SANCT_VISIBILITY",
-    "SANCT_VISIBILITY": "SANCT_VISIBILITY"
+    "SANCT_VISIBILITY": "SANCT_VISIBILITY",
+    "unbounded_storage": "SANCT_UNBOUNDED_STORAGE",
+    "SANCT_UNBOUNDED_STORAGE": "SANCT_UNBOUNDED_STORAGE"
   },
   "overlap_legend": {
     "shared-covered": "Class has an EVM analogue and Sanctifier already flags it.",
