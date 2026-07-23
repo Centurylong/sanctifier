@@ -39,6 +39,7 @@ detector page and to the relevant [Glossary](../glossary.md) term.
 | [`allowance_race`](allowance_race.md) | [`SANCT_ALLOWANCE_RACE`](../error-codes.md) | authorization | Medium | `approve` overwrites the allowance unconditionally (approve TOCTOU) |
 | [`state_write_in_view`](state_write_in_view.md) | [`SANCT_STATE_WRITE_IN_VIEW`](../error-codes.md) | code_hygiene | Warning | Getter/view-named function performs a storage write |
 | [`division_by_zero`](division_by_zero.md) | [`S018`](../error-codes.md) | arithmetic | Medium | `/` or `%` by a non-constant value not proven non-zero |
+| [`shift_overflow`](shift_overflow.md) | [`SANCT_SHIFT_OVERFLOW`](../error-codes.md) | arithmetic | Warning/Error | Bit shift by an amount that may be `>=` the operand's bit width |
 
 ## Page anatomy
 

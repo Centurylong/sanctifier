@@ -11,6 +11,7 @@ pub mod ledger_size;
 pub mod missing_ttl;
 pub mod panic_detection;
 pub mod sanct_unwrap;
+pub mod shift_overflow;
 pub mod state_write_in_view;
 pub mod unbounded_storage;
 pub mod unhandled_result;
@@ -159,6 +160,7 @@ impl RuleRegistry {
         registry.register(missing_ttl::MissingTtlRule::new());
         registry.register(arg_dos::ArgDosRule::new());
         registry.register(sanct_unwrap::SanctUnwrapRule::new());
+        registry.register(shift_overflow::ShiftOverflowRule::new());
         registry.register(unbounded_storage::UnboundedStorageRule::new());
         registry.register(view_panic::ViewPanicRule::new());
         registry.register(allowance_race::AllowanceRaceRule::new());
