@@ -19,7 +19,8 @@ use sanctifier_core::rules::{
     fee_rounding::FeeRoundingRule, hardcoded_addr::HardcodedAddrRule, ledger_size::LedgerSizeRule,
     missing_ttl::MissingTtlRule, panic_detection::PanicDetectionRule,
     sanct_unwrap::SanctUnwrapRule, unbounded_storage::UnboundedStorageRule,
-    unhandled_result::UnhandledResultRule, unused_variable::UnusedVariableRule, Rule, RuleRegistry,
+    unhandled_result::UnhandledResultRule, unused_variable::UnusedVariableRule,
+    view_panic::ViewPanicRule, Rule, RuleRegistry,
 };
 
 /// Run a detector against its fixture and snapshot the resulting findings.
@@ -167,6 +168,15 @@ fn snapshot_unbounded_storage() {
 }
 
 #[test]
+fn snapshot_view_panic() {
+    assert_detector_snapshot(
+        "view_panic",
+        &ViewPanicRule::new(),
+        include_str!("fixtures/detectors/view_panic.rs"),
+    );
+}
+
+#[test]
 fn unbounded_storage_detector_flags_only_uncapped_persistent_growth() {
     let findings = RuleRegistry::with_default_rules().run_by_name(
         include_str!("fixtures/detectors/unbounded_storage.rs"),
@@ -184,6 +194,21 @@ fn unbounded_storage_detector_flags_only_uncapped_persistent_growth() {
         .iter()
         .any(|finding| finding.location.contains("record_score")
             && finding.message.contains("scores")));
+}
+
+#[test]
+fn view_panic_detector_flags_only_view_entrypoints() {
+    let findings = RuleRegistry::with_default_rules().run_by_name(
+        include_str!("fixtures/detectors/view_panic.rs"),
+        "view_panic",
+    );
+
+    assert_eq!(findings.len(), 2, "{findings:#?}");
+    assert!(findings
+        .iter()
+        .all(|finding| finding.rule_name == "SANCT_VIEW_PANIC"));
+    assert!(findings.iter().any(|f| f.location.contains("get_price")));
+    assert!(findings.iter().any(|f| f.location.contains("get_holder")));
 }
 
 #[test]

@@ -12,6 +12,7 @@ pub mod sanct_unwrap;
 pub mod unbounded_storage;
 pub mod unhandled_result;
 pub mod unused_variable;
+pub mod view_panic;
 
 use serde::Serialize;
 use std::any::Any;
@@ -156,6 +157,7 @@ impl RuleRegistry {
         registry.register(arg_dos::ArgDosRule::new());
         registry.register(sanct_unwrap::SanctUnwrapRule::new());
         registry.register(unbounded_storage::UnboundedStorageRule::new());
+        registry.register(view_panic::ViewPanicRule::new());
         registry
     }
 }
