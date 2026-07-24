@@ -10,6 +10,7 @@ pub mod ledger_size;
 pub mod missing_ttl;
 pub mod panic_detection;
 pub mod sanct_unwrap;
+pub mod state_write_in_view;
 pub mod unbounded_storage;
 pub mod unhandled_result;
 pub mod unused_variable;
@@ -160,6 +161,7 @@ impl RuleRegistry {
         registry.register(unbounded_storage::UnboundedStorageRule::new());
         registry.register(view_panic::ViewPanicRule::new());
         registry.register(allowance_race::AllowanceRaceRule::new());
+        registry.register(state_write_in_view::StateWriteInViewRule::new());
         registry
     }
 }
