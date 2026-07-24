@@ -21,6 +21,7 @@
     "unused_variable": "S015",
     "error_code_collision": "S016",
     "fee_rounding": "S017",
+    "excessive_clone": "S020",
     "missing_ttl": "S006",
     "SANCT_TTL_MISSING": "S006",
     "arg_dos": "SANCT_ARG_DOS",
