@@ -16,13 +16,14 @@ use sanctifier_core::rules::auth_gap::VisibilityLeakRule;
 use sanctifier_core::rules::{
     allowance_race::AllowanceRaceRule, arg_dos::ArgDosRule,
     arithmetic_overflow::ArithmeticOverflowRule, auth_gap::AuthGapRule,
-    division_by_zero::DivisionByZeroRule, edge_amount::EdgeAmountRule,
-    error_code_collision::ErrorCodeCollisionRule, fee_rounding::FeeRoundingRule,
-    hardcoded_addr::HardcodedAddrRule, ledger_size::LedgerSizeRule, missing_ttl::MissingTtlRule,
-    panic_detection::PanicDetectionRule, sanct_unwrap::SanctUnwrapRule,
-    shift_overflow::ShiftOverflowRule, state_write_in_view::StateWriteInViewRule,
-    unbounded_storage::UnboundedStorageRule, unhandled_result::UnhandledResultRule,
-    unused_variable::UnusedVariableRule, view_panic::ViewPanicRule, Rule, RuleRegistry,
+    balance_equality::BalanceEqualityRule, division_by_zero::DivisionByZeroRule,
+    edge_amount::EdgeAmountRule, error_code_collision::ErrorCodeCollisionRule,
+    fee_rounding::FeeRoundingRule, hardcoded_addr::HardcodedAddrRule, ledger_size::LedgerSizeRule,
+    missing_ttl::MissingTtlRule, panic_detection::PanicDetectionRule,
+    sanct_unwrap::SanctUnwrapRule, shift_overflow::ShiftOverflowRule,
+    state_write_in_view::StateWriteInViewRule, unbounded_storage::UnboundedStorageRule,
+    unhandled_result::UnhandledResultRule, unused_variable::UnusedVariableRule,
+    view_panic::ViewPanicRule, Rule, RuleRegistry,
 };
 
 /// Run a detector against its fixture and snapshot the resulting findings.
@@ -121,6 +122,15 @@ fn snapshot_edge_amount() {
         "edge_amount",
         &EdgeAmountRule::new(),
         include_str!("fixtures/detectors/edge_amount.rs"),
+    );
+}
+
+#[test]
+fn snapshot_balance_equality() {
+    assert_detector_snapshot(
+        "balance_equality",
+        &BalanceEqualityRule::new(),
+        include_str!("fixtures/detectors/balance_equality.rs"),
     );
 }
 
