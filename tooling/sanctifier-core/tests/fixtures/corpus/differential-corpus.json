@@ -35,7 +35,9 @@
     "SANCT_ALLOWANCE_RACE": "SANCT_ALLOWANCE_RACE",
     "state_write_in_view": "SANCT_STATE_WRITE_IN_VIEW",
     "SANCT_STATE_WRITE_IN_VIEW": "SANCT_STATE_WRITE_IN_VIEW",
-    "division_by_zero": "S018"
+    "division_by_zero": "S018",
+    "shift_overflow": "SANCT_SHIFT_OVERFLOW",
+    "SANCT_SHIFT_OVERFLOW": "SANCT_SHIFT_OVERFLOW"
   },
   "overlap_legend": {
     "shared-covered": "Class has an EVM analogue and Sanctifier already flags it.",
