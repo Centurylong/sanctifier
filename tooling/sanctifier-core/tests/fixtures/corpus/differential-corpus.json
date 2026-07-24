@@ -28,7 +28,9 @@
     "sanct_visibility": "SANCT_VISIBILITY",
     "SANCT_VISIBILITY": "SANCT_VISIBILITY",
     "unbounded_storage": "SANCT_UNBOUNDED_STORAGE",
-    "SANCT_UNBOUNDED_STORAGE": "SANCT_UNBOUNDED_STORAGE"
+    "SANCT_UNBOUNDED_STORAGE": "SANCT_UNBOUNDED_STORAGE",
+    "view_panic": "SANCT_VIEW_PANIC",
+    "SANCT_VIEW_PANIC": "SANCT_VIEW_PANIC"
   },
   "overlap_legend": {
     "shared-covered": "Class has an EVM analogue and Sanctifier already flags it.",

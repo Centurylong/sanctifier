@@ -21,6 +21,7 @@ pub const ARG_DOS: &str = "SANCT_ARG_DOS";
 pub const SANCT_UNWRAP: &str = "SANCT_UNWRAP";
 pub const SANCT_VISIBILITY: &str = "SANCT_VISIBILITY";
 pub const UNBOUNDED_STORAGE: &str = "SANCT_UNBOUNDED_STORAGE";
+pub const SANCT_VIEW_PANIC: &str = "SANCT_VIEW_PANIC";
 
 #[derive(Debug, Clone, Serialize)]
 pub struct FindingCode {
@@ -141,6 +142,12 @@ pub fn all_finding_codes() -> Vec<FindingCode> {
             description:
                 "Persistent/instance storage collection grows via append/insert with no removal or length cap",
         },
+        FindingCode {
+            code: SANCT_VIEW_PANIC,
+            category: "panic_handling",
+            description:
+                "View/getter entrypoint contains a reachable panic, aborting callers that assume reads are safe",
+        },
     ]
 }
 
@@ -169,5 +176,6 @@ mod tests {
         assert!(codes.iter().any(|c| c.code == SANCT_UNWRAP));
         assert!(codes.iter().any(|c| c.code == SANCT_VISIBILITY));
         assert!(codes.iter().any(|c| c.code == UNBOUNDED_STORAGE));
+        assert!(codes.iter().any(|c| c.code == SANCT_VIEW_PANIC));
     }
 }
