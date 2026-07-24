@@ -40,6 +40,19 @@ impl TokenWithBugs {
         e.storage().persistent().set(&to, &new_balance);
     }
 
+    pub fn allowance(e: Env, owner: Address, spender: Address) -> i128 {
+        e.storage().persistent().get(&(owner, spender)).unwrap_or(0)
+    }
+
+    // VULNERABILITY: approve() blindly overwrites the stored allowance. A spender
+    // watching the mempool can front-run a change from N to M, spend the old N,
+    // then spend the new M as well (the classic approve TOCTOU race). A safe
+    // implementation would use increase/decrease-allowance deltas or require the
+    // caller to pass the allowance they expect to be current (compare-and-set).
+    pub fn approve(e: Env, owner: Address, spender: Address, amount: i128) {
+        e.storage().persistent().set(&(owner, spender), &amount);
+    }
+
     pub fn symbol(e: Env) -> String {
         // Return the symbol stored under the BALANCE key as a demonstration;
         // the unused `BALANCE` constant is referenced here so the compiler

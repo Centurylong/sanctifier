@@ -1,0 +1,14 @@
+---
+source: tooling/sanctifier-core/tests/detector_snapshots.rs
+expression: findings
+---
+- rule_name: division_by_zero
+  severity: Warning
+  message: "Division/modulo by `count`, which is not proven non-zero, panics on-chain if it is zero at runtime"
+  location: "average:15"
+  suggestion: "Add a guard before dividing, e.g. `if count == 0 { return Err(...); }` or use `.checked_div()`/`.checked_rem()`"
+- rule_name: division_by_zero
+  severity: Warning
+  message: "Division/modulo by `players`, which is not proven non-zero, panics on-chain if it is zero at runtime"
+  location: "pick_winner:20"
+  suggestion: "Add a guard before dividing, e.g. `if players == 0 { return Err(...); }` or use `.checked_div()`/`.checked_rem()`"

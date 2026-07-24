@@ -23,16 +23,32 @@ New to Sanctifier and adding it to an existing project? Read in this order:
 
 ## Reference
 
+- **[Positioning](positioning.md)** — where Sanctifier fits relative to a manual
+  audit and other tools, with an honest scope and limitations statement.
 - **[Finding Codes](error-codes.md)** — the `S001`…`S016` codes emitted in CLI and
   JSON output.
+- **[Detector Catalog](detectors/README.md)** — one page per detector: what it
+  catches, a vulnerable example, the fix, and references. Coverage is enforced in
+  CI.
 - **[Getting Started (detailed)](getting-started.md)** — example output and
   finding-by-finding explanations.
 - **[Detector Cookbook](detector-cookbook.md)** — three worked examples of custom detectors (trivial, medium, and data-flow).
+- **[soroban-sdk Compatibility](soroban-sdk-compatibility.md)** — the supported
+  soroban-sdk versions, the CI compatibility matrix, and version-specific
+  handling (including the toolchain pin).
+- **[Source-Optional WASM Analysis](wasm-analysis.md)** — analyze a compiled
+  `.wasm` module directly with `sanctifier wasm`, and its documented limitations
+  vs. source mode.
+- **[Talks & Workshops](talks/README.md)** — ready-to-present slide deck and
+  live-demo script for demonstrating Sanctifier at conferences and workshops.
 - **[Awesome Soroban Security](awesome-soroban-security.md)** — curated external
   tools, audits, incidents, and learning resources.
 - **[Differential Testing vs Slither/Aderyn](differential-testing.md)** — how
   Sanctifier's coverage compares to established EVM analyzers on overlapping
   checks, with the shared corpus, the overlap matrix, and follow-up gaps.
+- **[Differential Testing vs other Soroban linters](differential-soroban-linters.md)**
+  — the same-platform study vs Soroban-native analyzers (CoinFabrik Scout), a
+  detector-for-detector overlap matrix, agreements/gaps, and follow-ups.
 
 ## How these pages fit together
 

@@ -30,6 +30,9 @@ pub enum Commands {
     Badge(commands::badge::BadgeArgs),
     /// Compare findings between working tree and a git reference
     Diff(commands::diff::DiffArgs),
+    /// Generate suggested fix diffs for findings and apply them only after
+    /// explicit confirmation (offline; deterministic local suggestions)
+    Fix(commands::fix::FixArgs),
     /// Generate a security report
     Report {
         /// Output file path
@@ -58,6 +61,8 @@ pub enum Commands {
     Prove(commands::prove::ProveArgs),
     /// Search, list, show, and export the public Soroban/Stellar CVE database
     Cve(commands::cve::CveArgs),
+    /// Analyze a compiled .wasm module directly when source is unavailable (source-optional mode)
+    Wasm(commands::wasm::WasmArgs),
     /// (internal) Regenerate the Markdown CLI reference from the clap definitions.
     ///
     /// Prints the reference to stdout. Hidden from `--help`; used by the docs
@@ -92,6 +97,9 @@ fn main() -> anyhow::Result<()> {
                 branding::print_logo();
             }
             commands::diff::exec(args)?;
+        }
+        Commands::Fix(args) => {
+            commands::fix::exec(args)?;
         }
         Commands::Report { output } => {
             if let Some(p) = output {
@@ -162,6 +170,12 @@ fn main() -> anyhow::Result<()> {
         }
         Commands::Cve(args) => {
             commands::cve::exec(args)?;
+        }
+        Commands::Wasm(args) => {
+            if args.format != "json" {
+                branding::print_logo();
+            }
+            commands::wasm::exec(args)?;
         }
         Commands::GenerateDocs => {
             // Render the full command tree to Markdown straight from the clap

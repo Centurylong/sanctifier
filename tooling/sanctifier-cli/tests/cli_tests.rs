@@ -85,6 +85,55 @@ fn test_analyze_empty_macro_heavy() {
 }
 
 #[test]
+fn test_fix_dry_run_does_not_modify_file() {
+    // The fix command must never touch files without --apply.
+    let temp_dir = tempdir().unwrap();
+    let src = temp_dir.path().join("contract.rs");
+    fs::write(
+        &src,
+        "#[contractimpl]\nimpl C {\n    pub fn do_bad_stuff(env: Env, admin: Address) {\n        env.storage().instance().set(&String::from_slice(&env, \"admin\"), &admin);\n    }\n}\n",
+    )
+    .unwrap();
+    let before = fs::read_to_string(&src).unwrap();
+
+    let mut cmd = Command::cargo_bin("sanctifier").unwrap();
+    cmd.arg("fix")
+        .arg(&src)
+        .assert()
+        .success()
+        .stdout(predicates::str::contains("Dry run"));
+
+    // File is unchanged in dry-run mode.
+    assert_eq!(fs::read_to_string(&src).unwrap(), before);
+}
+
+#[test]
+fn test_fix_apply_with_yes_modifies_file() {
+    let temp_dir = tempdir().unwrap();
+    let src = temp_dir.path().join("contract.rs");
+    fs::write(
+        &src,
+        "#[contractimpl]\nimpl C {\n    pub fn do_bad_stuff(env: Env, admin: Address) {\n        env.storage().instance().set(&String::from_slice(&env, \"admin\"), &admin);\n    }\n}\n",
+    )
+    .unwrap();
+    let before = fs::read_to_string(&src).unwrap();
+
+    let mut cmd = Command::cargo_bin("sanctifier").unwrap();
+    cmd.arg("fix")
+        .arg(&src)
+        .arg("--apply")
+        .arg("--yes")
+        .assert()
+        .success()
+        .stdout(predicates::str::contains("Applied fixes"));
+
+    // With --apply --yes the file is rewritten with the suggested guard.
+    let after = fs::read_to_string(&src).unwrap();
+    assert_ne!(after, before);
+    assert!(after.contains("require_auth"));
+}
+
+#[test]
 fn test_update_help() {
     let mut cmd = Command::cargo_bin("sanctifier").unwrap();
     cmd.arg("update")

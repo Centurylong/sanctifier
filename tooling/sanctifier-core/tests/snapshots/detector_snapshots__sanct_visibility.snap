@@ -1,0 +1,44 @@
+---
+source: tooling/sanctifier-core/tests/detector_snapshots.rs
+expression: findings
+---
+- rule_name: SANCT_VISIBILITY
+  severity: Warning
+  message: "SANCT_VISIBILITY: public helper-shaped function `_set_balance` mutates contract state without authorization"
+  location: _set_balance
+  suggestion: Make the helper private or require authorization before mutating state
+- rule_name: SANCT_VISIBILITY
+  severity: Warning
+  message: "SANCT_VISIBILITY: public helper-shaped function `_set_balance_conditionally` mutates contract state without authorization"
+  location: _set_balance_conditionally
+  suggestion: Make the helper private or require authorization before mutating state
+- rule_name: SANCT_VISIBILITY
+  severity: Warning
+  message: "SANCT_VISIBILITY: public helper-shaped function `helper_increment_balance` mutates contract state without authorization"
+  location: helper_increment_balance
+  suggestion: Make the helper private or require authorization before mutating state
+- rule_name: SANCT_VISIBILITY
+  severity: Warning
+  message: "SANCT_VISIBILITY: public helper-shaped function `_set_balance_after_validation` mutates contract state without authorization"
+  location: _set_balance_after_validation
+  suggestion: Make the helper private or require authorization before mutating state
+- rule_name: SANCT_VISIBILITY
+  severity: Warning
+  message: "SANCT_VISIBILITY: public helper-shaped function `helper_set_via_storage_alias` mutates contract state without authorization"
+  location: helper_set_via_storage_alias
+  suggestion: Make the helper private or require authorization before mutating state
+- rule_name: SANCT_VISIBILITY
+  severity: Warning
+  message: "SANCT_VISIBILITY: public helper-shaped function `helper_set_via_external_storage` mutates contract state without authorization"
+  location: helper_set_via_external_storage
+  suggestion: Make the helper private or require authorization before mutating state
+- rule_name: SANCT_VISIBILITY
+  severity: Warning
+  message: "SANCT_VISIBILITY: public helper-shaped function `helper_set_after_nested_loop` mutates contract state without authorization"
+  location: helper_set_after_nested_loop
+  suggestion: Make the helper private or require authorization before mutating state
+- rule_name: SANCT_VISIBILITY
+  severity: Warning
+  message: "SANCT_VISIBILITY: public helper-shaped function `internal_set_flag` mutates contract state without authorization"
+  location: internal_set_flag
+  suggestion: Make the helper private or require authorization before mutating state
