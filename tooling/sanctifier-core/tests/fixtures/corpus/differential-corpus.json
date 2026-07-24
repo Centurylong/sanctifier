@@ -16,6 +16,8 @@
     "unhandled_result": "S009",
     "hardcoded_addr": "S012",
     "edge_amount": "S013",
+    "balance_equality": "SANCT_BALANCE_EQ",
+    "SANCT_BALANCE_EQ": "SANCT_BALANCE_EQ",
     "unused_variable": "S015",
     "error_code_collision": "S016",
     "fee_rounding": "S017",

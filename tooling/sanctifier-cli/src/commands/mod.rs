@@ -9,5 +9,6 @@ pub mod init;
 pub mod prove;
 pub mod update;
 pub mod verify;
+pub mod wasm;
 pub mod watch;
 pub mod webhook;
