@@ -23,7 +23,8 @@ impl InitHardcodedAdminRule {
         // Stellar public (G...) or secret (S...) address (56 chars base32)
         if s.len() == 56
             && (s.starts_with('G') || s.starts_with('S'))
-            && s.chars().all(|c| c.is_ascii_uppercase() || c.is_ascii_digit())
+            && s.chars()
+                .all(|c| c.is_ascii_uppercase() || c.is_ascii_digit())
         {
             return true;
         }
