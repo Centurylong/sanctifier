@@ -1,0 +1,9 @@
+---
+source: tooling/sanctifier-core/tests/detector_snapshots.rs
+expression: findings
+---
+- rule_name: ledger_seconds
+  severity: Warning
+  message: "Ledger sequence number mixed with a seconds-magnitude literal `86400`; sequence numbers count blocks (~5s each), not seconds"
+  location: "deadline:18"
+  suggestion: "Use `env.ledger().timestamp()` for time windows measured in seconds, or convert the duration to a ledger count before adding it to `sequence()`"
