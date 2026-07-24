@@ -37,7 +37,7 @@ impl Contract {
 
 ## The fix
 
-Return an `Option` (or a `Result`) and let the caller decide how to handle a
+Return an Option (or a Result) and let the caller decide how to handle a
 missing value, and use checked indexing instead of raw `[idx]`:
 
 ```rust
@@ -61,16 +61,16 @@ The rule identifies view/getter entrypoints heuristically (accessor-style names
 that return a value and take no mutable/state-writing action) and then walks their
 bodies for panic-inducing constructs: `unwrap`/`expect`, `panic!`/`unreachable!`,
 and raw indexing expressions. Mutating entrypoints are deliberately excluded — a
-panic there is covered by [`panic_detection`](panic_detection.md) and
-[`sanct_unwrap`](sanct_unwrap.md). `#[cfg(test)]` modules and lines carrying a
+panic there is covered by `panic_detection` and
+`sanct_unwrap`. `#[cfg(test)]` modules and lines carrying a
 `sanctifier:ignore[SANCT_VIEW_PANIC]` justification are skipped.
 
-**Limitations:** the view/getter classification is name- and shape-based, so a
+Limitations: the view/getter classification is name- and shape-based, so a
 getter with an unconventional name may be missed, and a helper that provably cannot
 panic (e.g. indexing a fixed-size array with a constant) may be a false positive.
 
 ## References
 
-- Soroban docs — [Errors and panics](https://soroban.stellar.org/docs/fundamentals-and-concepts/errors-and-panics)
+- [Soroban docs — Errors and panics](https://soroban.stellar.org/docs/fundamentals/errors)
 - [CWE-248: Uncaught Exception](https://cwe.mitre.org/data/definitions/248.html)
-- Related: [`panic_detection`](panic_detection.md), [`sanct_unwrap`](sanct_unwrap.md), [`unhandled_result`](unhandled_result.md)
+- Related: `panic_detection`, `sanct_unwrap`, `unhandled_result`

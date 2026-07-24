@@ -8,7 +8,7 @@
     "sanctifier.observed_codes is the set of finding codes the default RuleRegistry emits on the *vulnerable* fixture today. It is asserted by the harness and kept in lock-step with the gallery snapshots.",
     "slither.detectors / aderyn.detectors list the closest default detectors each tool ships for the same class (from their published detector catalogs). expected=true means that tool flags the class out of the box."
   ],
-  "sanctifier_rule_to_code": {
+ "sanctifier_rule_to_code": {
     "auth_gap": "S001",
     "panic_detection": "S002",
     "arithmetic_overflow": "S003",
@@ -27,6 +27,8 @@
     "SANCT_ARG_DOS": "SANCT_ARG_DOS",
     "sanct_unwrap": "SANCT_UNWRAP",
     "SANCT_UNWRAP": "SANCT_UNWRAP",
+    "init_hardcoded_admin": "SANCT_INIT_HARDCODED_ADMIN",
+    "SANCT_INIT_HARDCODED_ADMIN": "SANCT_INIT_HARDCODED_ADMIN",
     "sanct_visibility": "SANCT_VISIBILITY",
     "SANCT_VISIBILITY": "SANCT_VISIBILITY",
     "unbounded_storage": "SANCT_UNBOUNDED_STORAGE",

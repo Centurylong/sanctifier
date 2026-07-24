@@ -36,6 +36,7 @@ detector page and to the relevant [Glossary](../glossary.md) term.
 | [`sanct_unwrap`](sanct_unwrap.md) | [`SANCT_UNWRAP`](../error-codes.md) | panic_handling | High | `unwrap`/`expect`/risky default in `#[contractimpl]` entrypoints |
 | [`sanct_visibility`](sanct_visibility.md) | [`SANCT_VISIBILITY`](../error-codes.md) | authentication | High | Helper-shaped state mutator exported without an auth guard |
 | [`unbounded_storage`](unbounded_storage.md) | [`SANCT_UNBOUNDED_STORAGE`](../error-codes.md) | denial_of_service | High | Persistent/instance collection grows with no removal or length cap |
+| [`init_hardcoded_admin`](init_hardcoded_admin.md) | [`SANCT_INIT_HARDCODED_ADMIN`](../error-codes.md) | authentication | Warning | Hardcoded admin address or default literal in init function |
 | [`view_panic`](view_panic.md) | [`SANCT_VIEW_PANIC`](../error-codes.md) | panic_handling | Medium | View/getter entrypoint contains a reachable panic |
 | [`allowance_race`](allowance_race.md) | [`SANCT_ALLOWANCE_RACE`](../error-codes.md) | authorization | Medium | `approve` overwrites the allowance unconditionally (approve TOCTOU) |
 | [`state_write_in_view`](state_write_in_view.md) | [`SANCT_STATE_WRITE_IN_VIEW`](../error-codes.md) | code_hygiene | Warning | Getter/view-named function performs a storage write |
