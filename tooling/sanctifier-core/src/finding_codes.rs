@@ -17,6 +17,7 @@ pub const DEPRECATED_SDK: &str = "S014";
 pub const DEAD_CODE: &str = "S015";
 pub const ERROR_CODE_COLLISION: &str = "S016";
 pub const FEE_ROUNDING: &str = "S017";
+pub const UNSIGNED_UNDERFLOW: &str = "S019";
 pub const ARG_DOS: &str = "SANCT_ARG_DOS";
 pub const BALANCE_EQUALITY: &str = "SANCT_BALANCE_EQ";
 pub const SANCT_UNWRAP: &str = "SANCT_UNWRAP";
@@ -128,6 +129,12 @@ pub fn all_finding_codes() -> Vec<FindingCode> {
             category: "arithmetic",
             description:
                 "Fee/interest calculation using integer division rounds to zero for micro-amounts, enabling fee-evasion attacks",
+        },
+        FindingCode {
+            code: UNSIGNED_UNDERFLOW,
+            category: "arithmetic",
+            description:
+                "Unchecked subtraction on an unsigned integer can wrap past zero (underflow)",
         },
         FindingCode {
             code: ARG_DOS,

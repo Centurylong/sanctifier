@@ -1,0 +1,14 @@
+---
+source: tooling/sanctifier-core/tests/detector_snapshots.rs
+expression: findings
+---
+- rule_name: unsigned_underflow
+  severity: Warning
+  message: "Unchecked subtraction on unsigned value `balance` can underflow (wraps past zero)"
+  location: "withdraw:17"
+  suggestion: "Use `balance.checked_sub(rhs)` and handle `None` with a typed error, or `balance.saturating_sub(rhs)` if clamping to zero is intended"
+- rule_name: unsigned_underflow
+  severity: Warning
+  message: "Unchecked subtraction on unsigned value `total` can underflow (wraps past zero)"
+  location: "spend:23"
+  suggestion: "Use `total.checked_sub(rhs)` and handle `None` with a typed error, or `total.saturating_sub(rhs)` if clamping to zero is intended"
