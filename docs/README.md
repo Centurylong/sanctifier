@@ -36,6 +36,9 @@ New to Sanctifier and adding it to an existing project? Read in this order:
 - **[soroban-sdk Compatibility](soroban-sdk-compatibility.md)** — the supported
   soroban-sdk versions, the CI compatibility matrix, and version-specific
   handling (including the toolchain pin).
+- **[Source-Optional WASM Analysis](wasm-analysis.md)** — analyze a compiled
+  `.wasm` module directly with `sanctifier wasm`, and its documented limitations
+  vs. source mode.
 - **[Talks & Workshops](talks/README.md)** — ready-to-present slide deck and
   live-demo script for demonstrating Sanctifier at conferences and workshops.
 - **[Awesome Soroban Security](awesome-soroban-security.md)** — curated external
