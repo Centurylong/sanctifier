@@ -6,7 +6,9 @@ other pages can deep-link to it — e.g. `glossary.md#require_auth` or
 `glossary.md#oog-out-of-gas`.
 
 This page is part of the [core documentation set](README.md). Finding codes
-referenced below are listed in [Finding Codes](error-codes.md).
+referenced below are listed in [Finding Codes](error-codes.md), and each has a
+full write-up (vulnerable example + fix) in the
+[Detector Catalog](detectors/README.md).
 
 **Sections:** [Platform](#platform) · [Authorization](#authorization) ·
 [Storage & ledger](#storage--ledger) · [Resources & cost](#resources--cost) ·

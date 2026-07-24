@@ -27,6 +27,9 @@ New to Sanctifier and adding it to an existing project? Read in this order:
   audit and other tools, with an honest scope and limitations statement.
 - **[Finding Codes](error-codes.md)** — the `S001`…`S016` codes emitted in CLI and
   JSON output.
+- **[Detector Catalog](detectors/README.md)** — one page per detector: what it
+  catches, a vulnerable example, the fix, and references. Coverage is enforced in
+  CI.
 - **[Getting Started (detailed)](getting-started.md)** — example output and
   finding-by-finding explanations.
 - **[Detector Cookbook](detector-cookbook.md)** — three worked examples of custom detectors (trivial, medium, and data-flow).
