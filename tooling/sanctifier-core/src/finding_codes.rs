@@ -22,6 +22,10 @@ pub const SANCT_UNWRAP: &str = "SANCT_UNWRAP";
 pub const INIT_HARDCODED_ADMIN: &str = "SANCT_INIT_HARDCODED_ADMIN";
 pub const SANCT_VISIBILITY: &str = "SANCT_VISIBILITY";
 pub const UNBOUNDED_STORAGE: &str = "SANCT_UNBOUNDED_STORAGE";
+pub const SANCT_VIEW_PANIC: &str = "SANCT_VIEW_PANIC";
+pub const ALLOWANCE_RACE: &str = "SANCT_ALLOWANCE_RACE";
+pub const STATE_WRITE_IN_VIEW: &str = "SANCT_STATE_WRITE_IN_VIEW";
+pub const DIVISION_BY_ZERO: &str = "S018";
 
 #[derive(Debug, Clone, Serialize)]
 pub struct FindingCode {
@@ -148,6 +152,30 @@ pub fn all_finding_codes() -> Vec<FindingCode> {
             description:
                 "Persistent/instance storage collection grows via append/insert with no removal or length cap",
         },
+        FindingCode {
+            code: SANCT_VIEW_PANIC,
+            category: "panic_handling",
+            description:
+                "View/getter entrypoint contains a reachable panic, aborting callers that assume reads are safe",
+        },
+        FindingCode {
+            code: ALLOWANCE_RACE,
+            category: "authorization",
+            description:
+                "Allowance is overwritten unconditionally (set-allowance) without increase/decrease or compare-and-set semantics, enabling the approve front-running race",
+        },
+        FindingCode {
+            code: STATE_WRITE_IN_VIEW,
+            category: "code_hygiene",
+            description:
+                "Getter/view-style function performs a storage write; callers expect it to be read-only",
+        },
+        FindingCode {
+            code: DIVISION_BY_ZERO,
+            category: "arithmetic",
+            description:
+                "Division or modulo by a non-constant value not proven non-zero, which panics on-chain if zero at runtime",
+        },
     ]
 }
 
@@ -177,5 +205,8 @@ mod tests {
         assert!(codes.iter().any(|c| c.code == SANCT_VISIBILITY));
         assert!(codes.iter().any(|c| c.code == INIT_HARDCODED_ADMIN));
         assert!(codes.iter().any(|c| c.code == UNBOUNDED_STORAGE));
+        assert!(codes.iter().any(|c| c.code == SANCT_VIEW_PANIC));
+        assert!(codes.iter().any(|c| c.code == ALLOWANCE_RACE));
+        assert!(codes.iter().any(|c| c.code == DIVISION_BY_ZERO));
     }
 }

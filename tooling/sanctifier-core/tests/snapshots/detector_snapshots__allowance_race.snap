@@ -1,10 +1,10 @@
 ---
-source: tooling/sanctifier-core/tests/gallery_snapshots.rs
-assertion_line: 23
+source: tooling/sanctifier-core/tests/detector_snapshots.rs
+assertion_line: 30
 expression: findings
 ---
 - rule_name: SANCT_ALLOWANCE_RACE
   severity: Warning
   message: "SANCT_ALLOWANCE_RACE: `approve` overwrites the allowance at key `(owner . clone () , spender . clone ())` unconditionally from a caller-supplied amount, enabling the approve front-running race"
-  location: "approve:16"
+  location: "approve:19"
   suggestion: "Use delta semantics (`increase_allowance`/`decrease_allowance`) or a compare-and-set: read the current allowance and require an `expected_current` argument to match before writing the new value."

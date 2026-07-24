@@ -30,7 +30,14 @@
     "sanct_visibility": "SANCT_VISIBILITY",
     "SANCT_VISIBILITY": "SANCT_VISIBILITY",
     "unbounded_storage": "SANCT_UNBOUNDED_STORAGE",
-    "SANCT_UNBOUNDED_STORAGE": "SANCT_UNBOUNDED_STORAGE"
+    "SANCT_UNBOUNDED_STORAGE": "SANCT_UNBOUNDED_STORAGE",
+    "view_panic": "SANCT_VIEW_PANIC",
+    "SANCT_VIEW_PANIC": "SANCT_VIEW_PANIC",
+    "allowance_race": "SANCT_ALLOWANCE_RACE",
+    "SANCT_ALLOWANCE_RACE": "SANCT_ALLOWANCE_RACE",
+    "state_write_in_view": "SANCT_STATE_WRITE_IN_VIEW",
+    "SANCT_STATE_WRITE_IN_VIEW": "SANCT_STATE_WRITE_IN_VIEW",
+    "division_by_zero": "S018"
   },
   "overlap_legend": {
     "shared-covered": "Class has an EVM analogue and Sanctifier already flags it.",
@@ -122,11 +129,11 @@
       "title": "Allowance race / approve TOCTOU",
       "soroban": { "vulnerable": "allowance_race_vulnerable.rs", "fixed": "allowance_race_fixed.rs" },
       "solidity": null,
-      "sanctifier": { "ideal_code": "S006", "observed_codes": [], "status": "planned" },
+      "sanctifier": { "ideal_code": "SANCT_ALLOWANCE_RACE", "observed_codes": ["SANCT_ALLOWANCE_RACE"], "status": "flagged" },
       "slither": { "detectors": [], "expected": false },
       "aderyn": { "detectors": [], "expected": false },
-      "overlap": "mutual-gap",
-      "notes": "The ERC-20 approve front-running race is well known but none of the three default rulesets flags it (Slither and Aderyn leave it to increase/decreaseAllowance conventions). Real but mutually uncovered."
+      "overlap": "soroban-specific",
+      "notes": "The ERC-20 approve front-running race is well known but neither Slither nor Aderyn flags it by default (they leave it to increase/decreaseAllowance conventions). Sanctifier now flags approve() entrypoints that overwrite the allowance unconditionally from a caller-supplied amount, with no delta or compare-and-set semantics (SANCT_ALLOWANCE_RACE)."
     },
     {
       "bug_class": "oracle_staleness",
