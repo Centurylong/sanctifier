@@ -22,6 +22,7 @@ pub const SANCT_UNWRAP: &str = "SANCT_UNWRAP";
 pub const SANCT_VISIBILITY: &str = "SANCT_VISIBILITY";
 pub const UNBOUNDED_STORAGE: &str = "SANCT_UNBOUNDED_STORAGE";
 pub const SANCT_VIEW_PANIC: &str = "SANCT_VIEW_PANIC";
+pub const ALLOWANCE_RACE: &str = "SANCT_ALLOWANCE_RACE";
 
 #[derive(Debug, Clone, Serialize)]
 pub struct FindingCode {
@@ -148,6 +149,12 @@ pub fn all_finding_codes() -> Vec<FindingCode> {
             description:
                 "View/getter entrypoint contains a reachable panic, aborting callers that assume reads are safe",
         },
+        FindingCode {
+            code: ALLOWANCE_RACE,
+            category: "authorization",
+            description:
+                "Allowance is overwritten unconditionally (set-allowance) without increase/decrease or compare-and-set semantics, enabling the approve front-running race",
+        },
     ]
 }
 
@@ -177,5 +184,6 @@ mod tests {
         assert!(codes.iter().any(|c| c.code == SANCT_VISIBILITY));
         assert!(codes.iter().any(|c| c.code == UNBOUNDED_STORAGE));
         assert!(codes.iter().any(|c| c.code == SANCT_VIEW_PANIC));
+        assert!(codes.iter().any(|c| c.code == ALLOWANCE_RACE));
     }
 }

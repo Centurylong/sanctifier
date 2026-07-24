@@ -14,7 +14,8 @@
 
 use sanctifier_core::rules::auth_gap::VisibilityLeakRule;
 use sanctifier_core::rules::{
-    arg_dos::ArgDosRule, arithmetic_overflow::ArithmeticOverflowRule, auth_gap::AuthGapRule,
+    allowance_race::AllowanceRaceRule, arg_dos::ArgDosRule,
+    arithmetic_overflow::ArithmeticOverflowRule, auth_gap::AuthGapRule,
     edge_amount::EdgeAmountRule, error_code_collision::ErrorCodeCollisionRule,
     fee_rounding::FeeRoundingRule, hardcoded_addr::HardcodedAddrRule, ledger_size::LedgerSizeRule,
     missing_ttl::MissingTtlRule, panic_detection::PanicDetectionRule,
@@ -177,6 +178,15 @@ fn snapshot_view_panic() {
 }
 
 #[test]
+fn snapshot_allowance_race() {
+    assert_detector_snapshot(
+        "allowance_race",
+        &AllowanceRaceRule::new(),
+        include_str!("fixtures/detectors/allowance_race.rs"),
+    );
+}
+
+#[test]
 fn unbounded_storage_detector_flags_only_uncapped_persistent_growth() {
     let findings = RuleRegistry::with_default_rules().run_by_name(
         include_str!("fixtures/detectors/unbounded_storage.rs"),
@@ -209,6 +219,18 @@ fn view_panic_detector_flags_only_view_entrypoints() {
         .all(|finding| finding.rule_name == "SANCT_VIEW_PANIC"));
     assert!(findings.iter().any(|f| f.location.contains("get_price")));
     assert!(findings.iter().any(|f| f.location.contains("get_holder")));
+}
+
+#[test]
+fn allowance_race_detector_is_registered_in_default_rules() {
+    let findings = RuleRegistry::with_default_rules().run_by_name(
+        include_str!("fixtures/detectors/allowance_race.rs"),
+        "allowance_race",
+    );
+
+    assert_eq!(findings.len(), 1, "{findings:#?}");
+    assert_eq!(findings[0].rule_name, "SANCT_ALLOWANCE_RACE");
+    assert!(findings[0].location.contains("approve"));
 }
 
 #[test]
