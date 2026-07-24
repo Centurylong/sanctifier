@@ -28,6 +28,7 @@ detector page and to the relevant [Glossary](../glossary.md) term.
 | [`unhandled_result`](unhandled_result.md) | [`S009`](../error-codes.md) | logic | Medium | A `Result` that is silently dropped |
 | [`hardcoded_addr`](hardcoded_addr.md) | [`S012`](../error-codes.md) | code_hygiene | High | Hardcoded admin address / secret literal in an auth context |
 | [`edge_amount`](edge_amount.md) | [`S013`](../error-codes.md) | code_hygiene | Medium | `transfer`/`mint`/`burn` missing `amount > 0` / `from != to` guards |
+| [`balance_equality`](balance_equality.md) | [`SANCT_BALANCE_EQ`](../error-codes.md) | logic | Info | Balance gated with `==`/`!=` where `>=`/`<=` was intended |
 | [`unused_variable`](unused_variable.md) | [`S015`](../error-codes.md) | code_hygiene | Info | Unused local bindings (dead code) |
 | [`error_code_collision`](error_code_collision.md) | [`S016`](../error-codes.md) | code_hygiene | Medium | Duplicate/inconsistent `#[contracterror]` discriminants |
 | [`fee_rounding`](fee_rounding.md) | [`S017`](../error-codes.md) | arithmetic | High | Integer-division fees that round to zero for micro-amounts |
@@ -40,6 +41,7 @@ detector page and to the relevant [Glossary](../glossary.md) term.
 | [`allowance_race`](allowance_race.md) | [`SANCT_ALLOWANCE_RACE`](../error-codes.md) | authorization | Medium | `approve` overwrites the allowance unconditionally (approve TOCTOU) |
 | [`state_write_in_view`](state_write_in_view.md) | [`SANCT_STATE_WRITE_IN_VIEW`](../error-codes.md) | code_hygiene | Warning | Getter/view-named function performs a storage write |
 | [`division_by_zero`](division_by_zero.md) | [`S018`](../error-codes.md) | arithmetic | Medium | `/` or `%` by a non-constant value not proven non-zero |
+| [`shift_overflow`](shift_overflow.md) | [`SANCT_SHIFT_OVERFLOW`](../error-codes.md) | arithmetic | Warning/Error | Bit shift by an amount that may be `>=` the operand's bit width |
 
 ## Page anatomy
 

@@ -19,6 +19,7 @@ pub const ERROR_CODE_COLLISION: &str = "S016";
 pub const FEE_ROUNDING: &str = "S017";
 pub const LEDGER_SECONDS: &str = "S021";
 pub const ARG_DOS: &str = "SANCT_ARG_DOS";
+pub const BALANCE_EQUALITY: &str = "SANCT_BALANCE_EQ";
 pub const SANCT_UNWRAP: &str = "SANCT_UNWRAP";
 pub const SANCT_VISIBILITY: &str = "SANCT_VISIBILITY";
 pub const UNBOUNDED_STORAGE: &str = "SANCT_UNBOUNDED_STORAGE";
@@ -26,6 +27,13 @@ pub const SANCT_VIEW_PANIC: &str = "SANCT_VIEW_PANIC";
 pub const ALLOWANCE_RACE: &str = "SANCT_ALLOWANCE_RACE";
 pub const STATE_WRITE_IN_VIEW: &str = "SANCT_STATE_WRITE_IN_VIEW";
 pub const DIVISION_BY_ZERO: &str = "S018";
+
+// ── Source-optional (compiled WASM) checks ────────────────────────────────────
+// Emitted only by `sanctifier wasm`, which analyzes a deployed module directly.
+pub const WASM_NOT_SOROBAN: &str = "W001";
+pub const WASM_NO_EXPORTS: &str = "W002";
+pub const WASM_MISSING_ENV_META: &str = "W003";
+pub const WASM_FLOAT_TYPES: &str = "W004";
 
 #[derive(Debug, Clone, Serialize)]
 pub struct FindingCode {
@@ -102,6 +110,12 @@ pub fn all_finding_codes() -> Vec<FindingCode> {
             description: "Transfer/mint/burn missing amount>0 or from!=to validation guards",
         },
         FindingCode {
+            code: BALANCE_EQUALITY,
+            category: "logic",
+            description:
+                "Balance gated against an amount with `==`/`!=` where `>=`/`<=` was likely intended",
+        },
+        FindingCode {
             code: DEPRECATED_SDK,
             category: "code_hygiene",
             description:
@@ -175,6 +189,29 @@ pub fn all_finding_codes() -> Vec<FindingCode> {
             category: "arithmetic",
             description:
                 "Division or modulo by a non-constant value not proven non-zero, which panics on-chain if zero at runtime",
+        },
+        FindingCode {
+            code: WASM_NOT_SOROBAN,
+            category: "wasm",
+            description:
+                "Compiled module has no Soroban contract spec section; may not be a Soroban contract",
+        },
+        FindingCode {
+            code: WASM_NO_EXPORTS,
+            category: "wasm",
+            description: "Compiled module exports no callable functions",
+        },
+        FindingCode {
+            code: WASM_MISSING_ENV_META,
+            category: "wasm",
+            description:
+                "Compiled module is missing Soroban environment metadata (interface version)",
+        },
+        FindingCode {
+            code: WASM_FLOAT_TYPES,
+            category: "wasm",
+            description:
+                "Compiled module uses floating-point value types, which the Soroban host rejects",
         },
     ]
 }

@@ -28,6 +28,19 @@ the fix, and references.
 
 > **Full catalog:** [Detector Catalog →](detectors/README.md)
 
+### Source-optional (compiled WASM) codes
+
+Emitted only by [`sanctifier wasm`](wasm-analysis.md), which analyzes a deployed
+module directly. See [Source-Optional WASM Analysis](wasm-analysis.md) for the
+full source-vs-WASM comparison.
+
+| Code | Category | Meaning |
+|------|----------|---------|
+| `W001` | wasm | Compiled module has no Soroban contract spec section; may not be a Soroban contract |
+| `W002` | wasm | Compiled module exports no callable functions |
+| `W003` | wasm | Compiled module is missing Soroban environment metadata (interface version) |
+| `W004` | wasm | Compiled module uses floating-point value types, which the Soroban host rejects |
+
 ## Detector catalog
 
 ### `SANCT_UNWRAP`
