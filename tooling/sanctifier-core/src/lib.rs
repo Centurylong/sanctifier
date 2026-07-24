@@ -11,6 +11,7 @@ pub mod rules;
 #[cfg(feature = "smt")]
 pub mod smt;
 mod storage_collision;
+pub mod wasm;
 use std::collections::{HashMap, HashSet};
 use syn::spanned::Spanned;
 use syn::visit::{self, Visit};
