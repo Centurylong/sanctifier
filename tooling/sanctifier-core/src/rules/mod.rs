@@ -3,6 +3,7 @@ pub mod arithmetic_overflow;
 pub mod auth_gap;
 pub mod edge_amount;
 pub mod error_code_collision;
+pub mod event_data_cast;
 pub mod fee_rounding;
 pub mod hardcoded_addr;
 pub mod ledger_size;
@@ -131,6 +132,7 @@ impl RuleRegistry {
         registry.register(missing_ttl::MissingTtlRule::new());
         registry.register(arg_dos::ArgDosRule::new());
         registry.register(sanct_unwrap::SanctUnwrapRule::new());
+        registry.register(event_data_cast::EventDataCastRule::new());
         registry
     }
 }

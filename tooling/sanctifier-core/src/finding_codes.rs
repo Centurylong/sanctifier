@@ -19,6 +19,7 @@ pub const ERROR_CODE_COLLISION: &str = "S016";
 pub const FEE_ROUNDING: &str = "S017";
 pub const ARG_DOS: &str = "SANCT_ARG_DOS";
 pub const SANCT_UNWRAP: &str = "SANCT_UNWRAP";
+pub const SANCT_EVENT_DATA_CAST: &str = "SANCT_EVENT_DATA_CAST";
 
 #[derive(Debug, Clone, Serialize)]
 pub struct FindingCode {
@@ -127,6 +128,12 @@ pub fn all_finding_codes() -> Vec<FindingCode> {
             category: "panic_handling",
             description:
                 "Contract entrypoint uses unwrap, expect, or a risky unwrap_or_default fallback",
+        },
+        FindingCode {
+            code: SANCT_EVENT_DATA_CAST,
+            category: "events",
+            description:
+                "Narrowing integer cast in event emission data silently truncates values indexers receive",
         },
     ]
 }

@@ -15,6 +15,7 @@
 use sanctifier_core::rules::{
     arg_dos::ArgDosRule, arithmetic_overflow::ArithmeticOverflowRule, auth_gap::AuthGapRule,
     edge_amount::EdgeAmountRule, error_code_collision::ErrorCodeCollisionRule,
+    event_data_cast::EventDataCastRule,
     fee_rounding::FeeRoundingRule, hardcoded_addr::HardcodedAddrRule, ledger_size::LedgerSizeRule,
     missing_ttl::MissingTtlRule, panic_detection::PanicDetectionRule,
     sanct_unwrap::SanctUnwrapRule, unhandled_result::UnhandledResultRule,
@@ -144,6 +145,15 @@ fn snapshot_sanct_unwrap() {
         "sanct_unwrap",
         &SanctUnwrapRule::new(),
         include_str!("fixtures/detectors/sanct_unwrap.rs"),
+    );
+}
+
+#[test]
+fn snapshot_event_data_cast() {
+    assert_detector_snapshot(
+        "event_data_cast",
+        &EventDataCastRule::new(),
+        include_str!("fixtures/detectors/event_data_cast.rs"),
     );
 }
 
