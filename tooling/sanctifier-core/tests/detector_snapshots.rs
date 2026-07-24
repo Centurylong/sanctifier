@@ -18,13 +18,12 @@ use sanctifier_core::rules::{
     arithmetic_overflow::ArithmeticOverflowRule, auth_gap::AuthGapRule,
     balance_equality::BalanceEqualityRule, division_by_zero::DivisionByZeroRule,
     edge_amount::EdgeAmountRule, error_code_collision::ErrorCodeCollisionRule,
-    event_data_cast::EventDataCastRule,
-    fee_rounding::FeeRoundingRule, hardcoded_addr::HardcodedAddrRule, ledger_size::LedgerSizeRule,
-    missing_ttl::MissingTtlRule, panic_detection::PanicDetectionRule,
-    sanct_unwrap::SanctUnwrapRule, shift_overflow::ShiftOverflowRule,
-    state_write_in_view::StateWriteInViewRule, unbounded_storage::UnboundedStorageRule,
-    unhandled_result::UnhandledResultRule, unused_variable::UnusedVariableRule,
-    view_panic::ViewPanicRule, Rule, RuleRegistry,
+    event_data_cast::EventDataCastRule, fee_rounding::FeeRoundingRule,
+    hardcoded_addr::HardcodedAddrRule, ledger_size::LedgerSizeRule, missing_ttl::MissingTtlRule,
+    panic_detection::PanicDetectionRule, sanct_unwrap::SanctUnwrapRule,
+    shift_overflow::ShiftOverflowRule, state_write_in_view::StateWriteInViewRule,
+    unbounded_storage::UnboundedStorageRule, unhandled_result::UnhandledResultRule,
+    unused_variable::UnusedVariableRule, view_panic::ViewPanicRule, Rule, RuleRegistry,
 };
 
 /// Run a detector against its fixture and snapshot the resulting findings.
@@ -177,6 +176,9 @@ fn snapshot_event_data_cast() {
         "event_data_cast",
         &EventDataCastRule::new(),
         include_str!("fixtures/detectors/event_data_cast.rs"),
+    );
+}
+
 fn snapshot_unbounded_storage() {
     assert_detector_snapshot(
         "unbounded_storage",
