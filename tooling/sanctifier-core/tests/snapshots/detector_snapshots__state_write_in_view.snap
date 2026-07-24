@@ -1,0 +1,14 @@
+---
+source: tooling/sanctifier-core/tests/detector_snapshots.rs
+expression: findings
+---
+- rule_name: SANCT_STATE_WRITE_IN_VIEW
+  severity: Warning
+  message: "SANCT_STATE_WRITE_IN_VIEW: view/getter `get_balance` performs a storage `set` write; callers and indexers expect getters to be read-only"
+  location: "get_balance:18"
+  suggestion: "Move the write into a dedicated state-changing function, rename the function, or annotate the line with `// sanctifier:ignore[SANCT_STATE_WRITE_IN_VIEW]` if it is intentional. TTL bumps such as extend_ttl() are never flagged."
+- rule_name: SANCT_STATE_WRITE_IN_VIEW
+  severity: Warning
+  message: "SANCT_STATE_WRITE_IN_VIEW: view/getter `allowance_of` performs a storage `remove` write; callers and indexers expect getters to be read-only"
+  location: "allowance_of:24"
+  suggestion: "Move the write into a dedicated state-changing function, rename the function, or annotate the line with `// sanctifier:ignore[SANCT_STATE_WRITE_IN_VIEW]` if it is intentional. TTL bumps such as extend_ttl() are never flagged."

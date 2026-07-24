@@ -23,6 +23,7 @@ pub const SANCT_VISIBILITY: &str = "SANCT_VISIBILITY";
 pub const UNBOUNDED_STORAGE: &str = "SANCT_UNBOUNDED_STORAGE";
 pub const SANCT_VIEW_PANIC: &str = "SANCT_VIEW_PANIC";
 pub const ALLOWANCE_RACE: &str = "SANCT_ALLOWANCE_RACE";
+pub const STATE_WRITE_IN_VIEW: &str = "SANCT_STATE_WRITE_IN_VIEW";
 
 #[derive(Debug, Clone, Serialize)]
 pub struct FindingCode {
@@ -154,6 +155,12 @@ pub fn all_finding_codes() -> Vec<FindingCode> {
             category: "authorization",
             description:
                 "Allowance is overwritten unconditionally (set-allowance) without increase/decrease or compare-and-set semantics, enabling the approve front-running race",
+        },
+        FindingCode {
+            code: STATE_WRITE_IN_VIEW,
+            category: "code_hygiene",
+            description:
+                "Getter/view-style function performs a storage write; callers expect it to be read-only",
         },
     ]
 }

@@ -19,9 +19,9 @@ use sanctifier_core::rules::{
     edge_amount::EdgeAmountRule, error_code_collision::ErrorCodeCollisionRule,
     fee_rounding::FeeRoundingRule, hardcoded_addr::HardcodedAddrRule, ledger_size::LedgerSizeRule,
     missing_ttl::MissingTtlRule, panic_detection::PanicDetectionRule,
-    sanct_unwrap::SanctUnwrapRule, unbounded_storage::UnboundedStorageRule,
-    unhandled_result::UnhandledResultRule, unused_variable::UnusedVariableRule,
-    view_panic::ViewPanicRule, Rule, RuleRegistry,
+    sanct_unwrap::SanctUnwrapRule, state_write_in_view::StateWriteInViewRule,
+    unbounded_storage::UnboundedStorageRule, unhandled_result::UnhandledResultRule,
+    unused_variable::UnusedVariableRule, view_panic::ViewPanicRule, Rule, RuleRegistry,
 };
 
 /// Run a detector against its fixture and snapshot the resulting findings.
@@ -169,6 +169,15 @@ fn snapshot_unbounded_storage() {
 }
 
 #[test]
+fn snapshot_state_write_in_view() {
+    assert_detector_snapshot(
+        "state_write_in_view",
+        &StateWriteInViewRule::new(),
+        include_str!("fixtures/detectors/state_write_in_view.rs"),
+    );
+}
+
+#[test]
 fn snapshot_view_panic() {
     assert_detector_snapshot(
         "view_panic",
@@ -231,6 +240,19 @@ fn allowance_race_detector_is_registered_in_default_rules() {
     assert_eq!(findings.len(), 1, "{findings:#?}");
     assert_eq!(findings[0].rule_name, "SANCT_ALLOWANCE_RACE");
     assert!(findings[0].location.contains("approve"));
+}
+
+#[test]
+fn state_write_in_view_detector_is_registered_in_default_rules() {
+    let findings = RuleRegistry::with_default_rules().run_by_name(
+        include_str!("fixtures/detectors/state_write_in_view.rs"),
+        "state_write_in_view",
+    );
+
+    assert_eq!(findings.len(), 2, "{findings:#?}");
+    assert!(findings
+        .iter()
+        .all(|finding| finding.rule_name == "SANCT_STATE_WRITE_IN_VIEW"));
 }
 
 #[test]
