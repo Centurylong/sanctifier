@@ -16,10 +16,11 @@ use sanctifier_core::rules::auth_gap::VisibilityLeakRule;
 use sanctifier_core::rules::{
     allowance_race::AllowanceRaceRule, arg_dos::ArgDosRule,
     arithmetic_overflow::ArithmeticOverflowRule, auth_gap::AuthGapRule,
-    division_by_zero::DivisionByZeroRule, edge_amount::EdgeAmountRule,
-    error_code_collision::ErrorCodeCollisionRule, fee_rounding::FeeRoundingRule,
-    hardcoded_addr::HardcodedAddrRule, ledger_size::LedgerSizeRule, missing_ttl::MissingTtlRule,
-    panic_detection::PanicDetectionRule, sanct_unwrap::SanctUnwrapRule,
+    balance_equality::BalanceEqualityRule, division_by_zero::DivisionByZeroRule,
+    edge_amount::EdgeAmountRule, error_code_collision::ErrorCodeCollisionRule,
+    fee_rounding::FeeRoundingRule, hardcoded_addr::HardcodedAddrRule, ledger_size::LedgerSizeRule,
+    missing_ttl::MissingTtlRule, panic_detection::PanicDetectionRule,
+    sanct_unwrap::SanctUnwrapRule, shift_overflow::ShiftOverflowRule,
     state_write_in_view::StateWriteInViewRule, unbounded_storage::UnboundedStorageRule,
     unhandled_result::UnhandledResultRule, unsigned_underflow::UnsignedUnderflowRule,
     unused_variable::UnusedVariableRule, view_panic::ViewPanicRule, Rule, RuleRegistry,
@@ -125,6 +126,15 @@ fn snapshot_edge_amount() {
 }
 
 #[test]
+fn snapshot_balance_equality() {
+    assert_detector_snapshot(
+        "balance_equality",
+        &BalanceEqualityRule::new(),
+        include_str!("fixtures/detectors/balance_equality.rs"),
+    );
+}
+
+#[test]
 fn snapshot_fee_rounding() {
     assert_detector_snapshot(
         "fee_rounding",
@@ -211,6 +221,11 @@ fn snapshot_unsigned_underflow() {
         "unsigned_underflow",
         &UnsignedUnderflowRule::new(),
         include_str!("fixtures/detectors/unsigned_underflow.rs"),
+fn snapshot_shift_overflow() {
+    assert_detector_snapshot(
+        "shift_overflow",
+        &ShiftOverflowRule::new(),
+        include_str!("fixtures/detectors/shift_overflow.rs"),
     );
 }
 
@@ -272,6 +287,19 @@ fn state_write_in_view_detector_is_registered_in_default_rules() {
     assert!(findings
         .iter()
         .all(|finding| finding.rule_name == "SANCT_STATE_WRITE_IN_VIEW"));
+}
+
+#[test]
+fn shift_overflow_detector_is_registered_in_default_rules() {
+    let findings = RuleRegistry::with_default_rules().run_by_name(
+        include_str!("fixtures/detectors/shift_overflow.rs"),
+        "shift_overflow",
+    );
+
+    assert_eq!(findings.len(), 3, "{findings:#?}");
+    assert!(findings
+        .iter()
+        .all(|finding| finding.rule_name == "SANCT_SHIFT_OVERFLOW"));
 }
 
 #[test]
