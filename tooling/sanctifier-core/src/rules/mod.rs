@@ -2,6 +2,7 @@ pub mod allowance_race;
 pub mod arg_dos;
 pub mod arithmetic_overflow;
 pub mod auth_gap;
+pub mod division_by_zero;
 pub mod edge_amount;
 pub mod error_code_collision;
 pub mod fee_rounding;
@@ -162,6 +163,7 @@ impl RuleRegistry {
         registry.register(view_panic::ViewPanicRule::new());
         registry.register(allowance_race::AllowanceRaceRule::new());
         registry.register(state_write_in_view::StateWriteInViewRule::new());
+        registry.register(division_by_zero::DivisionByZeroRule::new());
         registry
     }
 }
