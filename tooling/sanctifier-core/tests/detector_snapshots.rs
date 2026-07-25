@@ -18,13 +18,14 @@ use sanctifier_core::rules::{
     arithmetic_overflow::ArithmeticOverflowRule, auth_gap::AuthGapRule,
     balance_equality::BalanceEqualityRule, division_by_zero::DivisionByZeroRule,
     edge_amount::EdgeAmountRule, error_code_collision::ErrorCodeCollisionRule,
-    fee_rounding::FeeRoundingRule, hardcoded_addr::HardcodedAddrRule,
-    init_hardcoded_admin::InitHardcodedAdminRule, ledger_seconds::LedgerSecondsRule,
-    ledger_size::LedgerSizeRule, missing_ttl::MissingTtlRule, panic_detection::PanicDetectionRule,
-    sanct_unwrap::SanctUnwrapRule, shift_overflow::ShiftOverflowRule,
-    state_write_in_view::StateWriteInViewRule, unbounded_storage::UnboundedStorageRule,
-    unhandled_result::UnhandledResultRule, unsigned_underflow::UnsignedUnderflowRule,
-    unused_variable::UnusedVariableRule, view_panic::ViewPanicRule, Rule, RuleRegistry,
+    excessive_clone::ExcessiveCloneRule, fee_rounding::FeeRoundingRule,
+    hardcoded_addr::HardcodedAddrRule, init_hardcoded_admin::InitHardcodedAdminRule,
+    ledger_seconds::LedgerSecondsRule, ledger_size::LedgerSizeRule, missing_ttl::MissingTtlRule,
+    panic_detection::PanicDetectionRule, sanct_unwrap::SanctUnwrapRule,
+    shift_overflow::ShiftOverflowRule, state_write_in_view::StateWriteInViewRule,
+    unbounded_storage::UnboundedStorageRule, unhandled_result::UnhandledResultRule,
+    unsigned_underflow::UnsignedUnderflowRule, unused_variable::UnusedVariableRule,
+    view_panic::ViewPanicRule, Rule, RuleRegistry,
 };
 
 /// Run a detector against its fixture and snapshot the resulting findings.
@@ -132,6 +133,15 @@ fn snapshot_balance_equality() {
         "balance_equality",
         &BalanceEqualityRule::new(),
         include_str!("fixtures/detectors/balance_equality.rs"),
+    );
+}
+
+#[test]
+fn snapshot_excessive_clone() {
+    assert_detector_snapshot(
+        "excessive_clone",
+        &ExcessiveCloneRule::new(),
+        include_str!("fixtures/detectors/excessive_clone.rs"),
     );
 }
 
