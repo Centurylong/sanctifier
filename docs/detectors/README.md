@@ -33,6 +33,7 @@ detector page and to the relevant [Glossary](../glossary.md) term.
 | [`error_code_collision`](error_code_collision.md) | [`S016`](../error-codes.md) | code_hygiene | Medium | Duplicate/inconsistent `#[contracterror]` discriminants |
 | [`fee_rounding`](fee_rounding.md) | [`S017`](../error-codes.md) | arithmetic | High | Integer-division fees that round to zero for micro-amounts |
 | [`unsigned_underflow`](unsigned_underflow.md) | [`S019`](../error-codes.md) | arithmetic | High | Unchecked `-` / `-=` on an unsigned integer that wraps past zero |
+| [`ledger_seconds`](ledger_seconds.md) | [`S021`](../error-codes.md) | time_logic | Medium | Ledger sequence number mixed with a seconds-magnitude literal |
 | [`arg_dos`](arg_dos.md) | [`SANCT_ARG_DOS`](../error-codes.md) | denial_of_service | High | `Vec`/`Map` arguments iterated without a length cap |
 | [`sanct_unwrap`](sanct_unwrap.md) | [`SANCT_UNWRAP`](../error-codes.md) | panic_handling | High | `unwrap`/`expect`/risky default in `#[contractimpl]` entrypoints |
 | [`sanct_visibility`](sanct_visibility.md) | [`SANCT_VISIBILITY`](../error-codes.md) | authentication | High | Helper-shaped state mutator exported without an auth guard |

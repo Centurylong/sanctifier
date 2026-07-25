@@ -9,6 +9,7 @@ pub mod error_code_collision;
 pub mod fee_rounding;
 pub mod hardcoded_addr;
 pub mod init_hardcoded_admin;
+pub mod ledger_seconds;
 pub mod ledger_size;
 pub mod missing_ttl;
 pub mod panic_detection;
@@ -172,6 +173,7 @@ impl RuleRegistry {
         registry.register(state_write_in_view::StateWriteInViewRule::new());
         registry.register(division_by_zero::DivisionByZeroRule::new());
         registry.register(unsigned_underflow::UnsignedUnderflowRule::new());
+        registry.register(ledger_seconds::LedgerSecondsRule::new());
         registry
     }
 }

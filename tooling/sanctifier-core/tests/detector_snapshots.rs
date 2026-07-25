@@ -19,8 +19,8 @@ use sanctifier_core::rules::{
     balance_equality::BalanceEqualityRule, division_by_zero::DivisionByZeroRule,
     edge_amount::EdgeAmountRule, error_code_collision::ErrorCodeCollisionRule,
     fee_rounding::FeeRoundingRule, hardcoded_addr::HardcodedAddrRule,
-    init_hardcoded_admin::InitHardcodedAdminRule, ledger_size::LedgerSizeRule,
-    missing_ttl::MissingTtlRule, panic_detection::PanicDetectionRule,
+    init_hardcoded_admin::InitHardcodedAdminRule, ledger_seconds::LedgerSecondsRule,
+    ledger_size::LedgerSizeRule, missing_ttl::MissingTtlRule, panic_detection::PanicDetectionRule,
     sanct_unwrap::SanctUnwrapRule, shift_overflow::ShiftOverflowRule,
     state_write_in_view::StateWriteInViewRule, unbounded_storage::UnboundedStorageRule,
     unhandled_result::UnhandledResultRule, unsigned_underflow::UnsignedUnderflowRule,
@@ -141,6 +141,15 @@ fn snapshot_fee_rounding() {
         "fee_rounding",
         &FeeRoundingRule::new(),
         include_str!("fixtures/detectors/fee_rounding.rs"),
+    );
+}
+
+#[test]
+fn snapshot_ledger_seconds() {
+    assert_detector_snapshot(
+        "ledger_seconds",
+        &LedgerSecondsRule::new(),
+        include_str!("fixtures/detectors/ledger_seconds.rs"),
     );
 }
 
