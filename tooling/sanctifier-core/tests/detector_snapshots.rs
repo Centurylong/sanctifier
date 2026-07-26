@@ -23,9 +23,9 @@ use sanctifier_core::rules::{
     ledger_seconds::LedgerSecondsRule, ledger_size::LedgerSizeRule, missing_ttl::MissingTtlRule,
     panic_detection::PanicDetectionRule, sanct_unwrap::SanctUnwrapRule,
     shift_overflow::ShiftOverflowRule, state_write_in_view::StateWriteInViewRule,
-    unbounded_storage::UnboundedStorageRule, unhandled_result::UnhandledResultRule,
-    unsigned_underflow::UnsignedUnderflowRule, unused_variable::UnusedVariableRule,
-    view_panic::ViewPanicRule, Rule, RuleRegistry,
+    tier_boundary_off_by_one::TierBoundaryOffByOneRule, unbounded_storage::UnboundedStorageRule,
+    unhandled_result::UnhandledResultRule, unsigned_underflow::UnsignedUnderflowRule,
+    unused_variable::UnusedVariableRule, view_panic::ViewPanicRule, Rule, RuleRegistry,
 };
 
 /// Run a detector against its fixture and snapshot the resulting findings.
@@ -241,6 +241,15 @@ fn snapshot_division_by_zero() {
         "division_by_zero",
         &DivisionByZeroRule::new(),
         include_str!("fixtures/detectors/division_by_zero.rs"),
+    );
+}
+
+#[test]
+fn snapshot_tier_boundary_off_by_one() {
+    assert_detector_snapshot(
+        "tier_boundary_off_by_one",
+        &TierBoundaryOffByOneRule::new(),
+        include_str!("fixtures/detectors/tier_boundary_off_by_one.rs"),
     );
 }
 
