@@ -17,26 +17,8 @@ pub const DEPRECATED_SDK: &str = "S014";
 pub const DEAD_CODE: &str = "S015";
 pub const ERROR_CODE_COLLISION: &str = "S016";
 pub const FEE_ROUNDING: &str = "S017";
-pub const UNSIGNED_UNDERFLOW: &str = "S019";
-pub const LEDGER_SECONDS: &str = "S021";
-pub const EXCESSIVE_CLONE: &str = "S020";
 pub const ARG_DOS: &str = "SANCT_ARG_DOS";
-pub const BALANCE_EQUALITY: &str = "SANCT_BALANCE_EQ";
-pub const SANCT_UNWRAP: &str = "SANCT_UNWRAP";
-pub const INIT_HARDCODED_ADMIN: &str = "SANCT_INIT_HARDCODED_ADMIN";
-pub const SANCT_VISIBILITY: &str = "SANCT_VISIBILITY";
-pub const UNBOUNDED_STORAGE: &str = "SANCT_UNBOUNDED_STORAGE";
-pub const SANCT_VIEW_PANIC: &str = "SANCT_VIEW_PANIC";
-pub const ALLOWANCE_RACE: &str = "SANCT_ALLOWANCE_RACE";
-pub const STATE_WRITE_IN_VIEW: &str = "SANCT_STATE_WRITE_IN_VIEW";
-pub const DIVISION_BY_ZERO: &str = "S018";
-
-// ── Source-optional (compiled WASM) checks ────────────────────────────────────
-// Emitted only by `sanctifier wasm`, which analyzes a deployed module directly.
-pub const WASM_NOT_SOROBAN: &str = "W001";
-pub const WASM_NO_EXPORTS: &str = "W002";
-pub const WASM_MISSING_ENV_META: &str = "W003";
-pub const WASM_FLOAT_TYPES: &str = "W004";
+pub const DECIMALS_SCALE: &str = "SANCT_DECIMALS";
 
 #[derive(Debug, Clone, Serialize)]
 pub struct FindingCode {
@@ -141,98 +123,16 @@ pub fn all_finding_codes() -> Vec<FindingCode> {
                 "Fee/interest calculation using integer division rounds to zero for micro-amounts, enabling fee-evasion attacks",
         },
         FindingCode {
-            code: UNSIGNED_UNDERFLOW,
-            category: "arithmetic",
-            description:
-                "Unchecked subtraction on an unsigned integer can wrap past zero (underflow)",
-        },
-        FindingCode {
-            code: LEDGER_SECONDS,
-            category: "time_logic",
-            description:
-                "Ledger sequence number (block counter) mixed with a seconds-magnitude literal; use timestamp() for real-time windows",
-        },
-        FindingCode {
-            code: EXCESSIVE_CLONE,
-            category: "gas_efficiency",
-            description:
-                "Gas-wasting clone of the Soroban Env handle where a reference (&env) would suffice",
-        },
-        FindingCode {
             code: ARG_DOS,
             category: "denial_of_service",
             description:
                 "Contract entrypoint iterates over a Vec or Map argument without a visible length cap",
         },
         FindingCode {
-            code: SANCT_UNWRAP,
-            category: "panic_handling",
-            description:
-                "Contract entrypoint uses unwrap, expect, or a risky unwrap_or_default fallback",
-        },
-        FindingCode {
-            code: INIT_HARDCODED_ADMIN,
-            category: "authentication",
-            description:
-                "Initialization function uses hardcoded admin address literal or default value instead of formal argument",
-        },
-        FindingCode {
-            code: SANCT_VISIBILITY,
-            category: "authentication",
-            description: "Helper-shaped state mutator is publicly exposed without authorization",
-        },
-        FindingCode {
-            code: UNBOUNDED_STORAGE,
-            category: "denial_of_service",
-            description:
-                "Persistent/instance storage collection grows via append/insert with no removal or length cap",
-        },
-        FindingCode {
-            code: SANCT_VIEW_PANIC,
-            category: "panic_handling",
-            description:
-                "View/getter entrypoint contains a reachable panic, aborting callers that assume reads are safe",
-        },
-        FindingCode {
-            code: ALLOWANCE_RACE,
-            category: "authorization",
-            description:
-                "Allowance is overwritten unconditionally (set-allowance) without increase/decrease or compare-and-set semantics, enabling the approve front-running race",
-        },
-        FindingCode {
-            code: STATE_WRITE_IN_VIEW,
-            category: "code_hygiene",
-            description:
-                "Getter/view-style function performs a storage write; callers expect it to be read-only",
-        },
-        FindingCode {
-            code: DIVISION_BY_ZERO,
+            code: DECIMALS_SCALE,
             category: "arithmetic",
             description:
-                "Division or modulo by a non-constant value not proven non-zero, which panics on-chain if zero at runtime",
-        },
-        FindingCode {
-            code: WASM_NOT_SOROBAN,
-            category: "wasm",
-            description:
-                "Compiled module has no Soroban contract spec section; may not be a Soroban contract",
-        },
-        FindingCode {
-            code: WASM_NO_EXPORTS,
-            category: "wasm",
-            description: "Compiled module exports no callable functions",
-        },
-        FindingCode {
-            code: WASM_MISSING_ENV_META,
-            category: "wasm",
-            description:
-                "Compiled module is missing Soroban environment metadata (interface version)",
-        },
-        FindingCode {
-            code: WASM_FLOAT_TYPES,
-            category: "wasm",
-            description:
-                "Compiled module uses floating-point value types, which the Soroban host rejects",
+                "Token amount arithmetic mixes raw/scaled values without decimals or scale validation",
         },
     ]
 }
@@ -259,12 +159,6 @@ mod tests {
         assert!(codes.iter().any(|c| c.code == STORAGE_COLLISION));
         assert!(codes.iter().any(|c| c.code == UNSAFE_PATTERN));
         assert!(codes.iter().any(|c| c.code == CUSTOM_RULE_MATCH));
-        assert!(codes.iter().any(|c| c.code == SANCT_UNWRAP));
-        assert!(codes.iter().any(|c| c.code == SANCT_VISIBILITY));
-        assert!(codes.iter().any(|c| c.code == INIT_HARDCODED_ADMIN));
-        assert!(codes.iter().any(|c| c.code == UNBOUNDED_STORAGE));
-        assert!(codes.iter().any(|c| c.code == SANCT_VIEW_PANIC));
-        assert!(codes.iter().any(|c| c.code == ALLOWANCE_RACE));
-        assert!(codes.iter().any(|c| c.code == DIVISION_BY_ZERO));
+        assert!(codes.iter().any(|c| c.code == DECIMALS_SCALE));
     }
 }

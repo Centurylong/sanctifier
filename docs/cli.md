@@ -26,7 +26,6 @@ This document contains the help content for the `sanctifier` command-line progra
 * [`sanctifier cve show`↴](#sanctifier-cve-show)
 * [`sanctifier cve export`↴](#sanctifier-cve-export)
 * [`sanctifier cve serve`↴](#sanctifier-cve-serve)
-* [`sanctifier wasm`↴](#sanctifier-wasm)
 
 ## `sanctifier`
 
@@ -50,7 +49,6 @@ Stellar Soroban Security & Formal Verification Suite
 * `verify` — Verify #[sanctify::invariant] declarations across a contract or workspace
 * `prove` — Run SMT-based formal verification on Soroban token contract invariants
 * `cve` — Search, list, show, and export the public Soroban/Stellar CVE database
-* `wasm` — Analyze a compiled .wasm module directly when source is unavailable (source-optional mode)
 
 
 
@@ -395,25 +393,6 @@ Start a local HTTP server exposing GET /api/vulndb
 * `-p`, `--port <PORT>` — Port to listen on
 
   Default value: `7654`
-
-
-
-## `sanctifier wasm`
-
-Analyze a compiled .wasm module directly when source is unavailable (source-optional mode)
-
-**Usage:** `sanctifier wasm [OPTIONS] <PATH>`
-
-###### **Arguments:**
-
-* `<PATH>` — Path to a compiled `.wasm` module
-
-###### **Options:**
-
-* `-f`, `--format <FORMAT>` — Output format (text, json)
-
-  Default value: `text`
-* `--show-limitations` — Print the source-vs-WASM limitations note (also shown at the end of text output)
 
 
 

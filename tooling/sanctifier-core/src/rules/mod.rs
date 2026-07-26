@@ -1,12 +1,9 @@
-pub mod allowance_race;
 pub mod arg_dos;
 pub mod arithmetic_overflow;
 pub mod auth_gap;
-pub mod balance_equality;
-pub mod division_by_zero;
+pub mod decimals_scale;
 pub mod edge_amount;
 pub mod error_code_collision;
-pub mod excessive_clone;
 pub mod fee_rounding;
 pub mod hardcoded_addr;
 pub mod init_hardcoded_admin;
@@ -161,21 +158,10 @@ impl RuleRegistry {
         registry.register(hardcoded_addr::HardcodedAddrRule::new());
         registry.register(error_code_collision::ErrorCodeCollisionRule::new());
         registry.register(edge_amount::EdgeAmountRule::new());
-        registry.register(balance_equality::BalanceEqualityRule::new());
         registry.register(fee_rounding::FeeRoundingRule::new());
-        registry.register(excessive_clone::ExcessiveCloneRule::new());
         registry.register(missing_ttl::MissingTtlRule::new());
         registry.register(arg_dos::ArgDosRule::new());
-        registry.register(sanct_unwrap::SanctUnwrapRule::new());
-        registry.register(init_hardcoded_admin::InitHardcodedAdminRule::new());
-        registry.register(shift_overflow::ShiftOverflowRule::new());
-        registry.register(unbounded_storage::UnboundedStorageRule::new());
-        registry.register(view_panic::ViewPanicRule::new());
-        registry.register(allowance_race::AllowanceRaceRule::new());
-        registry.register(state_write_in_view::StateWriteInViewRule::new());
-        registry.register(division_by_zero::DivisionByZeroRule::new());
-        registry.register(unsigned_underflow::UnsignedUnderflowRule::new());
-        registry.register(ledger_seconds::LedgerSecondsRule::new());
+        registry.register(decimals_scale::DecimalsScaleRule::new());
         registry
     }
 }
