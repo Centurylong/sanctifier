@@ -4,6 +4,7 @@ pub mod badge;
 pub mod baseline;
 pub mod cve;
 pub mod diff;
+pub mod fix;
 pub mod init;
 pub mod prove;
 pub mod update;

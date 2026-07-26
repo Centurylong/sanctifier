@@ -95,6 +95,12 @@ pub fn all_finding_codes() -> Vec<FindingCode> {
             description: "Transfer/mint/burn missing amount>0 or from!=to validation guards",
         },
         FindingCode {
+            code: BALANCE_EQUALITY,
+            category: "logic",
+            description:
+                "Balance gated against an amount with `==`/`!=` where `>=`/`<=` was likely intended",
+        },
+        FindingCode {
             code: DEPRECATED_SDK,
             category: "code_hygiene",
             description:

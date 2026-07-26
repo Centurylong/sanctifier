@@ -1,0 +1,15 @@
+---
+source: tooling/sanctifier-core/tests/detector_snapshots.rs
+assertion_line: 30
+expression: findings
+---
+- rule_name: SANCT_VIEW_PANIC
+  severity: Warning
+  message: "SANCT_VIEW_PANIC: `unwrap` in view entrypoint `get_price` can abort the read for indexers and dashboards"
+  location: "get_price:11"
+  suggestion: "Replace `.unwrap()` with typed `Option`/`Result` handling in this getter"
+- rule_name: SANCT_VIEW_PANIC
+  severity: Warning
+  message: "SANCT_VIEW_PANIC: raw indexing in view entrypoint `get_holder` can abort the read on an out-of-bounds access"
+  location: "get_holder:16"
+  suggestion: "Use `.get(idx)` and return `Option`/`Result` instead of indexing directly"

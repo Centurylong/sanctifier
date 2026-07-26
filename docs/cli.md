@@ -12,6 +12,7 @@ This document contains the help content for the `sanctifier` command-line progra
 * [`sanctifier attest`↴](#sanctifier-attest)
 * [`sanctifier badge`↴](#sanctifier-badge)
 * [`sanctifier diff`↴](#sanctifier-diff)
+* [`sanctifier fix`↴](#sanctifier-fix)
 * [`sanctifier report`↴](#sanctifier-report)
 * [`sanctifier init`↴](#sanctifier-init)
 * [`sanctifier callgraph`↴](#sanctifier-callgraph)
@@ -39,6 +40,7 @@ Stellar Soroban Security & Formal Verification Suite
 * `attest` — Generate (or verify) a zero-knowledge attestation that a scan passed a score threshold
 * `badge` — Generate a dynamic Sanctifier status badge
 * `diff` — Compare findings between working tree and a git reference
+* `fix` — Generate suggested fix diffs for findings and apply them only after explicit confirmation (offline; deterministic local suggestions)
 * `report` — Generate a security report
 * `init` — Initialize Sanctifier in a new project
 * `callgraph` — Generate a Graphviz DOT call graph of cross-contract calls (env.invoke_contract)
@@ -156,6 +158,28 @@ Compare findings between working tree and a git reference
 
   Default value: `text`
 * `--vuln-db <VULN_DB>` — Path to a custom vulnerability database JSON file
+
+
+
+## `sanctifier fix`
+
+Generate suggested fix diffs for findings and apply them only after explicit confirmation (offline; deterministic local suggestions)
+
+**Usage:** `sanctifier fix [OPTIONS] [PATH]`
+
+###### **Arguments:**
+
+* `<PATH>` — Path to a contract directory, workspace directory, or a single .rs file
+
+  Default value: `.`
+
+###### **Options:**
+
+* `--apply` — Apply the suggested fixes. Without this flag the command is a dry run that only prints the diffs and never touches any file
+* `--yes` — Skip the interactive confirmation prompt when applying. Has no effect unless `--apply` is also set. Intended for non-interactive automation
+* `-f`, `--format <FORMAT>` — Output format (text, json)
+
+  Default value: `text`
 
 
 

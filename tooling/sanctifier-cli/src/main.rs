@@ -30,6 +30,9 @@ pub enum Commands {
     Badge(commands::badge::BadgeArgs),
     /// Compare findings between working tree and a git reference
     Diff(commands::diff::DiffArgs),
+    /// Generate suggested fix diffs for findings and apply them only after
+    /// explicit confirmation (offline; deterministic local suggestions)
+    Fix(commands::fix::FixArgs),
     /// Generate a security report
     Report {
         /// Output file path
@@ -92,6 +95,9 @@ fn main() -> anyhow::Result<()> {
                 branding::print_logo();
             }
             commands::diff::exec(args)?;
+        }
+        Commands::Fix(args) => {
+            commands::fix::exec(args)?;
         }
         Commands::Report { output } => {
             if let Some(p) = output {

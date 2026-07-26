@@ -6,11 +6,19 @@ pub mod edge_amount;
 pub mod error_code_collision;
 pub mod fee_rounding;
 pub mod hardcoded_addr;
+pub mod init_hardcoded_admin;
+pub mod ledger_seconds;
 pub mod ledger_size;
 pub mod missing_ttl;
 pub mod panic_detection;
+pub mod sanct_unwrap;
+pub mod shift_overflow;
+pub mod state_write_in_view;
+pub mod unbounded_storage;
 pub mod unhandled_result;
+pub mod unsigned_underflow;
 pub mod unused_variable;
+pub mod view_panic;
 
 use serde::Serialize;
 use std::any::Any;
@@ -97,10 +105,32 @@ impl RuleRegistry {
     }
 
     pub fn run_all(&self, source: &str) -> Vec<RuleViolation> {
-        self.rules
+        let mut violations: Vec<RuleViolation> = self
+            .rules
             .iter()
             .flat_map(|rule| rule.check(source))
-            .collect()
+            .collect();
+
+        // Macro-expansion-aware pass: analyse logic hidden behind simple local
+        // `macro_rules!` wrappers so it isn't a false negative. The expansion is
+        // additive — findings already visible in the original source are
+        // de-duplicated by (rule, message), and code with no expandable macros
+        // is left completely unchanged.
+        if let Some(expanded) = crate::macro_expand::expand_local_macros(source) {
+            let mut seen: std::collections::HashSet<(String, String)> = violations
+                .iter()
+                .map(|v| (v.rule_name.clone(), v.message.clone()))
+                .collect();
+            for rule in &self.rules {
+                for v in rule.check(&expanded) {
+                    if seen.insert((v.rule_name.clone(), v.message.clone())) {
+                        violations.push(v);
+                    }
+                }
+            }
+        }
+
+        violations
     }
 
     pub fn run_by_name(&self, source: &str, name: &str) -> Vec<RuleViolation> {
@@ -118,6 +148,7 @@ impl RuleRegistry {
     pub fn with_default_rules() -> Self {
         let mut registry = Self::new();
         registry.register(auth_gap::AuthGapRule::new());
+        registry.register(auth_gap::VisibilityLeakRule::new());
         registry.register(ledger_size::LedgerSizeRule::new());
         registry.register(panic_detection::PanicDetectionRule::new());
         registry.register(arithmetic_overflow::ArithmeticOverflowRule::new());

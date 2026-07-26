@@ -1,0 +1,19 @@
+---
+source: tooling/sanctifier-core/tests/detector_snapshots.rs
+expression: findings
+---
+- rule_name: SANCT_SHIFT_OVERFLOW
+  severity: Warning
+  message: "Shift '<<' amount is unbounded and could be >= the operand's bit width (64)"
+  location: "pack:18"
+  suggestion: "Guard the amount (e.g. `if n < 64`), mask it (`n & 63`), or use `.checked_shl(n)`"
+- rule_name: SANCT_SHIFT_OVERFLOW
+  severity: Warning
+  message: "Shift '>>=' amount is unbounded and could be >= the operand's bit width (128)"
+  location: "unpack:22"
+  suggestion: "Guard the amount (e.g. `if n < 128`), mask it (`n & 127`), or use `.checked_shr(n)`"
+- rule_name: SANCT_SHIFT_OVERFLOW
+  severity: Error
+  message: "Shift '<<' by constant 40 is >= the operand's bit width 32"
+  location: "constant_overflow:27"
+  suggestion: "Use a shift amount < 32, or `.checked_shl(n)` which returns None on overflow"

@@ -1,0 +1,9 @@
+---
+source: tooling/sanctifier-core/tests/detector_snapshots.rs
+expression: findings
+---
+- rule_name: excessive_clone
+  severity: Warning
+  message: "Gas-wasting `.clone()` of the Env handle; pass `&env` by reference instead"
+  location: "record:16"
+  suggestion: "Borrow the Env (`&env`) or accept `&Env` in the callee rather than cloning the host handle on every call"

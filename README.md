@@ -41,9 +41,26 @@ Deploy runtime guard wrapper contracts to Soroban testnet with continuous valida
 
 ## 📦 Installation (CLI)
 
+**Homebrew** (macOS & Linux) — recommended:
+
 ```bash
-cargo install --path tooling/sanctifier-cli
+brew tap Centurylong/sanctifier
+brew install sanctifier
 ```
+
+**cargo-binstall** — downloads a pre-built binary, no compilation needed:
+
+```bash
+cargo binstall sanctifier-cli
+```
+
+**cargo install** — compiles from source:
+
+```bash
+cargo install --git https://github.com/Centurylong/sanctifier sanctifier-cli
+```
+
+For full installation details (apt, manual download, verification) see [docs/installation.md](docs/installation.md).
 
 ## 🛠 Usage
 
@@ -112,6 +129,11 @@ We welcome contributions from the Stellar community! Please see our [Contributin
 
 ## 🔎 Finding Codes
 Unified finding codes (`S001`...`S007`) are documented in [docs/error-codes.md](docs/error-codes.md).
+
+## 📚 Case Studies
+Worked examples that reproduce a real Soroban bug class, catch it with Sanctifier, apply the fix, and rescan clean:
+
+* [Admin Takeover via Missing `require_auth`](docs/case-studies/admin-takeover.md) — broken access control (`S001`)
 
 ## 📄 License
 MIT
