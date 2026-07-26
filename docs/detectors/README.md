@@ -47,6 +47,7 @@ detector page and to the relevant [Glossary](../glossary.md) term.
 | [`shift_overflow`](shift_overflow.md) | [`SANCT_SHIFT_OVERFLOW`](../error-codes.md) | arithmetic | Warning/Error | Bit shift by an amount that may be `>=` the operand's bit width |
 | [`tier_boundary_off_by_one`](tier_boundary_off_by_one.md) | [`S022`](../error-codes.md) | logic | Info | `if`/`else if` tier/rank ladder mixes strict and inclusive comparisons on the same variable |
 | [`reserve_withdrawal`](reserve_withdrawal.md) | [`S023`](../error-codes.md) | authorization | High | Missing strict authorization guard on reserve or treasury funds withdrawal |
+| [`admin_event_missing`](admin_event_missing.md) | [`SANCT_ADMIN_EVENT_MISSING`](../error-codes.md) | events | Warning | Admin/config-change functions that mutate storage without emitting an event |
 
 ## Page anatomy
 

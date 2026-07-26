@@ -1,3 +1,4 @@
+pub mod admin_event_missing;
 pub mod allowance_race;
 pub mod arg_dos;
 pub mod arithmetic_overflow;
@@ -175,6 +176,7 @@ impl RuleRegistry {
         registry.register(view_panic::ViewPanicRule::new());
         registry.register(allowance_race::AllowanceRaceRule::new());
         registry.register(state_write_in_view::StateWriteInViewRule::new());
+        registry.register(admin_event_missing::AdminEventMissingRule::new());
         registry.register(division_by_zero::DivisionByZeroRule::new());
         registry.register(unsigned_underflow::UnsignedUnderflowRule::new());
         registry.register(ledger_seconds::LedgerSecondsRule::new());

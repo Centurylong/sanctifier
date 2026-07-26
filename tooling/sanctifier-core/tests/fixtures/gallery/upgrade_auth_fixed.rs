@@ -11,10 +11,13 @@ pub struct UpgradeAuthFixed;
 
 #[contractimpl]
 impl UpgradeAuthFixed {
-    // FIX: require the current admin's authorization before reassigning it.
+    // FIX: require the current admin's authorization before reassigning it,
+    // and emit an on-chain event so off-chain tooling can track the change.
     pub fn set_upgrade_admin(env: Env, caller: Address, new_admin: Address) {
         caller.require_auth();
         env.storage().instance().set(&ADMIN, &new_admin);
         env.storage().instance().extend_ttl(100, 1000);
+        env.events()
+            .publish((symbol_short!("adm_chg"),), new_admin.clone());
     }
 }

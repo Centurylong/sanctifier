@@ -7,3 +7,8 @@ expression: findings
   message: "Function 'set_upgrade_admin' performs storage mutation without authentication"
   location: set_upgrade_admin
   suggestion: Add require_auth() or require_auth_for_args() before storage operations
+- rule_name: SANCT_ADMIN_EVENT_MISSING
+  severity: Warning
+  message: "SANCT_ADMIN_EVENT_MISSING: admin/config function `set_upgrade_admin` mutates storage without emitting an event; add env.events().publish(...) to notify off-chain observers of the privileged state change"
+  location: "set_upgrade_admin:17"
+  suggestion: "Add an event emit (e.g. env.events().publish((symbol_short!(\"admin\"), symbol_short!(\"<action>\")), value)) before or after the storage mutation. If this function intentionally omits events, annotate it with `// sanctifier:ignore[SANCT_ADMIN_EVENT_MISSING]`."
