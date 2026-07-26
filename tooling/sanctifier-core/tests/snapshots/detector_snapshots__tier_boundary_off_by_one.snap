@@ -1,0 +1,14 @@
+---
+source: tooling/sanctifier-core/tests/detector_snapshots.rs
+expression: findings
+---
+- rule_name: tier_boundary_off_by_one
+  severity: Info
+  message: "Boundary ladder on `score` mixes `<` (`score < 50`) and `<=` (`score <= 80`) across sibling branches — a likely off-by-one that either double-matches or skips the boundary value"
+  location: "tier_of:22"
+  suggestion: "Use one consistent comparison operator (`<` or `<=`, but not both) for every branch of the `score` boundary ladder"
+- rule_name: tier_boundary_off_by_one
+  severity: Info
+  message: "Boundary ladder on `points` mixes `>` (`points > 1000`) and `>=` (`points >= 500`) across sibling branches — a likely off-by-one that either double-matches or skips the boundary value"
+  location: "rank_of:33"
+  suggestion: "Use one consistent comparison operator (`<` or `<=`, but not both) for every branch of the `points` boundary ladder"
