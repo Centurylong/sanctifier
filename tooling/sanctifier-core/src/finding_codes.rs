@@ -30,6 +30,7 @@ pub const SANCT_VIEW_PANIC: &str = "SANCT_VIEW_PANIC";
 pub const ALLOWANCE_RACE: &str = "SANCT_ALLOWANCE_RACE";
 pub const STATE_WRITE_IN_VIEW: &str = "SANCT_STATE_WRITE_IN_VIEW";
 pub const DIVISION_BY_ZERO: &str = "S018";
+pub const TIER_BOUNDARY_OFF_BY_ONE: &str = "S022";
 
 // ── Source-optional (compiled WASM) checks ────────────────────────────────────
 // Emitted only by `sanctifier wasm`, which analyzes a deployed module directly.
@@ -210,6 +211,12 @@ pub fn all_finding_codes() -> Vec<FindingCode> {
             category: "arithmetic",
             description:
                 "Division or modulo by a non-constant value not proven non-zero, which panics on-chain if zero at runtime",
+        },
+        FindingCode {
+            code: TIER_BOUNDARY_OFF_BY_ONE,
+            category: "logic",
+            description:
+                "if/else-if boundary ladder mixes strict (<, >) and inclusive (<=, >=) comparisons against the same variable, a common source of off-by-one tier/rank misassignment",
         },
         FindingCode {
             code: WASM_NOT_SOROBAN,
