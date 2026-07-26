@@ -1,36 +1,13 @@
-[workspace]
+﻿[workspace]
 members = [
     "tooling/sanctifier-core",
-    "tooling/sanctifier-guards",
-    "tooling/sanctify-macros",
-    "tooling/zk",
-    "contracts/vulnerable-contract",
-    "contracts/token-with-bugs",
-    "contracts/amm-pool",
-    "contracts/reentrancy-guard",
-    "contracts/protected-vault",
-    "contracts/runtime-guard-wrapper",
-    "contracts/kani-poc",
-    "contracts/token-invariants",
-    "contracts/sep41-token-invariants",
-    "contracts/zk-verifier",
+    "tooling/sanctifier-cli",
 ]
 resolver = "2"
 
-[workspace.dependencies]
-soroban-sdk = { version = "20.5.0" }
-
 [workspace.package]
-rust-version = "1.78"
-
-# Soroban contracts need size optimisation; ZK crate overrides this per binary.
-[profile.release]
-opt-level = "z"
-lto = true
-codegen-units = 1
-
-# Benchmarks need speed — don't apply the size-first release settings.
-[profile.bench]
-opt-level = 3
-lto = false
-codegen-units = 16
+version = "0.1.0"
+edition = "2021"
+authors = ["Sanctifier Core Team"]
+license = "MIT"
+repository = "https://github.com/Centurylong/sanctifier"

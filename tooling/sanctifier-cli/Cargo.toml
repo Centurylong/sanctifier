@@ -1,57 +1,11 @@
-[workspace]
-members = ["."]
-
-[package]
+﻿[package]
 name = "sanctifier-cli"
-version = "0.1.0"
-edition = "2021"
-description = "CLI tool for Sanctifier - Stellar Soroban Security Suite"
-license = "MIT"
-homepage = "https://github.com/Centurylong/sanctifier"
-repository = "https://github.com/Centurylong/sanctifier"
-keywords = ["soroban", "stellar", "security", "smart-contracts", "static-analysis"]
-categories = ["command-line-utilities", "development-tools"]
-
-[package.metadata.binstall]
-pkg-url = "https://github.com/Centurylong/sanctifier/releases/download/v{ version }/sanctifier-{ version }-{ target }.tar.gz"
-bin-dir = "sanctifier{ binary-ext }"
-pkg-fmt = "tgz"
-
-[package.metadata.binstall.overrides.x86_64-pc-windows-msvc]
-pkg-url = "https://github.com/Centurylong/sanctifier/releases/download/v{ version }/sanctifier-{ version }-{ target }.zip"
-pkg-fmt = "zip"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
 
 [dependencies]
+sanctifier-core = { path = "../sanctifier-core" }
 clap = { version = "4.4", features = ["derive"] }
-clap-markdown = "0.1"
-anyhow = "1.0"
-sanctifier-core = { version = "0.1.0", path = "../sanctifier-core", features = ["smt"] }
-toml = "0.8"
-tokio = { version = "1.0", features = ["full"] }
-colored = "2.0"
 serde_json = "1.0"
-serde = { version = "1.0", features = ["derive"] }
-regex = "1.10"
-notify = "6"
-ctrlc = "3.4"
-reqwest = { version = "0.12", default-features = false, features = ["blocking", "json", "rustls-tls"] }
-tempfile = "3.8"
-z3 = "0.12.1"
-bulletproofs = "5"
-merlin = "3"
-curve25519-dalek = "4"
-rand = "0.8"
-sha2 = "0.10"
-hex = "0.4"
-ed25519-dalek = "2"
-
-[dev-dependencies]
-assert_cmd = "2.0"
-predicates = "3.1"
-tempfile = "3.8"
-
-
-[[bin]]
-name = "sanctifier"
-path = "src/main.rs"
-
+reqwest = { version = "0.11", features = ["json", "blocking"] }
