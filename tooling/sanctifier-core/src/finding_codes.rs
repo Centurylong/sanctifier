@@ -31,6 +31,7 @@ pub const ALLOWANCE_RACE: &str = "SANCT_ALLOWANCE_RACE";
 pub const STATE_WRITE_IN_VIEW: &str = "SANCT_STATE_WRITE_IN_VIEW";
 pub const DIVISION_BY_ZERO: &str = "S018";
 pub const TIER_BOUNDARY_OFF_BY_ONE: &str = "S022";
+pub const REENTRANCY_INVOKE: &str = "SANCT_REENTRANCY_INVOKE";
 
 // ── Source-optional (compiled WASM) checks ────────────────────────────────────
 // Emitted only by `sanctifier wasm`, which analyzes a deployed module directly.
@@ -219,6 +220,12 @@ pub fn all_finding_codes() -> Vec<FindingCode> {
                 "if/else-if boundary ladder mixes strict (<, >) and inclusive (<=, >=) comparisons against the same variable, a common source of off-by-one tier/rank misassignment",
         },
         FindingCode {
+            code: REENTRANCY_INVOKE,
+            category: "reentrancy",
+            description:
+                "env.invoke_contract call precedes state effects, violating the Checks-Effects-Interactions pattern and enabling reentrancy",
+        },
+        FindingCode {
             code: WASM_NOT_SOROBAN,
             category: "wasm",
             description:
@@ -273,5 +280,6 @@ mod tests {
         assert!(codes.iter().any(|c| c.code == SANCT_VIEW_PANIC));
         assert!(codes.iter().any(|c| c.code == ALLOWANCE_RACE));
         assert!(codes.iter().any(|c| c.code == DIVISION_BY_ZERO));
+        assert!(codes.iter().any(|c| c.code == REENTRANCY_INVOKE));
     }
 }

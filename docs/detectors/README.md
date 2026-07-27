@@ -46,6 +46,7 @@ detector page and to the relevant [Glossary](../glossary.md) term.
 | [`division_by_zero`](division_by_zero.md) | [`S018`](../error-codes.md) | arithmetic | Medium | `/` or `%` by a non-constant value not proven non-zero |
 | [`shift_overflow`](shift_overflow.md) | [`SANCT_SHIFT_OVERFLOW`](../error-codes.md) | arithmetic | Warning/Error | Bit shift by an amount that may be `>=` the operand's bit width |
 | [`tier_boundary_off_by_one`](tier_boundary_off_by_one.md) | [`S022`](../error-codes.md) | logic | Info | `if`/`else if` tier/rank ladder mixes strict and inclusive comparisons on the same variable |
+| [`reentrancy_invoke`](reentrancy_invoke.md) | [`SANCT_REENTRANCY_INVOKE`](../error-codes.md) | reentrancy | Warning | `env.invoke_contract` called before state effects (CEI violation) |
 
 ## Page anatomy
 
