@@ -20,6 +20,8 @@
     "SANCT_BALANCE_EQ": "SANCT_BALANCE_EQ",
     "unused_variable": "S015",
     "error_code_collision": "S016",
+    "event_data_cast": "SANCT_EVENT_DATA_CAST",
+    "SANCT_EVENT_DATA_CAST": "SANCT_EVENT_DATA_CAST",
     "fee_rounding": "S017",
     "unsigned_underflow": "S019",
     "ledger_seconds": "S021",
