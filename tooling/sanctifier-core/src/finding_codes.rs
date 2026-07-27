@@ -177,6 +177,8 @@ pub fn all_finding_codes() -> Vec<FindingCode> {
             category: "events",
             description:
                 "Narrowing integer cast in event emission data silently truncates values indexers receive",
+        },
+        FindingCode {
             code: INIT_HARDCODED_ADMIN,
             category: "authentication",
             description:
