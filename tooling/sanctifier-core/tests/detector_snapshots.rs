@@ -18,11 +18,13 @@ use sanctifier_core::rules::{
     arithmetic_overflow::ArithmeticOverflowRule, auth_gap::AuthGapRule,
     balance_equality::BalanceEqualityRule, division_by_zero::DivisionByZeroRule,
     edge_amount::EdgeAmountRule, error_code_collision::ErrorCodeCollisionRule,
-    event_data_cast::EventDataCastRule, fee_rounding::FeeRoundingRule,
-    hardcoded_addr::HardcodedAddrRule, ledger_size::LedgerSizeRule, missing_ttl::MissingTtlRule,
+    excessive_clone::ExcessiveCloneRule, fee_rounding::FeeRoundingRule,
+    hardcoded_addr::HardcodedAddrRule, init_hardcoded_admin::InitHardcodedAdminRule,
+    ledger_seconds::LedgerSecondsRule, ledger_size::LedgerSizeRule, missing_ttl::MissingTtlRule,
     panic_detection::PanicDetectionRule, sanct_unwrap::SanctUnwrapRule,
     shift_overflow::ShiftOverflowRule, state_write_in_view::StateWriteInViewRule,
-    unbounded_storage::UnboundedStorageRule, unhandled_result::UnhandledResultRule,
+    tier_boundary_off_by_one::TierBoundaryOffByOneRule, unbounded_storage::UnboundedStorageRule,
+    unhandled_result::UnhandledResultRule, unsigned_underflow::UnsignedUnderflowRule,
     unused_variable::UnusedVariableRule, view_panic::ViewPanicRule, Rule, RuleRegistry,
 };
 
@@ -135,11 +137,29 @@ fn snapshot_balance_equality() {
 }
 
 #[test]
+fn snapshot_excessive_clone() {
+    assert_detector_snapshot(
+        "excessive_clone",
+        &ExcessiveCloneRule::new(),
+        include_str!("fixtures/detectors/excessive_clone.rs"),
+    );
+}
+
+#[test]
 fn snapshot_fee_rounding() {
     assert_detector_snapshot(
         "fee_rounding",
         &FeeRoundingRule::new(),
         include_str!("fixtures/detectors/fee_rounding.rs"),
+    );
+}
+
+#[test]
+fn snapshot_ledger_seconds() {
+    assert_detector_snapshot(
+        "ledger_seconds",
+        &LedgerSecondsRule::new(),
+        include_str!("fixtures/detectors/ledger_seconds.rs"),
     );
 }
 
@@ -171,14 +191,15 @@ fn snapshot_sanct_unwrap() {
 }
 
 #[test]
-fn snapshot_event_data_cast() {
+fn snapshot_init_hardcoded_admin() {
     assert_detector_snapshot(
-        "event_data_cast",
-        &EventDataCastRule::new(),
-        include_str!("fixtures/detectors/event_data_cast.rs"),
+        "init_hardcoded_admin",
+        &InitHardcodedAdminRule::new(),
+        include_str!("fixtures/detectors/init_hardcoded_admin.rs"),
     );
 }
 
+#[test]
 fn snapshot_unbounded_storage() {
     assert_detector_snapshot(
         "unbounded_storage",
@@ -220,6 +241,15 @@ fn snapshot_division_by_zero() {
         "division_by_zero",
         &DivisionByZeroRule::new(),
         include_str!("fixtures/detectors/division_by_zero.rs"),
+    );
+}
+
+#[test]
+fn snapshot_tier_boundary_off_by_one() {
+    assert_detector_snapshot(
+        "tier_boundary_off_by_one",
+        &TierBoundaryOffByOneRule::new(),
+        include_str!("fixtures/detectors/tier_boundary_off_by_one.rs"),
     );
 }
 

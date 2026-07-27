@@ -33,15 +33,19 @@ detector page and to the relevant [Glossary](../glossary.md) term.
 | [`error_code_collision`](error_code_collision.md) | [`S016`](../error-codes.md) | code_hygiene | Medium | Duplicate/inconsistent `#[contracterror]` discriminants |
 | [`fee_rounding`](fee_rounding.md) | [`S017`](../error-codes.md) | arithmetic | High | Integer-division fees that round to zero for micro-amounts |
 | [`unsigned_underflow`](unsigned_underflow.md) | [`S019`](../error-codes.md) | arithmetic | High | Unchecked `-` / `-=` on an unsigned integer that wraps past zero |
+| [`ledger_seconds`](ledger_seconds.md) | [`S021`](../error-codes.md) | time_logic | Medium | Ledger sequence number mixed with a seconds-magnitude literal |
+| [`excessive_clone`](excessive_clone.md) | [`S020`](../error-codes.md) | gas_efficiency | Low | Gas-wasting `.clone()` of the `Env` handle where `&env` would do |
 | [`arg_dos`](arg_dos.md) | [`SANCT_ARG_DOS`](../error-codes.md) | denial_of_service | High | `Vec`/`Map` arguments iterated without a length cap |
 | [`sanct_unwrap`](sanct_unwrap.md) | [`SANCT_UNWRAP`](../error-codes.md) | panic_handling | High | `unwrap`/`expect`/risky default in `#[contractimpl]` entrypoints |
 | [`sanct_visibility`](sanct_visibility.md) | [`SANCT_VISIBILITY`](../error-codes.md) | authentication | High | Helper-shaped state mutator exported without an auth guard |
 | [`unbounded_storage`](unbounded_storage.md) | [`SANCT_UNBOUNDED_STORAGE`](../error-codes.md) | denial_of_service | High | Persistent/instance collection grows with no removal or length cap |
+| [`init_hardcoded_admin`](init_hardcoded_admin.md) | [`SANCT_INIT_HARDCODED_ADMIN`](../error-codes.md) | authentication | Warning | Hardcoded admin address or default literal in init function |
 | [`view_panic`](view_panic.md) | [`SANCT_VIEW_PANIC`](../error-codes.md) | panic_handling | Medium | View/getter entrypoint contains a reachable panic |
 | [`allowance_race`](allowance_race.md) | [`SANCT_ALLOWANCE_RACE`](../error-codes.md) | authorization | Medium | `approve` overwrites the allowance unconditionally (approve TOCTOU) |
 | [`state_write_in_view`](state_write_in_view.md) | [`SANCT_STATE_WRITE_IN_VIEW`](../error-codes.md) | code_hygiene | Warning | Getter/view-named function performs a storage write |
 | [`division_by_zero`](division_by_zero.md) | [`S018`](../error-codes.md) | arithmetic | Medium | `/` or `%` by a non-constant value not proven non-zero |
 | [`shift_overflow`](shift_overflow.md) | [`SANCT_SHIFT_OVERFLOW`](../error-codes.md) | arithmetic | Warning/Error | Bit shift by an amount that may be `>=` the operand's bit width |
+| [`tier_boundary_off_by_one`](tier_boundary_off_by_one.md) | [`S022`](../error-codes.md) | logic | Info | `if`/`else if` tier/rank ladder mixes strict and inclusive comparisons on the same variable |
 
 ## Page anatomy
 

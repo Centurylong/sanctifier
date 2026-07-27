@@ -18,16 +18,20 @@ pub const DEAD_CODE: &str = "S015";
 pub const ERROR_CODE_COLLISION: &str = "S016";
 pub const FEE_ROUNDING: &str = "S017";
 pub const UNSIGNED_UNDERFLOW: &str = "S019";
+pub const LEDGER_SECONDS: &str = "S021";
+pub const EXCESSIVE_CLONE: &str = "S020";
 pub const ARG_DOS: &str = "SANCT_ARG_DOS";
 pub const BALANCE_EQUALITY: &str = "SANCT_BALANCE_EQ";
 pub const SANCT_UNWRAP: &str = "SANCT_UNWRAP";
 pub const SANCT_EVENT_DATA_CAST: &str = "SANCT_EVENT_DATA_CAST";
+pub const INIT_HARDCODED_ADMIN: &str = "SANCT_INIT_HARDCODED_ADMIN";
 pub const SANCT_VISIBILITY: &str = "SANCT_VISIBILITY";
 pub const UNBOUNDED_STORAGE: &str = "SANCT_UNBOUNDED_STORAGE";
 pub const SANCT_VIEW_PANIC: &str = "SANCT_VIEW_PANIC";
 pub const ALLOWANCE_RACE: &str = "SANCT_ALLOWANCE_RACE";
 pub const STATE_WRITE_IN_VIEW: &str = "SANCT_STATE_WRITE_IN_VIEW";
 pub const DIVISION_BY_ZERO: &str = "S018";
+pub const TIER_BOUNDARY_OFF_BY_ONE: &str = "S022";
 
 // ── Source-optional (compiled WASM) checks ────────────────────────────────────
 // Emitted only by `sanctifier wasm`, which analyzes a deployed module directly.
@@ -145,6 +149,18 @@ pub fn all_finding_codes() -> Vec<FindingCode> {
                 "Unchecked subtraction on an unsigned integer can wrap past zero (underflow)",
         },
         FindingCode {
+            code: LEDGER_SECONDS,
+            category: "time_logic",
+            description:
+                "Ledger sequence number (block counter) mixed with a seconds-magnitude literal; use timestamp() for real-time windows",
+        },
+        FindingCode {
+            code: EXCESSIVE_CLONE,
+            category: "gas_efficiency",
+            description:
+                "Gas-wasting clone of the Soroban Env handle where a reference (&env) would suffice",
+        },
+        FindingCode {
             code: ARG_DOS,
             category: "denial_of_service",
             description:
@@ -161,6 +177,12 @@ pub fn all_finding_codes() -> Vec<FindingCode> {
             category: "events",
             description:
                 "Narrowing integer cast in event emission data silently truncates values indexers receive",
+            code: INIT_HARDCODED_ADMIN,
+            category: "authentication",
+            description:
+                "Initialization function uses hardcoded admin address literal or default value instead of formal argument",
+        },
+        FindingCode {
             code: SANCT_VISIBILITY,
             category: "authentication",
             description: "Helper-shaped state mutator is publicly exposed without authorization",
@@ -194,6 +216,12 @@ pub fn all_finding_codes() -> Vec<FindingCode> {
             category: "arithmetic",
             description:
                 "Division or modulo by a non-constant value not proven non-zero, which panics on-chain if zero at runtime",
+        },
+        FindingCode {
+            code: TIER_BOUNDARY_OFF_BY_ONE,
+            category: "logic",
+            description:
+                "if/else-if boundary ladder mixes strict (<, >) and inclusive (<=, >=) comparisons against the same variable, a common source of off-by-one tier/rank misassignment",
         },
         FindingCode {
             code: WASM_NOT_SOROBAN,
@@ -245,6 +273,7 @@ mod tests {
         assert!(codes.iter().any(|c| c.code == CUSTOM_RULE_MATCH));
         assert!(codes.iter().any(|c| c.code == SANCT_UNWRAP));
         assert!(codes.iter().any(|c| c.code == SANCT_VISIBILITY));
+        assert!(codes.iter().any(|c| c.code == INIT_HARDCODED_ADMIN));
         assert!(codes.iter().any(|c| c.code == UNBOUNDED_STORAGE));
         assert!(codes.iter().any(|c| c.code == SANCT_VIEW_PANIC));
         assert!(codes.iter().any(|c| c.code == ALLOWANCE_RACE));

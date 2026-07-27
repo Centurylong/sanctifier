@@ -130,6 +130,9 @@ We welcome contributions from the Stellar community! Please see our [Contributin
 ## 🔎 Finding Codes
 Unified finding codes (`S001`...`S007`) are documented in [docs/error-codes.md](docs/error-codes.md).
 
+## 🛡️ Secure-Coding Handbook
+A curated handbook of Soroban secure-coding best practices — 20 entries each with a vulnerable snippet, a fixed snippet, and the Sanctifier finding code that catches it: [docs/soroban-best-practices.md](docs/soroban-best-practices.md).
+
 ## 📚 Case Studies
 Worked examples that reproduce a real Soroban bug class, catch it with Sanctifier, apply the fix, and rescan clean:
 

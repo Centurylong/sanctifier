@@ -6,15 +6,18 @@ pub mod balance_equality;
 pub mod division_by_zero;
 pub mod edge_amount;
 pub mod error_code_collision;
-pub mod event_data_cast;
+pub mod excessive_clone;
 pub mod fee_rounding;
 pub mod hardcoded_addr;
+pub mod init_hardcoded_admin;
+pub mod ledger_seconds;
 pub mod ledger_size;
 pub mod missing_ttl;
 pub mod panic_detection;
 pub mod sanct_unwrap;
 pub mod shift_overflow;
 pub mod state_write_in_view;
+pub mod tier_boundary_off_by_one;
 pub mod unbounded_storage;
 pub mod unhandled_result;
 pub mod unsigned_underflow;
@@ -161,10 +164,11 @@ impl RuleRegistry {
         registry.register(edge_amount::EdgeAmountRule::new());
         registry.register(balance_equality::BalanceEqualityRule::new());
         registry.register(fee_rounding::FeeRoundingRule::new());
+        registry.register(excessive_clone::ExcessiveCloneRule::new());
         registry.register(missing_ttl::MissingTtlRule::new());
         registry.register(arg_dos::ArgDosRule::new());
         registry.register(sanct_unwrap::SanctUnwrapRule::new());
-        registry.register(event_data_cast::EventDataCastRule::new());
+        registry.register(init_hardcoded_admin::InitHardcodedAdminRule::new());
         registry.register(shift_overflow::ShiftOverflowRule::new());
         registry.register(unbounded_storage::UnboundedStorageRule::new());
         registry.register(view_panic::ViewPanicRule::new());
@@ -172,6 +176,8 @@ impl RuleRegistry {
         registry.register(state_write_in_view::StateWriteInViewRule::new());
         registry.register(division_by_zero::DivisionByZeroRule::new());
         registry.register(unsigned_underflow::UnsignedUnderflowRule::new());
+        registry.register(ledger_seconds::LedgerSecondsRule::new());
+        registry.register(tier_boundary_off_by_one::TierBoundaryOffByOneRule::new());
         registry
     }
 }
