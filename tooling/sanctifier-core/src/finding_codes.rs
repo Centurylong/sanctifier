@@ -16,6 +16,7 @@ pub const EDGE_AMOUNT: &str = "S013";
 pub const DEPRECATED_SDK: &str = "S014";
 pub const DEAD_CODE: &str = "S015";
 pub const ERROR_CODE_COLLISION: &str = "S016";
+pub const UNBOUND_AUTH: &str = "S017";
 
 #[derive(Debug, Clone, Serialize)]
 pub struct FindingCode {
@@ -106,6 +107,11 @@ pub fn all_finding_codes() -> Vec<FindingCode> {
             code: ERROR_CODE_COLLISION,
             category: "code_hygiene",
             description: "Inconsistent or duplicate discriminants in #[contracterror] enum",
+        },
+        FindingCode {
+            code: UNBOUND_AUTH,
+            category: "authentication",
+            description: "Internal function uses require_auth() instead of require_auth_for_args()",
         },
     ]
 }

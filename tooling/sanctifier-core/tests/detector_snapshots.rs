@@ -17,7 +17,7 @@ use sanctifier_core::rules::{
     edge_amount::EdgeAmountRule, error_code_collision::ErrorCodeCollisionRule,
     hardcoded_addr::HardcodedAddrRule, ledger_size::LedgerSizeRule,
     panic_detection::PanicDetectionRule, unhandled_result::UnhandledResultRule,
-    unused_variable::UnusedVariableRule, Rule,
+    unused_variable::UnusedVariableRule, wrong_auth_args::WrongAuthArgsRule, Rule,
 };
 
 /// Run a detector against its fixture and snapshot the resulting findings.
@@ -107,5 +107,14 @@ fn snapshot_edge_amount() {
         "edge_amount",
         &EdgeAmountRule::new(),
         include_str!("fixtures/detectors/edge_amount.rs"),
+    );
+}
+
+#[test]
+fn snapshot_wrong_auth_args() {
+    assert_detector_snapshot(
+        "wrong_auth_args",
+        &WrongAuthArgsRule::new(),
+        include_str!("fixtures/detectors/wrong_auth_args.rs"),
     );
 }

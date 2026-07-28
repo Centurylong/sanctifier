@@ -7,6 +7,7 @@ pub mod ledger_size;
 pub mod panic_detection;
 pub mod unhandled_result;
 pub mod unused_variable;
+pub mod wrong_auth_args;
 
 use serde::Serialize;
 use std::any::Any;
@@ -123,6 +124,7 @@ impl RuleRegistry {
         registry.register(hardcoded_addr::HardcodedAddrRule::new());
         registry.register(error_code_collision::ErrorCodeCollisionRule::new());
         registry.register(edge_amount::EdgeAmountRule::new());
+        registry.register(wrong_auth_args::WrongAuthArgsRule::new());
         registry
     }
 }
