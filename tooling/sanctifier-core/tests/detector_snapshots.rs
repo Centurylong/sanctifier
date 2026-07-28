@@ -25,7 +25,8 @@ use sanctifier_core::rules::{
     shift_overflow::ShiftOverflowRule, state_write_in_view::StateWriteInViewRule,
     tier_boundary_off_by_one::TierBoundaryOffByOneRule, unbounded_storage::UnboundedStorageRule,
     unhandled_result::UnhandledResultRule, unsigned_underflow::UnsignedUnderflowRule,
-    unused_variable::UnusedVariableRule, view_panic::ViewPanicRule, wrong_auth_args::WrongAuthArgsRule, Rule, RuleRegistry,
+    unused_variable::UnusedVariableRule, view_panic::ViewPanicRule,
+    wrong_auth_args::WrongAuthArgsRule, Rule, RuleRegistry,
 };
 
 /// Run a detector against its fixture and snapshot the resulting findings.

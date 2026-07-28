@@ -22,8 +22,8 @@ pub mod unbounded_storage;
 pub mod unhandled_result;
 pub mod unsigned_underflow;
 pub mod unused_variable;
-pub mod wrong_auth_args;
 pub mod view_panic;
+pub mod wrong_auth_args;
 
 use serde::Serialize;
 use std::any::Any;
