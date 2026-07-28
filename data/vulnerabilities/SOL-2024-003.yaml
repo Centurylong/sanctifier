@@ -1,0 +1,22 @@
+id: SOL-2024-003
+title: Unchecked Balance Underflow
+description: |
+  Balance subtraction without verifying sufficient funds leads to arithmetic underflow,
+  potentially creating tokens out of thin air.
+cvss: 8.1
+severity: high
+category: arithmetic
+affected_versions: "soroban-sdk <=20.5.0"
+pattern: |
+  balance\s*-\s*amount(?!\s*\.\s*checked_sub)
+poc_exploit: |
+  contract.withdraw(&env, user, u128::MAX);
+patch: |
+  let new_balance = balance.checked_sub(amount).ok_or(Error::InsufficientBalance)?;
+recommendation: Use checked_sub() and handle the error explicitly.
+references: []
+tags:
+  - arithmetic
+  - underflow
+  - token
+related_cves: []

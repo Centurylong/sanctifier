@@ -14,6 +14,7 @@ impl OracleStalenessFixed {
         const MAX_AGE: u64 = 300;
         let (price, updated_at): (i128, u64) =
             env.storage().persistent().get(&asset).unwrap_or((0, 0));
+        env.storage().persistent().extend_ttl(&asset, 100, 1000);
         let age = env.ledger().timestamp().saturating_sub(updated_at);
         if age > MAX_AGE {
             return 0;

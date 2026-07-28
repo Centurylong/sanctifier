@@ -1,0 +1,23 @@
+id: SOB-2024-021
+title: Fee Rounding Manipulation
+description: |
+  Integer division for fee calculations rounds down, allowing attackers to construct
+  transactions that pay zero fees while consuming resources.
+cvss: 5.4
+severity: medium
+category: arithmetic
+affected_versions: "soroban-sdk <=20.5.0"
+pattern: |
+  amount\s*\*\s*fee_bps\s*/\s*10_000(?!\s*\+)
+poc_exploit: |
+  // fee_bps=30, amount=9: fee = 9*30/10_000 = 0 (truncation)
+patch: |
+  let fee = (amount * fee_bps + 9_999) / 10_000; // ceiling division
+recommendation: Use ceiling division for fees and enforce a minimum non-zero fee.
+references: []
+tags:
+  - arithmetic
+  - fee
+  - rounding
+  - dust-attack
+related_cves: []

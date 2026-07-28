@@ -1,15 +1,10 @@
 name: Soroban Runtime Guard Deployment
 
 on:
-  push:
-    branches: ["main"]
-    paths:
-      - "contracts/runtime-guard-wrapper/**"
-      - "scripts/deploy-soroban-testnet.sh"
-      - ".github/workflows/soroban-deploy.yml"
-  schedule:
-    # Run continuous validation every 6 hours
-    - cron: "0 */6 * * *"
+  # Deployment requires the SOROBAN_SECRET_KEY secret and performs a live
+  # testnet deploy, so it must never run automatically on push or on a cron
+  # (a missing secret would stamp a failing "Soroban Runtime Guard Deployment"
+  # check onto main). Trigger it manually when a real deploy is intended.
   workflow_dispatch:
     inputs:
       network:
@@ -44,8 +39,9 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Install stable Rust toolchain
-        uses: dtolnay/rust-toolchain@stable
+      - name: Install pinned Rust toolchain
+        # Pinned to 1.85.0 — see ci.yml for rationale (ethnum 1.5.0 / base64ct edition2024).
+        uses: dtolnay/rust-toolchain@1.85.0
         with:
           targets: wasm32-unknown-unknown
           components: rustfmt, clippy

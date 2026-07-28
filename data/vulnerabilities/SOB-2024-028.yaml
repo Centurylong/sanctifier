@@ -1,0 +1,32 @@
+id: SOB-2024-028
+title: Contract Reinitialization After Upgrade
+description: |
+  Upgrading WASM without re-locking the initialization guard leaves the initialize function
+  callable again, allowing attacker to overwrite admin.
+cvss: 9.0
+severity: critical
+category: access-control
+affected_versions: "soroban-sdk <=20.5.0"
+pattern: |
+  fn\s+upgrade\s*\([^)]*\)\s*\{(?:(?!InitialisedV\d|migration|has\(&DataKey::Init).)*update_current_contract_wasm
+poc_exploit: |
+  // After upgrade, init guard key not set;
+  // attacker calls initialize()
+patch: |
+  fn upgrade(env: Env, new_wasm_hash: BytesN<32>) {
+      get_admin(&env).require_auth();
+      env.deployer().update_current_contract_wasm(new_wasm_hash);
+      // Re-lock initialization guard for new version
+      if !env.storage().instance().has(&DataKey::InitialisedV2) {
+          env.storage().instance().set(&DataKey::InitialisedV2, &true);
+      }
+  }
+recommendation: Include migration logic in upgrade function to preserve security invariants.
+references:
+  - https://soroban.stellar.org/docs/fundamentals/contract-upgrade
+tags:
+  - upgrade
+  - initialization
+  - migration
+  - admin
+related_cves: []

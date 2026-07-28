@@ -1,7 +1,14 @@
 pub mod analyze;
+pub mod attest;
 pub mod badge;
+pub mod baseline;
+pub mod cve;
+pub mod diff;
+pub mod fix;
 pub mod init;
 pub mod prove;
 pub mod update;
 pub mod verify;
+pub mod wasm;
+pub mod watch;
 pub mod webhook;

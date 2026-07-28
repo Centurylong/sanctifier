@@ -1,4 +1,4 @@
-﻿# Awesome Soroban Security [![Awesome](https://awesome.re/badge.svg)](https://awesome.re)
+# Awesome Soroban Security [![Awesome](https://awesome.re/badge.svg)](https://awesome.re)
 
 > A curated list of security resources, tools, audits, incident reports, and standards for [Stellar Soroban](https://soroban.stellar.org/) smart contract development.
 

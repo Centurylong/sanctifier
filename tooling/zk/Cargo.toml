@@ -1,0 +1,33 @@
+[package]
+name        = "sanctifier-zk"
+version     = "0.1.0"
+edition     = "2021"
+description = "Zero-knowledge audit-proof circuit for Sanctifier (Groth16 / BLS12-381)"
+license     = "MIT"
+
+[dependencies]
+ark-groth16  = { version = "0.4", features = ["r1cs"] }
+ark-bls12-381 = "0.4"
+ark-r1cs-std = { version = "0.4", features = ["parallel"] }
+ark-relations = "0.4"
+ark-ff        = "0.4"
+ark-std       = { version = "0.4", features = ["std"] }
+ark-serialize = { version = "0.4", features = ["derive"] }
+ark-snark     = "0.4"
+ark-crypto-primitives = { version = "0.4", features = ["r1cs", "sponge"] }
+sha2       = "0.10"
+hex        = "0.4"
+anyhow     = "1.0"
+serde      = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+
+[dev-dependencies]
+criterion = { version = "0.5", features = ["html_reports"] }
+
+[[bench]]
+name    = "zk_bench"
+harness = false
+
+[[bin]]
+name = "sanctifier-prover"
+path = "src/bin/prover.rs"

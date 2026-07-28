@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useMemo, useRef, useState } from "react";
+import { useCallback, useMemo, useRef } from "react";
 import {
   createColumnHelper,
   flexRender,
@@ -13,7 +13,6 @@ import {
 } from "@tanstack/react-table";
 import { useVirtualizer } from "@tanstack/react-virtual";
 import type { Finding, Severity } from "../types";
-import { CodeSnippet } from "./CodeSnippet";
 import { SEVERITY_RANK, type SortDir, type SortKey } from "../lib/findings-query";
 
 interface FindingsTableProps {
@@ -22,6 +21,8 @@ interface FindingsTableProps {
   sort: SortKey | null;
   dir: SortDir;
   onSortChange: (sort: SortKey | null, dir: SortDir) => void;
+  /** Called when the user clicks a row to open its detail drawer. */
+  onRowClick?: (finding: Finding) => void;
 }
 
 const severityBadge: Record<Severity, string> = {
@@ -94,10 +95,15 @@ function SortIndicator({ dir }: { dir: false | SortDir }) {
 /**
  * Virtualized findings table (handles hundreds of rows). Sorting is controlled
  * by the caller (URL-backed) via TanStack Table; rows are windowed with TanStack
- * Virtual. Rows with a snippet/suggestion expand inline to show detail, using
- * dynamic measurement so the virtualizer stays accurate.
+ * Virtual. Clicking a row fires onRowClick so the parent can open a detail drawer.
  */
-export function FindingsTable({ rows, sort, dir, onSortChange }: FindingsTableProps) {
+export function FindingsTable({
+  rows,
+  sort,
+  dir,
+  onSortChange,
+  onRowClick,
+}: FindingsTableProps) {
   // TanStack Table's useReactTable returns a mutable instance the React Compiler
   // can't memoize; opt this component out per TanStack's guidance.
   "use no memo";
@@ -130,16 +136,6 @@ export function FindingsTable({ rows, sort, dir, onSortChange }: FindingsTablePr
 
   const sortedRows = table.getRowModel().rows;
 
-  const [expanded, setExpanded] = useState<Set<string>>(new Set());
-  const toggleExpanded = useCallback((id: string) => {
-    setExpanded((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
-      return next;
-    });
-  }, []);
-
   const scrollRef = useRef<HTMLDivElement>(null);
   const virtualizer = useVirtualizer({
     count: sortedRows.length,
@@ -147,8 +143,6 @@ export function FindingsTable({ rows, sort, dir, onSortChange }: FindingsTablePr
     estimateSize: () => 48,
     overscan: 12,
   });
-
-  const hasDetail = (f: Finding) => Boolean(f.snippet || f.suggestion);
 
   return (
     <div className="overflow-hidden rounded-lg border border-zinc-200 dark:border-zinc-800 theme-high-contrast:border-white">
@@ -197,8 +191,6 @@ export function FindingsTable({ rows, sort, dir, onSortChange }: FindingsTablePr
           {virtualizer.getVirtualItems().map((virtualItem) => {
             const row: Row<Finding> = sortedRows[virtualItem.index];
             const f = row.original;
-            const isExpanded = expanded.has(f.id);
-            const expandable = hasDetail(f);
 
             return (
               <div
@@ -210,13 +202,16 @@ export function FindingsTable({ rows, sort, dir, onSortChange }: FindingsTablePr
               >
                 <div
                   role="row"
-                  className={`${GRID} py-2.5 ${
-                    expandable
-                      ? "cursor-pointer hover:bg-zinc-50 dark:hover:bg-zinc-900/60"
-                      : ""
-                  }`}
-                  onClick={expandable ? () => toggleExpanded(f.id) : undefined}
-                  aria-expanded={expandable ? isExpanded : undefined}
+                  tabIndex={0}
+                  className={`${GRID} py-2.5 cursor-pointer hover:bg-zinc-50 dark:hover:bg-zinc-900/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-zinc-400`}
+                  onClick={() => onRowClick?.(f)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" || e.key === " ") {
+                      e.preventDefault();
+                      onRowClick?.(f);
+                    }
+                  }}
+                  aria-label={`${f.severity} – ${f.category}: ${f.title}`}
                 >
                   {row.getVisibleCells().map((cell) => (
                     <div key={cell.id} className="min-w-0" role="cell">
@@ -224,19 +219,6 @@ export function FindingsTable({ rows, sort, dir, onSortChange }: FindingsTablePr
                     </div>
                   ))}
                 </div>
-
-                {expandable && isExpanded && (
-                  <div className="px-4 pb-4 pl-[7.75rem] text-sm">
-                    {f.suggestion && (
-                      <p className="mb-2 italic text-zinc-600 dark:text-zinc-400">
-                        💡 {f.suggestion}
-                      </p>
-                    )}
-                    {f.snippet && (
-                      <CodeSnippet code={f.snippet} highlightLine={f.line} />
-                    )}
-                  </div>
-                )}
               </div>
             );
           })}

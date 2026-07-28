@@ -1,0 +1,24 @@
+id: SOL-2024-011
+title: Silent Error Swallowing with unwrap_or_default
+description: |
+  Using unwrap_or_default() on critical storage reads silently returns zero when data is
+  absent, masquerading corrupted state as valid.
+cvss: 5.9
+severity: medium
+category: error-handling
+affected_versions: "soroban-sdk <=20.5.0"
+pattern: |
+  storage\(\)\.\w+\(\)\.get\(&[^)]+\)\.unwrap_or_default\(\)
+poc_exploit: |
+  // Storage entry archived; unwrap_or_default returns 0 balance
+patch: |
+  if !env.storage().persistent().has(&key) {
+      return Err(Error::NotFound);
+  }
+recommendation: Distinguish between absent state and a legitimate zero value.
+references: []
+tags:
+  - storage
+  - error-handling
+  - silent-failure
+related_cves: []

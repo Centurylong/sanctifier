@@ -1,0 +1,29 @@
+id: SOB-2024-032
+title: Unchecked Token Issuer Validation
+description: |
+  Accepting any token address from callers without verifying the issuer allows substitution
+  of a malicious token that reports fake balances.
+cvss: 7.8
+severity: high
+category: access-control
+affected_versions: "soroban-sdk <=20.5.0"
+pattern: |
+  fn\s+deposit\s*\(env:\s*Env,\s*token:\s*Address(?:(?!allowed|whitelist|AllowedTokens).)*\)
+poc_exploit: |
+  // Attacker deploys fake USDC where balance() always returns u128::MAX;
+  // passes it to deposit
+patch: |
+  let allowed: Vec<Address> = env.storage().instance()
+      .get(&DataKey::AllowedTokens)
+      .unwrap();
+  if !allowed.contains(&token) {
+      panic!("unsupported token");
+  }
+recommendation: Maintain an on-chain whitelist of accepted token addresses.
+references: []
+tags:
+  - token
+  - issuer
+  - whitelist
+  - validation
+related_cves: []

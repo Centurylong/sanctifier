@@ -16,7 +16,9 @@ impl ConfusedDeputyVulnerable {
         caller.require_auth();
         let bal: i128 = env.storage().persistent().get(&owner).unwrap_or(0);
         env.storage().persistent().set(&owner, &bal.saturating_sub(amount));
+        env.storage().persistent().extend_ttl(&owner, 100, 1000);
         let to_bal: i128 = env.storage().persistent().get(&to).unwrap_or(0);
         env.storage().persistent().set(&to, &to_bal.saturating_add(amount));
+        env.storage().persistent().extend_ttl(&to, 100, 1000);
     }
 }

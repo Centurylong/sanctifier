@@ -122,3 +122,19 @@ We appreciate the security research community's efforts. With your permission,
 we will acknowledge your contribution in release notes and security advisories.
 Sanctifier does not currently operate a paid bug bounty program unless a
 separate campaign explicitly states otherwise.
+
+## Secure-Coding Resources
+
+If you are writing or auditing a Soroban smart contract, the following resources
+produced by this project can help you avoid the vulnerability classes Sanctifier
+detects:
+
+- **[Soroban Secure-Coding Best Practices](docs/soroban-best-practices.md)** —
+  20 entries spanning authentication, arithmetic safety, storage/TTL, denial of
+  service, panic handling, authorization patterns, input validation, and time
+  logic. Each entry pairs a vulnerable snippet with a fixed snippet and links to
+  the Sanctifier finding code that catches it.
+- **[Finding Code Catalog](docs/error-codes.md)** — stable codes (`S001`…`S021`,
+  `SANCT_*`) emitted by every detector, with links to per-detector deep-dives.
+- **[Detector Catalog](docs/detectors/README.md)** — one page per detector:
+  what it catches, a minimal vulnerable example, the fix, and references.

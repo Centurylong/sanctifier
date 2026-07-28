@@ -1,0 +1,28 @@
+id: SOB-2024-027
+title: Flash Loan Callback Reentrancy
+description: |
+  Flash loan protocol invoking a borrower-supplied callback without finalizing state can
+  be re-entered, draining the pool before repayment is checked.
+cvss: 9.0
+severity: critical
+category: reentrancy
+affected_versions: "soroban-sdk <=20.5.0"
+pattern: |
+  callback\.\w+\([^;]+\);\s*\n(?:(?!get_balance|repayment).)*if\s+get_balance
+poc_exploit: |
+  // Attacker callback re-enters vault.withdraw() before repayment check;
+  // pool drained
+patch: |
+  env.storage().instance().set(&DataKey::LoanOutstanding, &true);
+  callback.on_flash_loan(amount, fee);
+  if get_balance() < initial + fee {
+      panic!("repayment insufficient");
+  }
+recommendation: Set loan-outstanding flag before callback; enforce repayment verification after.
+references: []
+tags:
+  - flash-loan
+  - reentrancy
+  - defi
+  - callback
+related_cves: []

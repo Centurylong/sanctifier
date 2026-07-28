@@ -1,0 +1,14 @@
+---
+source: tooling/sanctifier-core/tests/detector_snapshots.rs
+expression: findings
+---
+- rule_name: fee_rounding
+  severity: Warning
+  message: "Fee calculation `fee` uses integer division that rounds to zero for small amounts — attackers can split transactions to evade fees"
+  location: "charge_fee:16"
+  suggestion: "Add a minimum-fee guard: `if fee == 0 && amount > 0 { fee = 1; }` or use `.max(1)` on the computed value"
+- rule_name: fee_rounding
+  severity: Warning
+  message: "Fee calculation `interest` uses integer division that rounds to zero for small amounts — attackers can split transactions to evade fees"
+  location: "accrue_interest:22"
+  suggestion: "Add a minimum-fee guard: `if fee == 0 && amount > 0 { fee = 1; }` or use `.max(1)` on the computed value"

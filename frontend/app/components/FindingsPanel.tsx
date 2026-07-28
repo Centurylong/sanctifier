@@ -1,12 +1,13 @@
 "use client";
 
-import { useMemo } from "react";
+import { useCallback, useMemo, useState } from "react";
 import type { Finding } from "../types";
 import { filterFindings, severityCounts } from "../lib/findings-query";
 import { useFindingsQuery } from "./useFindingsQuery";
 import { SeverityFacets } from "./SeverityFacets";
 import { FindingsSearch } from "./FindingsSearch";
 import { FindingsTable } from "./FindingsTable";
+import { FindingDetailDrawer } from "./FindingDetailDrawer";
 
 interface FindingsPanelProps {
   findings: Finding[];
@@ -15,6 +16,8 @@ interface FindingsPanelProps {
 /**
  * The results experience: severity facets + debounced search + a virtualized,
  * sortable table, all driven by URL-backed state so the view is shareable.
+ * Clicking a row opens a detail drawer with code excerpt, remediation, and a
+ * link to the finding-code catalog.
  * Must be rendered inside a <Suspense> boundary because it reads useSearchParams.
  */
 export function FindingsPanel({ findings }: FindingsPanelProps) {
@@ -27,6 +30,9 @@ export function FindingsPanel({ findings }: FindingsPanelProps) {
     clearAll,
     hasActiveFilters,
   } = useFindingsQuery();
+
+  const [selectedFinding, setSelectedFinding] = useState<Finding | null>(null);
+  const closeDrawer = useCallback(() => setSelectedFinding(null), []);
 
   const counts = useMemo(
     () => severityCounts(findings, state),
@@ -79,8 +85,14 @@ export function FindingsPanel({ findings }: FindingsPanelProps) {
           sort={state.sort}
           dir={state.dir}
           onSortChange={setSort}
+          onRowClick={setSelectedFinding}
         />
       )}
+
+      <FindingDetailDrawer
+        finding={selectedFinding}
+        onClose={closeDrawer}
+      />
     </div>
   );
 }

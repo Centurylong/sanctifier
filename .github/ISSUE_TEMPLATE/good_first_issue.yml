@@ -1,0 +1,62 @@
+name: Good First Issue
+description: A well-scoped task suitable for new contributors
+title: "[good first issue] "
+labels: ["good first issue", "help wanted"]
+body:
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      options:
+        - sanctifier-core (static analysis)
+        - sanctifier-cli (CLI tool)
+        - runtime-guard (Soroban contracts)
+        - frontend
+        - docs
+        - ci/cd
+    validations:
+      required: true
+
+  - type: dropdown
+    id: difficulty
+    attributes:
+      label: Difficulty
+      options:
+        - easy
+        - medium
+    validations:
+      required: true
+
+  - type: textarea
+    id: description
+    attributes:
+      label: Task description
+      placeholder: What needs to be done? Be specific.
+    validations:
+      required: true
+
+  - type: textarea
+    id: learning
+    attributes:
+      label: What you'll learn
+      placeholder: |
+        - How Soroban storage analysis works
+        - Writing Rust AST visitors
+    validations:
+      required: true
+
+  - type: textarea
+    id: hints
+    attributes:
+      label: Helpful hints / pointers
+      placeholder: Relevant files, docs, or prior art to look at.
+    validations:
+      required: false
+
+  - type: input
+    id: mentor
+    attributes:
+      label: Mentor / point of contact
+      placeholder: "@username"
+    validations:
+      required: false

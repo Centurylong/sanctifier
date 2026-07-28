@@ -1,0 +1,31 @@
+id: SOB-2024-023
+title: Unprotected WASM Hash Upgrade
+description: |
+  Passing WASM hash as a function argument without on-chain validation allows substitution
+  of a malicious hash.
+cvss: 9.1
+severity: critical
+category: access-control
+affected_versions: "soroban-sdk <=20.5.0"
+pattern: |
+  fn\s+upgrade\s*\(env:\s*Env,\s*\w+:\s*BytesN<32>\)
+poc_exploit: |
+  contract.upgrade(&env, evil_wasm_hash);
+patch: |
+  fn upgrade(env: Env) {
+      get_admin(&env).require_auth();
+      // Load pre-approved hash from storage
+      let approved: BytesN<32> = env.storage().instance()
+          .get(&DataKey::ApprovedWasm)
+          .expect("no approved wasm");
+      env.deployer().update_current_contract_wasm(approved);
+  }
+recommendation: Separate hash approval from upgrade execution to enforce two-transaction process.
+references:
+  - https://soroban.stellar.org/docs/fundamentals/contract-upgrade
+tags:
+  - upgrade
+  - wasm
+  - hash
+  - authorization
+related_cves: []

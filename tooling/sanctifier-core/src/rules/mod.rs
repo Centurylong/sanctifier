@@ -1,13 +1,29 @@
+pub mod allowance_race;
+pub mod arg_dos;
 pub mod arithmetic_overflow;
 pub mod auth_gap;
+pub mod balance_equality;
+pub mod division_by_zero;
 pub mod edge_amount;
 pub mod error_code_collision;
+pub mod excessive_clone;
+pub mod fee_rounding;
 pub mod hardcoded_addr;
+pub mod init_hardcoded_admin;
+pub mod ledger_seconds;
 pub mod ledger_size;
+pub mod missing_ttl;
 pub mod panic_detection;
+pub mod sanct_unwrap;
+pub mod shift_overflow;
+pub mod state_write_in_view;
+pub mod tier_boundary_off_by_one;
+pub mod unbounded_storage;
 pub mod unhandled_result;
+pub mod unsigned_underflow;
 pub mod unused_variable;
 pub mod wrong_auth_args;
+pub mod view_panic;
 
 use serde::Serialize;
 use std::any::Any;
@@ -94,10 +110,32 @@ impl RuleRegistry {
     }
 
     pub fn run_all(&self, source: &str) -> Vec<RuleViolation> {
-        self.rules
+        let mut violations: Vec<RuleViolation> = self
+            .rules
             .iter()
             .flat_map(|rule| rule.check(source))
-            .collect()
+            .collect();
+
+        // Macro-expansion-aware pass: analyse logic hidden behind simple local
+        // `macro_rules!` wrappers so it isn't a false negative. The expansion is
+        // additive — findings already visible in the original source are
+        // de-duplicated by (rule, message), and code with no expandable macros
+        // is left completely unchanged.
+        if let Some(expanded) = crate::macro_expand::expand_local_macros(source) {
+            let mut seen: std::collections::HashSet<(String, String)> = violations
+                .iter()
+                .map(|v| (v.rule_name.clone(), v.message.clone()))
+                .collect();
+            for rule in &self.rules {
+                for v in rule.check(&expanded) {
+                    if seen.insert((v.rule_name.clone(), v.message.clone())) {
+                        violations.push(v);
+                    }
+                }
+            }
+        }
+
+        violations
     }
 
     pub fn run_by_name(&self, source: &str, name: &str) -> Vec<RuleViolation> {
@@ -115,6 +153,7 @@ impl RuleRegistry {
     pub fn with_default_rules() -> Self {
         let mut registry = Self::new();
         registry.register(auth_gap::AuthGapRule::new());
+        registry.register(auth_gap::VisibilityLeakRule::new());
         registry.register(ledger_size::LedgerSizeRule::new());
         registry.register(panic_detection::PanicDetectionRule::new());
         registry.register(arithmetic_overflow::ArithmeticOverflowRule::new());
@@ -125,6 +164,22 @@ impl RuleRegistry {
         registry.register(error_code_collision::ErrorCodeCollisionRule::new());
         registry.register(edge_amount::EdgeAmountRule::new());
         registry.register(wrong_auth_args::WrongAuthArgsRule::new());
+        registry.register(balance_equality::BalanceEqualityRule::new());
+        registry.register(fee_rounding::FeeRoundingRule::new());
+        registry.register(excessive_clone::ExcessiveCloneRule::new());
+        registry.register(missing_ttl::MissingTtlRule::new());
+        registry.register(arg_dos::ArgDosRule::new());
+        registry.register(sanct_unwrap::SanctUnwrapRule::new());
+        registry.register(init_hardcoded_admin::InitHardcodedAdminRule::new());
+        registry.register(shift_overflow::ShiftOverflowRule::new());
+        registry.register(unbounded_storage::UnboundedStorageRule::new());
+        registry.register(view_panic::ViewPanicRule::new());
+        registry.register(allowance_race::AllowanceRaceRule::new());
+        registry.register(state_write_in_view::StateWriteInViewRule::new());
+        registry.register(division_by_zero::DivisionByZeroRule::new());
+        registry.register(unsigned_underflow::UnsignedUnderflowRule::new());
+        registry.register(ledger_seconds::LedgerSecondsRule::new());
+        registry.register(tier_boundary_off_by_one::TierBoundaryOffByOneRule::new());
         registry
     }
 }

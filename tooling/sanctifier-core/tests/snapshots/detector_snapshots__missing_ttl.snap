@@ -1,0 +1,14 @@
+---
+source: tooling/sanctifier-core/tests/detector_snapshots.rs
+expression: findings
+---
+- rule_name: SANCT_TTL_MISSING
+  severity: Warning
+  message: "SANCT_TTL_MISSING: persistent storage `set` for key `key` does not extend TTL"
+  location: "write_without_ttl:7"
+  suggestion: "Call `env.storage().persistent().extend_ttl(&key, LOW, HIGH)` after accessing this durable entry"
+- rule_name: SANCT_TTL_MISSING
+  severity: Warning
+  message: "SANCT_TTL_MISSING: persistent storage `get` for key `owner` does not extend TTL"
+  location: "read_without_ttl:11"
+  suggestion: "Call `env.storage().persistent().extend_ttl(&owner, LOW, HIGH)` after accessing this durable entry"

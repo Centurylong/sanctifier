@@ -1,0 +1,24 @@
+id: SOL-2024-010
+title: Timestamp Manipulation Risk
+description: |
+  Using env.ledger().timestamp() for time-locked logic is unreliable; validators have minor
+  discretion over ledger close times.
+cvss: 5.3
+severity: medium
+category: oracle
+affected_versions: "soroban-sdk <=20.5.0"
+pattern: |
+  env\.ledger\(\)\.timestamp\(\)
+poc_exploit: |
+  // Validator shifts timestamp by 1-2 seconds to satisfy a time lock
+patch: |
+  let lock_until_seq = env.ledger().sequence() + LOCK_DURATION_LEDGERS;
+recommendation: Prefer ledger sequence numbers over timestamps for on-chain time-locks.
+references:
+  - https://soroban.stellar.org/docs/fundamentals/environments
+tags:
+  - timestamp
+  - time-lock
+  - oracle
+  - manipulation
+related_cves: []

@@ -1,0 +1,19 @@
+[package]
+name = "sanctifier-guards"
+version = "0.1.0"
+edition = "2021"
+description = "Runtime guard macros for Soroban contracts (companion to sanctifier-core static analysis)"
+license = "MIT"
+readme = "README.md"
+keywords = ["soroban", "stellar", "invariant", "runtime", "security"]
+categories = ["cryptography::cryptocurrencies", "no-std"]
+rust-version = "1.78"
+
+[lib]
+crate-type = ["rlib"]
+
+[dependencies]
+soroban-sdk = { workspace = true }
+
+[dev-dependencies]
+soroban-sdk = { workspace = true, features = ["testutils"] }

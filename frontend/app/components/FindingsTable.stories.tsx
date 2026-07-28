@@ -29,16 +29,25 @@ function makeFindings(count: number): Finding[] {
 function TableHarness({ rows }: { rows: Finding[] }) {
   const [sort, setSort] = useState<SortKey | null>("severity");
   const [dir, setDir] = useState<SortDir>("desc");
+  const [selected, setSelected] = useState<Finding | null>(null);
   return (
-    <FindingsTable
-      rows={rows}
-      sort={sort}
-      dir={dir}
-      onSortChange={(s, d) => {
-        setSort(s);
-        setDir(d);
-      }}
-    />
+    <>
+      <FindingsTable
+        rows={rows}
+        sort={sort}
+        dir={dir}
+        onSortChange={(s, d) => {
+          setSort(s);
+          setDir(d);
+        }}
+        onRowClick={setSelected}
+      />
+      {selected && (
+        <p style={{ marginTop: 8, fontSize: 12, color: "#71717a" }}>
+          Selected: {selected.id} — {selected.title}
+        </p>
+      )}
+    </>
   );
 }
 
@@ -51,7 +60,7 @@ const meta: Meta<typeof FindingsTable> = {
     docs: {
       description: {
         component:
-          "Virtualized, sortable findings table (TanStack Table + Virtual). Columns: severity, code, file:line, message. Rows with a snippet or suggestion expand inline. Sorting is controlled by the caller so it can be persisted to the URL.",
+          "Virtualized, sortable findings table (TanStack Table + Virtual). Columns: severity, code, file:line, message. Clicking a row fires onRowClick so the parent can open a detail drawer. Sorting is controlled by the caller so it can be persisted to the URL.",
       },
     },
   },

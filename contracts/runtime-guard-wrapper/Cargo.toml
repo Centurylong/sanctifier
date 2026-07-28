@@ -6,9 +6,19 @@ edition = "2021"
 [dependencies]
 soroban-sdk = { workspace = true }
 sanctifier-core = { path = "../../tooling/sanctifier-core", default-features = false }
+sanctifier-guards = { path = "../../tooling/sanctifier-guards" }
+
+[dev-dependencies]
+soroban-sdk = { workspace = true, features = ["testutils"] }
 
 [lib]
-crate-type = ["cdylib"]
+# rlib alongside cdylib so the contract still produces a deployable WASM
+# blob and the tests/ directory can link against the crate for integration
+# tests of the runtime guard wiring.
+crate-type = ["cdylib", "rlib"]
+
+[features]
+testutils = ["soroban-sdk/testutils"]
 
 [profile.release]
 opt-level = "z"

@@ -24,8 +24,16 @@ impl AllowanceRaceFixed {
             .persistent()
             .get(&(owner.clone(), spender.clone()))
             .unwrap_or(0);
+        env.storage()
+            .persistent()
+            .extend_ttl(&(owner.clone(), spender.clone()), 100, 1000);
         if stored == expected_current {
-            env.storage().persistent().set(&(owner, spender), &amount);
+            env.storage()
+                .persistent()
+                .set(&(owner.clone(), spender.clone()), &amount);
+            env.storage()
+                .persistent()
+                .extend_ttl(&(owner.clone(), spender.clone()), 100, 1000);
         }
     }
 }

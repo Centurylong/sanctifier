@@ -2,4 +2,8 @@
 source: tooling/sanctifier-core/tests/gallery_snapshots.rs
 expression: findings
 ---
-[]
+- rule_name: SANCT_ARG_DOS
+  severity: Warning
+  message: "SANCT_ARG_DOS: argument `items` is iterated without a visible length cap"
+  location: "sum_all:16"
+  suggestion: "Check `items.len()` against a maximum before iterating over `items`"

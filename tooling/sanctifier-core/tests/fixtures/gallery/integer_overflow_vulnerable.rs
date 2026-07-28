@@ -14,5 +14,6 @@ impl IntegerOverflowVulnerable {
         let balance: i128 = env.storage().persistent().get(&user).unwrap_or(0);
         let new_balance = balance + amount;
         env.storage().persistent().set(&user, &new_balance);
+        env.storage().persistent().extend_ttl(&user, 100, 1000);
     }
 }

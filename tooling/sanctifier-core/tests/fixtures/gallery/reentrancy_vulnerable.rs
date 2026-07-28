@@ -19,5 +19,6 @@ impl ReentrancyVulnerable {
         env.events().publish((PAID,), (user.clone(), amount));
         let remaining = balance.saturating_sub(amount);
         env.storage().persistent().set(&user, &remaining);
+        env.storage().persistent().extend_ttl(&user, 100, 1000);
     }
 }

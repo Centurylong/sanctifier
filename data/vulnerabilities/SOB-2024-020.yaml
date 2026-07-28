@@ -1,0 +1,25 @@
+id: SOB-2024-020
+title: Confused Deputy Attack on Cross-Contract Calls
+description: |
+  A contract that accepts a caller-supplied contract ID and forwards calls with its own
+  authority can be tricked into invoking arbitrary contracts.
+cvss: 8.5
+severity: high
+category: access-control
+affected_versions: "soroban-sdk <=20.5.0"
+pattern: |
+  env\.invoke_contract\s*::<[^>]+>\s*\(\s*&\w+_param
+poc_exploit: |
+  // Attacker passes admin_contract as target;
+  // victim contract calls it with its own privileged auth context
+patch: |
+  if !allowed_partners.contains(&partner) {
+      panic!("unauthorized partner");
+  }
+recommendation: Whitelist external contracts and reject caller-supplied arbitrary addresses.
+references: []
+tags:
+  - confused-deputy
+  - cross-contract
+  - authorization
+related_cves: []

@@ -1,0 +1,37 @@
+id: SOB-2024-019
+title: Admin Transfer Without Timelock
+description: |
+  Atomic admin ownership transfer allows a compromised key or governance attack to
+  immediately seize control without delay for detection.
+cvss: 7.8
+severity: high
+category: access-control
+affected_versions: "soroban-sdk <=20.5.0"
+pattern: |
+  fn\s+set_admin\s*\([^)]*\)\s*\{(?:(?!timelock|pending|unlock_at).)*storage\(\)
+poc_exploit: |
+  contract.set_admin(&env, attacker_address); // immediate with compromised key
+patch: |
+  // propose_admin: set pending_admin + unlock_at ledger sequence
+  // accept_admin: check timelock elapsed, require_auth on pending_admin
+  fn propose_admin(env: Env, new_admin: Address) {
+      get_admin(&env).require_auth();
+      let unlock_at = env.ledger().sequence() + TIMELOCK_LEDGERS;
+      env.storage().instance().set(&DataKey::PendingAdmin, &new_admin);
+      env.storage().instance().set(&DataKey::UnlockAt, &unlock_at);
+  }
+  fn accept_admin(env: Env) {
+      let pending: Address = env.storage().instance().get(&DataKey::PendingAdmin).unwrap();
+      pending.require_auth();
+      let unlock_at: u32 = env.storage().instance().get(&DataKey::UnlockAt).unwrap();
+      if env.ledger().sequence() < unlock_at { panic!("timelock not elapsed"); }
+      env.storage().instance().set(&DataKey::Admin, &pending);
+  }
+recommendation: Use two-step admin transfer with ledger-sequence timelock.
+references: []
+tags:
+  - admin
+  - timelock
+  - governance
+  - two-step
+related_cves: []

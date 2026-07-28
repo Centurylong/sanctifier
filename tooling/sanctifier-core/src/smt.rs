@@ -1,4 +1,5 @@
 use serde::Serialize;
+use std::collections::HashMap;
 use std::time::Instant;
 use z3::ast::{Ast, Int};
 use z3::{Context, SatResult, Solver};
@@ -116,6 +117,8 @@ pub enum ProofStatus {
 pub struct Counterexample {
     /// Pairs of (variable_name, concrete_value) extracted from the Z3 model.
     pub variables: Vec<(String, String)>,
+    /// The assertion that was violated by the minimized witness.
+    pub violated_assertion: String,
     /// Human-readable description of the exact call that triggers the violation.
     pub call_sequence: String,
 }
@@ -128,6 +131,168 @@ pub struct ProofResult {
     pub message: String,
     pub counterexample: Option<Counterexample>,
     pub duration_ms: u64,
+}
+
+#[derive(Debug, Clone, Copy)]
+struct BalanceWitness {
+    from_balance: i64,
+    amount: i64,
+}
+
+#[derive(Debug, Clone, Copy)]
+struct SupplyWitness {
+    from_balance: i64,
+    to_balance: i64,
+    amount: i64,
+}
+
+#[derive(Debug, Clone, Copy)]
+struct MintWitness {
+    caller_id: i64,
+    admin_id: i64,
+    old_supply: i64,
+    mint_amount: i64,
+}
+
+fn minimize_balance_counterexample(from_balance: i64, amount: i64) -> BalanceWitness {
+    let mut witness = BalanceWitness {
+        from_balance,
+        amount,
+    };
+    let mut vars = HashMap::from([
+        ("from_balance".to_string(), witness.from_balance),
+        ("amount".to_string(), witness.amount),
+    ]);
+
+    let predicate = |assignment: &HashMap<String, i64>| {
+        let fb = assignment["from_balance"];
+        let amt = assignment["amount"];
+        fb >= 0 && amt > 0 && amt > fb && fb - amt < 0
+    };
+
+    witness.from_balance =
+        try_shrink_i64("from_balance", 0, witness.from_balance, &vars, &predicate);
+    vars.insert("from_balance".to_string(), witness.from_balance);
+    witness.amount = try_shrink_i64("amount", 1, witness.amount, &vars, &predicate);
+    witness
+}
+
+fn minimize_supply_counterexample(
+    from_balance: i64,
+    to_balance: i64,
+    amount: i64,
+) -> SupplyWitness {
+    let mut witness = SupplyWitness {
+        from_balance,
+        to_balance,
+        amount,
+    };
+    let mut vars = HashMap::from([
+        ("from_balance".to_string(), witness.from_balance),
+        ("to_balance".to_string(), witness.to_balance),
+        ("amount".to_string(), witness.amount),
+    ]);
+
+    let predicate = |assignment: &HashMap<String, i64>| {
+        let fb = assignment["from_balance"];
+        let tb = assignment["to_balance"];
+        let amt = assignment["amount"];
+        let new_from = fb - amt;
+        let new_to = tb + amt;
+        let total_before = fb + tb;
+        let total_after = new_from + new_to;
+        fb >= 0 && tb >= 0 && amt > 0 && amt <= fb && total_after != total_before
+    };
+
+    witness.from_balance =
+        try_shrink_i64("from_balance", 0, witness.from_balance, &vars, &predicate);
+    vars.insert("from_balance".to_string(), witness.from_balance);
+    witness.to_balance = try_shrink_i64("to_balance", 0, witness.to_balance, &vars, &predicate);
+    vars.insert("to_balance".to_string(), witness.to_balance);
+    witness.amount = try_shrink_i64("amount", 1, witness.amount, &vars, &predicate);
+    witness
+}
+
+fn minimize_mint_counterexample(
+    caller_id: i64,
+    admin_id: i64,
+    old_supply: i64,
+    mint_amount: i64,
+) -> MintWitness {
+    let mut witness = MintWitness {
+        caller_id,
+        admin_id,
+        old_supply,
+        mint_amount,
+    };
+    let mut vars = HashMap::from([
+        ("caller_id".to_string(), witness.caller_id),
+        ("admin_id".to_string(), witness.admin_id),
+        ("old_supply".to_string(), witness.old_supply),
+        ("mint_amount".to_string(), witness.mint_amount),
+    ]);
+
+    let predicate = |assignment: &HashMap<String, i64>| {
+        let caller = assignment["caller_id"];
+        let admin = assignment["admin_id"];
+        let old_supply = assignment["old_supply"];
+        let mint_amount = assignment["mint_amount"];
+        let new_supply = old_supply + mint_amount;
+        caller != admin
+            && admin > 0
+            && old_supply >= 0
+            && mint_amount > 0
+            && new_supply > old_supply
+    };
+
+    witness.caller_id = try_shrink_i64("caller_id", 0, witness.caller_id, &vars, &predicate);
+    vars.insert("caller_id".to_string(), witness.caller_id);
+    witness.admin_id = try_shrink_i64("admin_id", 1, witness.admin_id, &vars, &predicate);
+    vars.insert("admin_id".to_string(), witness.admin_id);
+    witness.old_supply = try_shrink_i64("old_supply", 0, witness.old_supply, &vars, &predicate);
+    vars.insert("old_supply".to_string(), witness.old_supply);
+    witness.mint_amount = try_shrink_i64("mint_amount", 1, witness.mint_amount, &vars, &predicate);
+    witness
+}
+
+fn try_shrink_i64<F>(
+    name: &str,
+    lower_bound: i64,
+    current: i64,
+    assignment: &HashMap<String, i64>,
+    predicate: &F,
+) -> i64
+where
+    F: Fn(&HashMap<String, i64>) -> bool,
+{
+    if current <= lower_bound {
+        return current;
+    }
+
+    let mut candidates = vec![lower_bound];
+    if lower_bound < current - 1 {
+        candidates.push(lower_bound + 1);
+    }
+    let midpoint = lower_bound + (current - lower_bound) / 2;
+    if midpoint > lower_bound && midpoint < current {
+        candidates.push(midpoint);
+    }
+    candidates.push(current - 1);
+    candidates.sort_unstable();
+    candidates.dedup();
+
+    for candidate in candidates {
+        if candidate == current {
+            continue;
+        }
+        let mut trial = assignment.clone();
+        trial.insert(name.to_string(), candidate);
+        if predicate(&trial) {
+            return candidate;
+        }
+    }
+
+    current
 }
 
 // ── SmtProver ─────────────────────────────────────────────────────────────────
@@ -190,16 +355,18 @@ impl<'ctx> SmtProver<'ctx> {
                         .eval(&amount, true)
                         .and_then(|v| v.as_i64())
                         .unwrap_or(1);
-                    let res = fb - amt;
+                    let minimized = minimize_balance_counterexample(fb, amt);
+                    let res = minimized.from_balance - minimized.amount;
                     Counterexample {
                         variables: vec![
-                            ("from_balance".into(), fb.to_string()),
-                            ("amount".into(), amt.to_string()),
+                            ("from_balance".into(), minimized.from_balance.to_string()),
+                            ("amount".into(), minimized.amount.to_string()),
                             ("result_balance".into(), res.to_string()),
                         ],
+                        violated_assertion: "result_balance >= 0".to_string(),
                         call_sequence: format!(
-                            "transfer(from_balance={fb}, amount={amt}) \
-                            → balance becomes {res} (violates balance >= 0)"
+                            "transfer(from_balance={}, amount={}) -> result_balance = {}",
+                            minimized.from_balance, minimized.amount, res
                         ),
                     }
                 });
@@ -289,15 +456,17 @@ impl<'ctx> SmtProver<'ctx> {
                         .eval(&amount, true)
                         .and_then(|v| v.as_i64())
                         .unwrap_or(1);
+                    let minimized = minimize_supply_counterexample(fb, tb, amt);
                     Counterexample {
                         variables: vec![
-                            ("from_balance".into(), fb.to_string()),
-                            ("to_balance".into(), tb.to_string()),
-                            ("amount".into(), amt.to_string()),
+                            ("from_balance".into(), minimized.from_balance.to_string()),
+                            ("to_balance".into(), minimized.to_balance.to_string()),
+                            ("amount".into(), minimized.amount.to_string()),
                         ],
+                        violated_assertion: "total_supply_after == total_supply_before".to_string(),
                         call_sequence: format!(
-                            "transfer(from_balance={fb}, to_balance={tb}, amount={amt}) \
-                            → supply changed (violates supply conservation)"
+                            "transfer(from_balance={}, to_balance={}, amount={}) -> supply changed",
+                            minimized.from_balance, minimized.to_balance, minimized.amount
                         ),
                     }
                 });
@@ -370,19 +539,20 @@ impl<'ctx> SmtProver<'ctx> {
                         .eval(&mint_amount, true)
                         .and_then(|v| v.as_i64())
                         .unwrap_or(1_000_000);
-                    let new = supply + amt;
+                    let minimized = minimize_mint_counterexample(caller, admin, supply, amt);
+                    let new = minimized.old_supply + minimized.mint_amount;
                     Counterexample {
                         variables: vec![
-                            ("caller_id".into(), caller.to_string()),
-                            ("admin_id".into(), admin.to_string()),
-                            ("old_supply".into(), supply.to_string()),
-                            ("mint_amount".into(), amt.to_string()),
+                            ("caller_id".into(), minimized.caller_id.to_string()),
+                            ("admin_id".into(), minimized.admin_id.to_string()),
+                            ("old_supply".into(), minimized.old_supply.to_string()),
+                            ("mint_amount".into(), minimized.mint_amount.to_string()),
                             ("new_supply".into(), new.to_string()),
                         ],
+                        violated_assertion: "require_auth(&admin) before mint".to_string(),
                         call_sequence: format!(
-                            "mint(caller={caller}, amount={amt}) \
-                            → supply {supply} → {new} \
-                            (caller {caller} ≠ admin {admin}; missing require_auth(&admin))"
+                            "mint(caller={}, admin={}, amount={}) -> new_supply = {}",
+                            minimized.caller_id, minimized.admin_id, minimized.mint_amount, new
                         ),
                     }
                 });
@@ -546,12 +716,13 @@ mod tests {
         let result = prover.prove_invariant(&TokenInvariant::BalanceNonNegative);
         assert_eq!(result.status, ProofStatus::Violated);
         let ce = result.counterexample.expect("should have counterexample");
-        // from_balance < amount means result_balance is negative
         let fb: i64 = ce.variables[0].1.parse().unwrap();
         let amt: i64 = ce.variables[1].1.parse().unwrap();
         let res: i64 = ce.variables[2].1.parse().unwrap();
-        assert!(amt > fb, "amount must exceed from_balance");
-        assert!(res < 0, "result balance must be negative");
+        assert_eq!(fb, 0);
+        assert_eq!(amt, 1);
+        assert_eq!(res, -1);
+        assert_eq!(ce.violated_assertion, "result_balance >= 0");
     }
 
     #[test]
@@ -570,15 +741,17 @@ mod tests {
         let result = prover.prove_invariant(&TokenInvariant::NoUnauthorizedMint);
         assert_eq!(result.status, ProofStatus::Violated);
         let ce = result.counterexample.expect("should have counterexample");
-        // caller_id != admin_id yet new_supply > old_supply
         let caller: i64 = ce.variables[0].1.parse().unwrap();
         let admin: i64 = ce.variables[1].1.parse().unwrap();
         let old_supply: i64 = ce.variables[2].1.parse().unwrap();
         let mint_amount: i64 = ce.variables[3].1.parse().unwrap();
         let new_supply: i64 = ce.variables[4].1.parse().unwrap();
-        assert_ne!(caller, admin, "caller must differ from admin");
-        assert!(new_supply > old_supply, "supply must have increased");
-        assert!(mint_amount > 0, "mint amount must be positive");
+        assert_eq!(caller, 0);
+        assert_eq!(admin, 1);
+        assert_eq!(old_supply, 0);
+        assert_eq!(mint_amount, 1);
+        assert_eq!(new_supply, 1);
+        assert_eq!(ce.violated_assertion, "require_auth(&admin) before mint");
     }
 
     #[test]

@@ -1,0 +1,31 @@
+id: SOB-2024-024
+title: Silent Panic in Soroban Contract Function
+description: |
+  panic!() or .unwrap() inside a contract function aborts with an opaque error code,
+  preventing callers from recovering state or providing useful messages.
+cvss: 4.3
+severity: medium
+category: error-handling
+affected_versions: "soroban-sdk <=20.5.0"
+pattern: |
+  \.unwrap\(\)|panic!\(
+poc_exploit: |
+  // Caller gets generic contract-error with no recovery path
+patch: |
+  #[contracterror]
+  pub enum Error {
+      Unauthorized = 1,
+      InsufficientBalance = 2,
+  }
+  fn transfer(env: Env, from: Address, to: Address, amount: i128) -> Result<(), Error> {
+      // ... logic returning Err(Error::...) instead of panic
+      Ok(())
+  }
+recommendation: Use #[contracterror] enums and Result return types.
+references: []
+tags:
+  - panic
+  - error-handling
+  - ux
+  - contracterror
+related_cves: []

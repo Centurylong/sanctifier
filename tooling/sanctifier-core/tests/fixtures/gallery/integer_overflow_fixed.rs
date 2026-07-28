@@ -14,5 +14,6 @@ impl IntegerOverflowFixed {
         let balance: i128 = env.storage().persistent().get(&user).unwrap_or(0);
         let new_balance = balance.checked_add(amount).unwrap_or(balance);
         env.storage().persistent().set(&user, &new_balance);
+        env.storage().persistent().extend_ttl(&user, 100, 1000);
     }
 }

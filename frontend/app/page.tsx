@@ -20,16 +20,28 @@ export default function Home() {
         <p className="text-lg text-center max-w-md" style={{ color: "var(--muted-foreground)" }}>
           Stellar Soroban Security & Formal Verification Suite
         </p>
-        <Link
-          href="/dashboard"
-          className="rounded-lg px-6 py-3 font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2"
-          style={{
-            backgroundColor: "var(--primary)",
-            color: "var(--primary-foreground)",
-          }}
-        >
-          Open Security Dashboard
-        </Link>
+        <div className="flex flex-wrap justify-center gap-3">
+          <Link
+            href="/scan"
+            className="rounded-lg px-6 py-3 font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2"
+            style={{
+              backgroundColor: "var(--primary)",
+              color: "var(--primary-foreground)",
+            }}
+          >
+            Scan a Contract
+          </Link>
+          <Link
+            href="/dashboard"
+            className="rounded-lg border px-6 py-3 font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2"
+            style={{
+              borderColor: "var(--border)",
+              color: "var(--foreground)",
+            }}
+          >
+            Security Dashboard
+          </Link>
+        </div>
       </main>
     </div>
   );

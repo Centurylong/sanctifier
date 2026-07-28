@@ -1,0 +1,27 @@
+id: SOB-2024-026
+title: TWAP Oracle Manipulation via Flash Loan
+description: |
+  TWAP oracles computed over few ledgers can be manipulated by flash loans that move the
+  price for one ledger then revert.
+cvss: 8.2
+severity: high
+category: oracle
+affected_versions: "soroban-sdk <=20.5.0"
+pattern: |
+  twap_window\s*<\s*\d+|TWAP_LEDGERS\s*=\s*[1-9]\b
+poc_exploit: |
+  // Flash loan -> dump into pool (skews TWAP) -> borrow against inflated collateral
+  // -> repay loan
+patch: |
+  const MIN_TWAP_LEDGERS: u32 = 30;
+  if twap_window < MIN_TWAP_LEDGERS {
+      panic!("TWAP window too short");
+  }
+recommendation: Use 30+ ledger TWAP windows and add price deviation circuit breakers.
+references: []
+tags:
+  - oracle
+  - twap
+  - flash-loan
+  - defi
+related_cves: []

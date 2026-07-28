@@ -1,0 +1,28 @@
+id: SOB-2024-030
+title: Event Topic Count Inconsistency
+description: |
+  Emitting events with different topic counts under the same event name breaks off-chain
+  indexers and causes silent data loss in analytics.
+cvss: 3.5
+severity: low
+category: events
+affected_versions: "soroban-sdk <=20.5.0"
+pattern: |
+  events\(\)\.publish\s*\(\s*\([^)]*\),\s*\w+\)
+poc_exploit: |
+  // Two code paths emit "transfer" with 2 and 3 topics;
+  // indexer silently drops one variant
+patch: |
+  // Use consistent typed event struct for all paths
+  env.events().publish(
+      (symbol_short!("transfer"), from.clone(), to.clone()),
+      amount,
+  );
+recommendation: Use a consistent typed event schema so indexers can rely on stable structure.
+references: []
+tags:
+  - events
+  - indexer
+  - schema
+  - consistency
+related_cves: []

@@ -16,5 +16,6 @@ impl UpgradeAuthVulnerable {
     // the privileged write has no require_auth() gate.
     pub fn set_upgrade_admin(env: Env, new_admin: Address) {
         env.storage().instance().set(&ADMIN, &new_admin);
+        env.storage().instance().extend_ttl(100, 1000);
     }
 }

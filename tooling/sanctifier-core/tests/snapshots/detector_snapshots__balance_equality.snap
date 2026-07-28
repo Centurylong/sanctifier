@@ -1,0 +1,14 @@
+---
+source: tooling/sanctifier-core/tests/detector_snapshots.rs
+expression: findings
+---
+- rule_name: SANCT_BALANCE_EQ
+  severity: Info
+  message: "SANCT_BALANCE_EQ: gating `balance == amount` compares a balance and an amount for exact (in)equality; `>=`/`<=` was likely intended"
+  location: "withdraw:15"
+  suggestion: "Use `balance >= amount` (or `<=`) instead of `==` when gating a spend on a balance; exact equality can lock funds or enable edge exploits"
+- rule_name: SANCT_BALANCE_EQ
+  severity: Info
+  message: "SANCT_BALANCE_EQ: gating `get_balance != payment` compares a balance and an amount for exact (in)equality; `>=`/`<=` was likely intended"
+  location: "settle:22"
+  suggestion: "Use `get_balance >= payment` (or `<=`) instead of `!=` when gating a spend on a balance; exact equality can lock funds or enable edge exploits"

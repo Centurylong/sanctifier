@@ -1,37 +1,34 @@
 ---
 name: Bug report
-about: Create a report to help us improve
-title: '[Bug] '
-labels: bug
-assignees: ''
-
+about: Report a reproducible problem
+title: "bug: "
+labels: "type: bug"
+assignees: ""
 ---
 
-**Describe the bug**
-A clear and concise description of what the bug is.
+## Summary
+<!-- One or two sentences. -->
 
-**To Reproduce**
-Steps to reproduce the behavior:
-1. Go to '...'
-2. Click on '....'
-3. See error
+## Steps to reproduce
+1.
+2.
+3.
 
-**Expected behavior**
-A clear and concise description of what you expected to happen.
+## Expected behavior
+<!-- What you expected to happen. -->
 
-**Screenshots**
-If applicable, add screenshots to help explain your problem.
+## Actual behavior
+<!-- What actually happened. -->
 
-**Desktop (please complete the following information):**
- - OS: [e.g. iOS]
- - Browser [e.g. chrome, safari]
- - Version [e.g. 22]
+## Environment
+<!-- Fill out as much as you can. -->
+- Sanctifier version/commit:
+- OS:
+- How you ran it (CLI command / CI / devcontainer):
 
-**Smartphone (please complete the following information):**
- - Device: [e.g. iPhone6]
- - OS: [e.g. iOS8.1]
- - Browser [e.g. stock browser, safari]
- - Version [e.g. 22]
+## Logs / screenshots
+<!-- Paste logs (redact secrets). -->
 
-**Additional context**
-Add any other context about the problem here.
+## Additional context
+<!-- Anything else that helps. -->
+
