@@ -12,6 +12,7 @@ This document contains the help content for the `sanctifier` command-line progra
 * [`sanctifier attest`↴](#sanctifier-attest)
 * [`sanctifier badge`↴](#sanctifier-badge)
 * [`sanctifier diff`↴](#sanctifier-diff)
+* [`sanctifier ci`↴](#sanctifier-ci)
 * [`sanctifier fix`↴](#sanctifier-fix)
 * [`sanctifier report`↴](#sanctifier-report)
 * [`sanctifier init`↴](#sanctifier-init)
@@ -41,6 +42,7 @@ Stellar Soroban Security & Formal Verification Suite
 * `attest` — Generate (or verify) a zero-knowledge attestation that a scan passed a score threshold
 * `badge` — Generate a dynamic Sanctifier status badge
 * `diff` — Compare findings between working tree and a git reference
+* `ci` — Run CI gating and compliance checks
 * `fix` — Generate suggested fix diffs for findings and apply them only after explicit confirmation (offline; deterministic local suggestions)
 * `report` — Generate a security report
 * `init` — Initialize Sanctifier in a new project
@@ -160,6 +162,26 @@ Compare findings between working tree and a git reference
 
   Default value: `text`
 * `--vuln-db <VULN_DB>` — Path to a custom vulnerability database JSON file
+
+
+
+## `sanctifier ci`
+
+Run CI gating and compliance checks
+
+**Usage:** `sanctifier ci [OPTIONS] [PATH]`
+
+###### **Arguments:**
+
+* `<PATH>` — Path to the contract directory or Cargo.toml
+
+  Default value: `.`
+
+###### **Options:**
+
+* `-f`, `--format <FORMAT>` — Output format (e.g. text, json, sarif)
+
+  Default value: `text`
 
 
 
