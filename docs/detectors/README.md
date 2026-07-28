@@ -47,6 +47,7 @@ detector page and to the relevant [Glossary](../glossary.md) term.
 | [`shift_overflow`](shift_overflow.md) | [`SANCT_SHIFT_OVERFLOW`](../error-codes.md) | arithmetic | Warning/Error | Bit shift by an amount that may be `>=` the operand's bit width |
 | [`tier_boundary_off_by_one`](tier_boundary_off_by_one.md) | [`S022`](../error-codes.md) | logic | Info | `if`/`else if` tier/rank ladder mixes strict and inclusive comparisons on the same variable |
 | [`wrong_auth_args`](wrong_auth_args.md) | [`S023`](../error-codes.md) | authentication | Medium | Internal function uses `require_auth()` instead of `require_auth_for_args()` |
+| [`reserve_withdrawal`](reserve_withdrawal.md) | [`S023`](../error-codes.md) | authorization | High | Missing strict authorization guard on reserve or treasury funds withdrawal |
 
 ## Page anatomy
 
