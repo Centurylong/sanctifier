@@ -46,7 +46,9 @@
     "shift_overflow": "SANCT_SHIFT_OVERFLOW",
     "SANCT_SHIFT_OVERFLOW": "SANCT_SHIFT_OVERFLOW",
     "tier_boundary_off_by_one": "S022",
-    "reserve_withdrawal": "S023"
+    "reserve_withdrawal": "S023",
+    "eager_unwrap_or": "SANCT_EAGER_UNWRAP_OR",
+    "SANCT_EAGER_UNWRAP_OR": "SANCT_EAGER_UNWRAP_OR"
   },
   "overlap_legend": {
     "shared-covered": "Class has an EVM analogue and Sanctifier already flags it.",

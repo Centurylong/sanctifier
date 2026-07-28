@@ -4,6 +4,7 @@ pub mod arithmetic_overflow;
 pub mod auth_gap;
 pub mod balance_equality;
 pub mod division_by_zero;
+pub mod eager_unwrap_or;
 pub mod edge_amount;
 pub mod error_code_collision;
 pub mod excessive_clone;
@@ -176,6 +177,7 @@ impl RuleRegistry {
         registry.register(allowance_race::AllowanceRaceRule::new());
         registry.register(state_write_in_view::StateWriteInViewRule::new());
         registry.register(division_by_zero::DivisionByZeroRule::new());
+        registry.register(eager_unwrap_or::EagerUnwrapOrRule::new());
         registry.register(unsigned_underflow::UnsignedUnderflowRule::new());
         registry.register(ledger_seconds::LedgerSecondsRule::new());
         registry.register(tier_boundary_off_by_one::TierBoundaryOffByOneRule::new());
