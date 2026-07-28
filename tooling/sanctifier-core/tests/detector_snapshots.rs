@@ -26,6 +26,7 @@ use sanctifier_core::rules::{
     tier_boundary_off_by_one::TierBoundaryOffByOneRule, unbounded_storage::UnboundedStorageRule,
     unhandled_result::UnhandledResultRule, unsigned_underflow::UnsignedUnderflowRule,
     unused_variable::UnusedVariableRule, view_panic::ViewPanicRule, Rule, RuleRegistry,
+    contracterror_enum::ContracterrorEnumRule,
 };
 
 /// Run a detector against its fixture and snapshot the resulting findings.
@@ -416,5 +417,14 @@ fn snapshot_reserve_withdrawal() {
         "reserve_withdrawal",
         &sanctifier_core::rules::reserve_withdrawal::ReserveWithdrawalRule::new(),
         include_str!("fixtures/detectors/reserve_withdrawal.rs"),
+    );
+}
+
+#[test]
+fn snapshot_contracterror_enum() {
+    assert_detector_snapshot(
+        "contracterror_enum",
+        &ContracterrorEnumRule::new(),
+        include_str!("fixtures/detectors/contracterror_enum.rs"),
     );
 }

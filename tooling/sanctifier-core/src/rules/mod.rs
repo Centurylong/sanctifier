@@ -1,4 +1,5 @@
 pub mod allowance_race;
+pub mod contracterror_enum;
 pub mod arg_dos;
 pub mod arithmetic_overflow;
 pub mod auth_gap;
@@ -180,6 +181,7 @@ impl RuleRegistry {
         registry.register(ledger_seconds::LedgerSecondsRule::new());
         registry.register(tier_boundary_off_by_one::TierBoundaryOffByOneRule::new());
         registry.register(reserve_withdrawal::ReserveWithdrawalRule::new());
+        registry.register(contracterror_enum::ContracterrorEnumRule::new());
         registry
     }
 }
