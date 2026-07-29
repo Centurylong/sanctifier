@@ -25,6 +25,7 @@ the fix, and references.
 | `SANCT_UNWRAP` | panic_handling | `unwrap` / `expect` / risky `unwrap_or_default` inside `#[contractimpl]` entrypoints; replace with typed errors or explicit domain defaults | [`sanct_unwrap`](detectors/sanct_unwrap.md) |
 | `SANCT_VISIBILITY` | authentication | Helper-shaped state mutator exposed through `#[contractimpl]` without authorization | [`sanct_visibility`](detectors/sanct_visibility.md) |
 | `SANCT_UNBOUNDED_STORAGE` | denial_of_service | Persistent/instance collection grows via append/insert with no removal or length cap | [`unbounded_storage`](detectors/unbounded_storage.md) |
+| `SANCT_CONTRACTERROR_ENUM` | logic | Public function returns error enum missing `#[contracterror]` or repr | [`contracterror_enum`](detectors/contracterror_enum.md) |
 
 > **Full catalog:** [Detector Catalog →](detectors/README.md)
 
