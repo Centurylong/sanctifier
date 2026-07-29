@@ -12,6 +12,7 @@ pub mod rules;
 #[cfg(feature = "smt")]
 pub mod smt;
 mod storage_collision;
+pub mod symbolic;
 pub mod wasm;
 use std::collections::{HashMap, HashSet};
 use syn::spanned::Spanned;
@@ -375,6 +376,10 @@ impl Analyzer {
 
     pub fn available_rules(&self) -> Vec<&str> {
         self.rule_registry.available_rules()
+    }
+
+    pub fn analyze_symbolic_paths(&self, source: &str) -> Vec<symbolic::SymbolicIssue> {
+        with_panic_guard(|| symbolic::analyze_symbolic_paths_impl(source))
     }
 
     pub fn analyze_upgrade_patterns(&self, source: &str) -> UpgradeReport {
