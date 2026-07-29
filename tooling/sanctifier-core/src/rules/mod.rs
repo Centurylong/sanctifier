@@ -19,6 +19,7 @@ pub mod sanct_unwrap;
 pub mod shift_overflow;
 pub mod state_write_in_view;
 pub mod tier_boundary_off_by_one;
+pub mod unbounded_return;
 pub mod unbounded_storage;
 pub mod unhandled_result;
 pub mod unsigned_underflow;
@@ -179,6 +180,7 @@ impl RuleRegistry {
         registry.register(unsigned_underflow::UnsignedUnderflowRule::new());
         registry.register(ledger_seconds::LedgerSecondsRule::new());
         registry.register(tier_boundary_off_by_one::TierBoundaryOffByOneRule::new());
+        registry.register(unbounded_return::UnboundedReturnRule::new());
         registry.register(reserve_withdrawal::ReserveWithdrawalRule::new());
         registry
     }

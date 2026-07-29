@@ -418,3 +418,12 @@ fn snapshot_reserve_withdrawal() {
         include_str!("fixtures/detectors/reserve_withdrawal.rs"),
     );
 }
+
+#[test]
+fn snapshot_unbounded_return() {
+    assert_detector_snapshot(
+        "unbounded_return",
+        &sanctifier_core::rules::unbounded_return::UnboundedReturnRule::new(),
+        include_str!("fixtures/detectors/unbounded_return.rs"),
+    );
+}
