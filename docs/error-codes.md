@@ -26,6 +26,7 @@ the fix, and references.
 | `SANCT_VISIBILITY` | authentication | Helper-shaped state mutator exposed through `#[contractimpl]` without authorization | [`sanct_visibility`](detectors/sanct_visibility.md) |
 | `SANCT_UNBOUNDED_STORAGE` | denial_of_service | Persistent/instance collection grows via append/insert with no removal or length cap | [`unbounded_storage`](detectors/unbounded_storage.md) |
 | `SANCT_EAGER_UNWRAP_OR` | gas_efficiency | Eagerly-computed expensive fallback in `unwrap_or()` wastes gas | [`eager_unwrap_or`](detectors/eager_unwrap_or.md) |
+| `SANCT_CONTRACTERROR_ENUM` | logic | Public function returns error enum missing `#[contracterror]` or repr | [`contracterror_enum`](detectors/contracterror_enum.md) |
 
 > **Full catalog:** [Detector Catalog →](detectors/README.md)
 

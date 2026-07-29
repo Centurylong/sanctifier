@@ -49,6 +49,7 @@ detector page and to the relevant [Glossary](../glossary.md) term.
 | [`wrong_auth_args`](wrong_auth_args.md) | [`S024`](../error-codes.md) | authentication | Medium | Internal function uses `require_auth()` instead of `require_auth_for_args()` |
 | [`reserve_withdrawal`](reserve_withdrawal.md) | [`S023`](../error-codes.md) | authorization | High | Missing strict authorization guard on reserve or treasury funds withdrawal |
 | [`eager_unwrap_or`](eager_unwrap_or.md) | [`SANCT_EAGER_UNWRAP_OR`](../error-codes.md) | gas_efficiency | Warning | Eagerly-computed expensive fallback in `unwrap_or()` |
+| [`contracterror_enum`](contracterror_enum.md) | [`SANCT_CONTRACTERROR_ENUM`](../error-codes.md) | logic | Warning | Public function returns error enum missing `#[contracterror]` or repr |
 
 ## Page anatomy
 

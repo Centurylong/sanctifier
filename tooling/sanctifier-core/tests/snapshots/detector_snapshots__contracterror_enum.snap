@@ -1,0 +1,19 @@
+---
+source: tooling/sanctifier-core/tests/detector_snapshots.rs
+expression: findings
+---
+- rule_name: SANCT_CONTRACTERROR_ENUM
+  severity: Warning
+  message: "Error enum 'GoodError' returned from public function 'some_func' is missing #[contracterror] and missing stable #[repr(...)]"
+  location: "some_func:20"
+  suggestion: "Add #[contracterror] and a stable #[repr(...)] attribute to the error enum"
+- rule_name: SANCT_CONTRACTERROR_ENUM
+  severity: Warning
+  message: "Error enum 'BadError1' returned from public function 'some_func3' is missing stable #[repr(...)]"
+  location: "some_func3:28"
+  suggestion: "Add #[contracterror] and a stable #[repr(...)] attribute to the error enum"
+- rule_name: SANCT_CONTRACTERROR_ENUM
+  severity: Warning
+  message: "Error enum 'BadError2' returned from public function 'some_func4' is missing #[contracterror]"
+  location: "some_func4:32"
+  suggestion: "Add #[contracterror] and a stable #[repr(...)] attribute to the error enum"
