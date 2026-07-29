@@ -1,0 +1,14 @@
+---
+source: tooling/sanctifier-core/tests/detector_snapshots.rs
+expression: findings
+---
+- rule_name: wrong_auth_args
+  severity: Error
+  message: "Internal function 'internal_transfer' uses require_auth() which bounds to top-level contract arguments"
+  location: internal_transfer
+  suggestion: "Use require_auth_for_args() instead to bind this internal function's specific arguments"
+- rule_name: wrong_auth_args
+  severity: Error
+  message: "Internal function 'helper' uses require_auth() which bounds to top-level contract arguments"
+  location: helper
+  suggestion: "Use require_auth_for_args() instead to bind this internal function's specific arguments"

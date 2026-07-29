@@ -1,8 +1,7 @@
 use crate::rules::{Rule, RuleViolation, Severity};
-use syn::spanned::Spanned;
+use std::collections::HashMap;
 use syn::visit::Visit;
 use syn::{parse_str, File, ItemFn, ReturnType, Type, Visibility};
-use std::collections::HashMap;
 
 pub struct ContracterrorEnumRule;
 
@@ -50,7 +49,8 @@ impl Rule for ContracterrorEnumRule {
                     issue.location,
                 )
                 .with_suggestion(
-                    "Add #[contracterror] and a stable #[repr(...)] attribute to the error enum".to_string(),
+                    "Add #[contracterror] and a stable #[repr(...)] attribute to the error enum"
+                        .to_string(),
                 )
             })
             .collect()
@@ -93,13 +93,16 @@ impl<'ast> Visit<'ast> for ContractErrorVisitor {
                     }
                 }
 
-                self.enums.insert(name, EnumInfo {
-                    has_contracterror,
-                    has_repr,
-                });
+                self.enums.insert(
+                    name,
+                    EnumInfo {
+                        has_contracterror,
+                        has_repr,
+                    },
+                );
             }
         }
-        
+
         syn::visit::visit_file(self, node);
     }
 
@@ -111,11 +114,15 @@ impl<'ast> Visit<'ast> for ContractErrorVisitor {
                         if seg.ident == "Result" {
                             if let syn::PathArguments::AngleBracketed(args) = &seg.arguments {
                                 if args.args.len() == 2 {
-                                    if let syn::GenericArgument::Type(Type::Path(err_tp)) = &args.args[1] {
+                                    if let syn::GenericArgument::Type(Type::Path(err_tp)) =
+                                        &args.args[1]
+                                    {
                                         if let Some(err_seg) = err_tp.path.segments.last() {
                                             let err_name = err_seg.ident.to_string();
                                             if let Some(enum_info) = self.enums.get(&err_name) {
-                                                if !enum_info.has_contracterror || !enum_info.has_repr {
+                                                if !enum_info.has_contracterror
+                                                    || !enum_info.has_repr
+                                                {
                                                     let line = node.sig.ident.span().start().line;
                                                     let mut msg = Vec::new();
                                                     if !enum_info.has_contracterror {

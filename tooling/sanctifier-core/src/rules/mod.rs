@@ -1,9 +1,9 @@
 pub mod allowance_race;
-pub mod contracterror_enum;
 pub mod arg_dos;
 pub mod arithmetic_overflow;
 pub mod auth_gap;
 pub mod balance_equality;
+pub mod contracterror_enum;
 pub mod division_by_zero;
 pub mod edge_amount;
 pub mod error_code_collision;
@@ -25,6 +25,7 @@ pub mod unhandled_result;
 pub mod unsigned_underflow;
 pub mod unused_variable;
 pub mod view_panic;
+pub mod wrong_auth_args;
 
 use serde::Serialize;
 use std::any::Any;
@@ -164,6 +165,7 @@ impl RuleRegistry {
         registry.register(hardcoded_addr::HardcodedAddrRule::new());
         registry.register(error_code_collision::ErrorCodeCollisionRule::new());
         registry.register(edge_amount::EdgeAmountRule::new());
+        registry.register(wrong_auth_args::WrongAuthArgsRule::new());
         registry.register(balance_equality::BalanceEqualityRule::new());
         registry.register(fee_rounding::FeeRoundingRule::new());
         registry.register(excessive_clone::ExcessiveCloneRule::new());
