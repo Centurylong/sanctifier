@@ -89,9 +89,7 @@ fn explore_block(block: &Block) -> PathOutcome {
 
 fn explore_expr(expr: &Expr) -> PathOutcome {
     match expr {
-        Expr::Macro(m)
-            if m.mac.path.is_ident("panic") || m.mac.path.is_ident("unreachable") =>
-        {
+        Expr::Macro(m) if m.mac.path.is_ident("panic") || m.mac.path.is_ident("unreachable") => {
             return PathOutcome::Revert;
         }
         Expr::MethodCall(m) => {
