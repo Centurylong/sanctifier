@@ -1,0 +1,14 @@
+---
+source: tooling/sanctifier-core/tests/detector_snapshots.rs
+expression: findings
+---
+- rule_name: unbounded_return
+  severity: Warning
+  message: "Unbounded collection (`Vec` or `Map`) returned to caller"
+  location: "get_all_users:8"
+  suggestion: "Returning a storage-backed collection that grows with users can exceed return-size limits. Implement pagination using parameters like `start` and `limit`."
+- rule_name: unbounded_return
+  severity: Warning
+  message: "Unbounded collection (`Vec` or `Map`) returned to caller"
+  location: "get_all_balances:13"
+  suggestion: "Returning a storage-backed collection that grows with users can exceed return-size limits. Implement pagination using parameters like `start` and `limit`."

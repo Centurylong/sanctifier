@@ -430,6 +430,15 @@ fn snapshot_reserve_withdrawal() {
 }
 
 #[test]
+fn snapshot_unbounded_return() {
+    assert_detector_snapshot(
+        "unbounded_return",
+        &sanctifier_core::rules::unbounded_return::UnboundedReturnRule::new(),
+        include_str!("fixtures/detectors/unbounded_return.rs"),
+    );
+}
+
+#[test]
 fn snapshot_eager_unwrap_or() {
     assert_detector_snapshot(
         "eager_unwrap_or",
