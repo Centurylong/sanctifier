@@ -154,5 +154,37 @@ fn bench_ast_parsing_and_rules(c: &mut Criterion) {
     group.finish();
 }
 
+fn bench_memory_profile_large_workspace(c: &mut Criterion) {
+    use sanctifier_core::memory::MemoryTracker;
+
+    let mut group = c.benchmark_group("Memory Profiling");
+    let analyzer = Analyzer::new(SanctifyConfig::default());
+
+    group.bench_function("Per-file scan (complex contract)", |b| {
+        b.iter(|| {
+            let _ = analyzer.scan_auth_gaps(COMPLEX_CONTRACT_PAYLOAD);
+            let _ = analyzer.scan_panics(COMPLEX_CONTRACT_PAYLOAD);
+            let _ = analyzer.scan_arithmetic_overflow(COMPLEX_CONTRACT_PAYLOAD);
+            let _ = analyzer.analyze_ledger_size(COMPLEX_CONTRACT_PAYLOAD);
+            let _ = analyzer.scan_storage_collisions(COMPLEX_CONTRACT_PAYLOAD);
+            let _ = analyzer.scan_events(COMPLEX_CONTRACT_PAYLOAD);
+            let _ = analyzer.scan_unhandled_results(COMPLEX_CONTRACT_PAYLOAD);
+            let _ = analyzer.analyze_upgrade_patterns(COMPLEX_CONTRACT_PAYLOAD);
+        })
+    });
+
+    group.bench_function("Memory tracker sampling overhead", |b| {
+        b.iter(|| {
+            let mut tracker = MemoryTracker::new();
+            let _ = tracker.sample();
+            let _ = tracker.sample();
+            let _ = tracker.sample();
+        })
+    });
+
+    group.finish();
+}
+
 criterion_group!(benches, bench_ast_parsing_and_rules);
-criterion_main!(benches);
+criterion_group!(memory, bench_memory_profile_large_workspace);
+criterion_main!(benches, memory);

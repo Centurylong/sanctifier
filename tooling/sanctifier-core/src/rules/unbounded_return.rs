@@ -63,7 +63,11 @@ impl<'ast> Visit<'ast> for UnboundedReturnVisitor {
                 let has_pagination = node.sig.inputs.iter().any(|arg| {
                     if let syn::FnArg::Typed(pat) = arg {
                         let arg_str = quote::quote!(#pat).to_string();
-                        arg_str.contains("limit") || arg_str.contains("offset") || arg_str.contains("start") || arg_str.contains("cursor") || arg_str.contains("page")
+                        arg_str.contains("limit")
+                            || arg_str.contains("offset")
+                            || arg_str.contains("start")
+                            || arg_str.contains("cursor")
+                            || arg_str.contains("page")
                     } else {
                         false
                     }

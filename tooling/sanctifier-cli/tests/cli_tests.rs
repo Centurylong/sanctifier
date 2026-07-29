@@ -387,3 +387,65 @@ fn test_analyze_json_includes_baseline_section() {
         "suppressed_count should be > 0 when baseline is active"
     );
 }
+
+// ── Memory profiling tests ────────────────────────────────────────────────────
+
+#[test]
+fn test_analyze_profile_flag_produces_memory_stats() {
+    let mut cmd = Command::cargo_bin("sanctifier").unwrap();
+    let fixture_path = env::current_dir()
+        .unwrap()
+        .join("tests/fixtures/vulnerable_contract.rs");
+
+    cmd.arg("analyze")
+        .arg(fixture_path)
+        .arg("--profile")
+        .assert()
+        .success()
+        .stderr(predicates::str::contains("Memory (start):"))
+        .stderr(predicates::str::contains("Memory (final):"));
+}
+
+#[test]
+fn test_analyze_max_memory_does_not_abort_under_high_limit() {
+    let mut cmd = Command::cargo_bin("sanctifier").unwrap();
+    let fixture_path = env::current_dir()
+        .unwrap()
+        .join("tests/fixtures/valid_contract.rs");
+
+    cmd.arg("analyze")
+        .arg(fixture_path)
+        .arg("--max-memory")
+        .arg("4096") // 4 GB, far above real usage
+        .assert()
+        .success()
+        .stdout(predicates::str::contains("Static analysis complete."));
+}
+
+#[test]
+fn test_analyze_profile_works_with_json_output() {
+    let mut cmd = Command::cargo_bin("sanctifier").unwrap();
+    let fixture_path = env::current_dir()
+        .unwrap()
+        .join("tests/fixtures/valid_contract.rs");
+
+    let output = cmd
+        .arg("analyze")
+        .arg(fixture_path)
+        .arg("--profile")
+        .arg("--format")
+        .arg("json")
+        .output()
+        .unwrap();
+
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    let json: serde_json::Value = serde_json::from_str(&stdout).unwrap();
+    assert!(json.get("storage_collisions").is_some());
+
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    assert!(
+        stderr.contains("Memory (start):") || stderr.contains("Memory (final):"),
+        "stderr should contain memory stats: {}",
+        stderr
+    );
+}

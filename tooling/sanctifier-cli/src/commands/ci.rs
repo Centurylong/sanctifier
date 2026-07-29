@@ -24,6 +24,8 @@ pub fn exec(args: CiArgs) -> anyhow::Result<()> {
         vuln_db: None,
         webhook_urls: vec![],
         no_baseline: false,
+        profile: false,
+        max_memory: None,
     };
 
     analyze::exec(analyze_args)
