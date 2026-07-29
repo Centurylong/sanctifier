@@ -49,7 +49,9 @@
     "reserve_withdrawal": "S023",
     "unbounded_return": "SANCT_UNBOUNDED_RETURN",
     "SANCT_UNBOUNDED_RETURN": "SANCT_UNBOUNDED_RETURN",
-    "wrong_auth_args": "S024"
+    "wrong_auth_args": "S024",
+    "contracterror_enum": "SANCT_CONTRACTERROR_ENUM",
+    "SANCT_CONTRACTERROR_ENUM": "SANCT_CONTRACTERROR_ENUM"
   },
   "overlap_legend": {
     "shared-covered": "Class has an EVM analogue and Sanctifier already flags it.",

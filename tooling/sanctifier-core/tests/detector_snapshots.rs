@@ -16,17 +16,17 @@ use sanctifier_core::rules::auth_gap::VisibilityLeakRule;
 use sanctifier_core::rules::{
     allowance_race::AllowanceRaceRule, arg_dos::ArgDosRule,
     arithmetic_overflow::ArithmeticOverflowRule, auth_gap::AuthGapRule,
-    balance_equality::BalanceEqualityRule, division_by_zero::DivisionByZeroRule,
-    edge_amount::EdgeAmountRule, error_code_collision::ErrorCodeCollisionRule,
-    excessive_clone::ExcessiveCloneRule, fee_rounding::FeeRoundingRule,
-    hardcoded_addr::HardcodedAddrRule, init_hardcoded_admin::InitHardcodedAdminRule,
-    ledger_seconds::LedgerSecondsRule, ledger_size::LedgerSizeRule, missing_ttl::MissingTtlRule,
-    panic_detection::PanicDetectionRule, sanct_unwrap::SanctUnwrapRule,
-    shift_overflow::ShiftOverflowRule, state_write_in_view::StateWriteInViewRule,
-    tier_boundary_off_by_one::TierBoundaryOffByOneRule, unbounded_storage::UnboundedStorageRule,
-    unhandled_result::UnhandledResultRule, unsigned_underflow::UnsignedUnderflowRule,
-    unused_variable::UnusedVariableRule, view_panic::ViewPanicRule,
-    wrong_auth_args::WrongAuthArgsRule, Rule, RuleRegistry,
+    balance_equality::BalanceEqualityRule, contracterror_enum::ContracterrorEnumRule,
+    division_by_zero::DivisionByZeroRule, edge_amount::EdgeAmountRule,
+    error_code_collision::ErrorCodeCollisionRule, excessive_clone::ExcessiveCloneRule,
+    fee_rounding::FeeRoundingRule, hardcoded_addr::HardcodedAddrRule,
+    init_hardcoded_admin::InitHardcodedAdminRule, ledger_seconds::LedgerSecondsRule,
+    ledger_size::LedgerSizeRule, missing_ttl::MissingTtlRule, panic_detection::PanicDetectionRule,
+    sanct_unwrap::SanctUnwrapRule, shift_overflow::ShiftOverflowRule,
+    state_write_in_view::StateWriteInViewRule, tier_boundary_off_by_one::TierBoundaryOffByOneRule,
+    unbounded_storage::UnboundedStorageRule, unhandled_result::UnhandledResultRule,
+    unsigned_underflow::UnsignedUnderflowRule, unused_variable::UnusedVariableRule,
+    view_panic::ViewPanicRule, wrong_auth_args::WrongAuthArgsRule, Rule, RuleRegistry,
 };
 
 /// Run a detector against its fixture and snapshot the resulting findings.
@@ -435,5 +435,13 @@ fn snapshot_unbounded_return() {
         "unbounded_return",
         &sanctifier_core::rules::unbounded_return::UnboundedReturnRule::new(),
         include_str!("fixtures/detectors/unbounded_return.rs"),
+    );
+}
+
+fn snapshot_contracterror_enum() {
+    assert_detector_snapshot(
+        "contracterror_enum",
+        &ContracterrorEnumRule::new(),
+        include_str!("fixtures/detectors/contracterror_enum.rs"),
     );
 }
