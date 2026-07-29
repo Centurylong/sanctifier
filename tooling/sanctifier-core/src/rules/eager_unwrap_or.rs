@@ -69,10 +69,7 @@ impl<'ast> Visit<'ast> for EagerUnwrapOrVisitor {
     fn visit_expr_method_call(&mut self, node: &'ast syn::ExprMethodCall) {
         if node.method == "unwrap_or" {
             if let Some(arg) = node.args.first() {
-                let is_expensive = match arg {
-                    Expr::Call(_) | Expr::MethodCall(_) | Expr::Macro(_) => true,
-                    _ => false,
-                };
+                let is_expensive = matches!(arg, Expr::Call(_) | Expr::MethodCall(_) | Expr::Macro(_));
 
                 if is_expensive {
                     let line = node.span().start().line;

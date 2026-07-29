@@ -79,6 +79,8 @@ Analyze a Soroban contract for vulnerabilities
 * `--vuln-db <VULN_DB>` — Path to a custom vulnerability database JSON file
 * `--webhook-url <WEBHOOK_URLS>` — Webhook endpoint(s) to notify when scan completes (Discord/Slack/Teams/custom)
 * `--no-baseline` — Ignore .sanctify-baseline.json and report all findings
+* `--profile` — Profile peak memory usage and report it at the end of the scan
+* `--max-memory <MAX_MEMORY>` — Abort the scan if peak RSS exceeds this limit (in MB)
 
 
 
