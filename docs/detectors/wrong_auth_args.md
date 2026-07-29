@@ -2,7 +2,7 @@
 
 | Code | Category | Severity |
 | --- | --- | --- |
-| `S023` | authentication | Medium |
+| `S024` | authentication | Medium |
 
 ## What it catches
 
