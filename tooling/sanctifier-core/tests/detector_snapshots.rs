@@ -438,6 +438,7 @@ fn snapshot_unbounded_return() {
     );
 }
 
+#[test]
 fn snapshot_contracterror_enum() {
     assert_detector_snapshot(
         "contracterror_enum",
