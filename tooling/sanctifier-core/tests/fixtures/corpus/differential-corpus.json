@@ -46,6 +46,7 @@
     "shift_overflow": "SANCT_SHIFT_OVERFLOW",
     "SANCT_SHIFT_OVERFLOW": "SANCT_SHIFT_OVERFLOW",
     "tier_boundary_off_by_one": "S022",
+    "wrong_auth_args": "S024",
     "reserve_withdrawal": "S023"
   },
   "overlap_legend": {
