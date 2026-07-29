@@ -48,7 +48,9 @@
     "tier_boundary_off_by_one": "S022",
     "reserve_withdrawal": "S023",
     "admin_event_missing": "SANCT_ADMIN_EVENT_MISSING",
-    "SANCT_ADMIN_EVENT_MISSING": "SANCT_ADMIN_EVENT_MISSING"
+    "SANCT_ADMIN_EVENT_MISSING": "SANCT_ADMIN_EVENT_MISSING",
+    "wrong_auth_args": "S024",
+
   },
   "overlap_legend": {
     "shared-covered": "Class has an EVM analogue and Sanctifier already flags it.",
