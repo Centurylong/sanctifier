@@ -1,0 +1,19 @@
+---
+source: tooling/sanctifier-core/tests/detector_snapshots.rs
+expression: findings
+---
+- rule_name: SANCT_ADMIN_EVENT_MISSING
+  severity: Warning
+  message: "SANCT_ADMIN_EVENT_MISSING: admin/config function `set_admin` mutates storage without emitting an event; add env.events().publish(...) to notify off-chain observers of the privileged state change"
+  location: "set_admin:16"
+  suggestion: "Add an event emit (e.g. env.events().publish((symbol_short!(\"admin\"), symbol_short!(\"<action>\")), value)) before or after the storage mutation. If this function intentionally omits events, annotate it with `// sanctifier:ignore[SANCT_ADMIN_EVENT_MISSING]`."
+- rule_name: SANCT_ADMIN_EVENT_MISSING
+  severity: Warning
+  message: "SANCT_ADMIN_EVENT_MISSING: admin/config function `pause` mutates storage without emitting an event; add env.events().publish(...) to notify off-chain observers of the privileged state change"
+  location: "pause:23"
+  suggestion: "Add an event emit (e.g. env.events().publish((symbol_short!(\"admin\"), symbol_short!(\"<action>\")), value)) before or after the storage mutation. If this function intentionally omits events, annotate it with `// sanctifier:ignore[SANCT_ADMIN_EVENT_MISSING]`."
+- rule_name: SANCT_ADMIN_EVENT_MISSING
+  severity: Warning
+  message: "SANCT_ADMIN_EVENT_MISSING: admin/config function `upgrade` mutates storage without emitting an event; add env.events().publish(...) to notify off-chain observers of the privileged state change"
+  location: "upgrade:30"
+  suggestion: "Add an event emit (e.g. env.events().publish((symbol_short!(\"admin\"), symbol_short!(\"<action>\")), value)) before or after the storage mutation. If this function intentionally omits events, annotate it with `// sanctifier:ignore[SANCT_ADMIN_EVENT_MISSING]`."

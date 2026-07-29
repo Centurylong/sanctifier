@@ -14,8 +14,8 @@
 
 use sanctifier_core::rules::auth_gap::VisibilityLeakRule;
 use sanctifier_core::rules::{
-    allowance_race::AllowanceRaceRule, arg_dos::ArgDosRule,
-    arithmetic_overflow::ArithmeticOverflowRule, auth_gap::AuthGapRule,
+    admin_event_missing::AdminEventMissingRule, allowance_race::AllowanceRaceRule,
+    arg_dos::ArgDosRule, arithmetic_overflow::ArithmeticOverflowRule, auth_gap::AuthGapRule,
     balance_equality::BalanceEqualityRule, division_by_zero::DivisionByZeroRule,
     edge_amount::EdgeAmountRule, error_code_collision::ErrorCodeCollisionRule,
     excessive_clone::ExcessiveCloneRule, fee_rounding::FeeRoundingRule,
@@ -278,6 +278,15 @@ fn snapshot_unsigned_underflow() {
         "unsigned_underflow",
         &UnsignedUnderflowRule::new(),
         include_str!("fixtures/detectors/unsigned_underflow.rs"),
+    );
+}
+
+#[test]
+fn snapshot_admin_event_missing() {
+    assert_detector_snapshot(
+        "admin_event_missing",
+        &AdminEventMissingRule::new(),
+        include_str!("fixtures/detectors/admin_event_missing.rs"),
     );
 }
 

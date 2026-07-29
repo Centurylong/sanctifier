@@ -30,6 +30,7 @@ pub const UNBOUNDED_STORAGE: &str = "SANCT_UNBOUNDED_STORAGE";
 pub const SANCT_VIEW_PANIC: &str = "SANCT_VIEW_PANIC";
 pub const ALLOWANCE_RACE: &str = "SANCT_ALLOWANCE_RACE";
 pub const STATE_WRITE_IN_VIEW: &str = "SANCT_STATE_WRITE_IN_VIEW";
+pub const SANCT_ADMIN_EVENT_MISSING: &str = "SANCT_ADMIN_EVENT_MISSING";
 pub const DIVISION_BY_ZERO: &str = "S018";
 pub const TIER_BOUNDARY_OFF_BY_ONE: &str = "S022";
 pub const MISSING_RESERVE_AUTH: &str = "S023";
@@ -212,6 +213,11 @@ pub fn all_finding_codes() -> Vec<FindingCode> {
             category: "code_hygiene",
             description:
                 "Getter/view-style function performs a storage write; callers expect it to be read-only",
+        },
+        FindingCode {
+            code: SANCT_ADMIN_EVENT_MISSING,
+            category: "events",
+            description: "Admin/config-change function mutates storage without emitting a corresponding on-chain event",
         },
         FindingCode {
             code: DIVISION_BY_ZERO,

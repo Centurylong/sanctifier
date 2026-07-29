@@ -8,7 +8,7 @@
     "sanctifier.observed_codes is the set of finding codes the default RuleRegistry emits on the *vulnerable* fixture today. It is asserted by the harness and kept in lock-step with the gallery snapshots.",
     "slither.detectors / aderyn.detectors list the closest default detectors each tool ships for the same class (from their published detector catalogs). expected=true means that tool flags the class out of the box."
   ],
- "sanctifier_rule_to_code": {
+  "sanctifier_rule_to_code": {
     "auth_gap": "S001",
     "panic_detection": "S002",
     "arithmetic_overflow": "S003",
@@ -46,8 +46,11 @@
     "shift_overflow": "SANCT_SHIFT_OVERFLOW",
     "SANCT_SHIFT_OVERFLOW": "SANCT_SHIFT_OVERFLOW",
     "tier_boundary_off_by_one": "S022",
+    "reserve_withdrawal": "S023",
+    "admin_event_missing": "SANCT_ADMIN_EVENT_MISSING",
+    "SANCT_ADMIN_EVENT_MISSING": "SANCT_ADMIN_EVENT_MISSING",
     "wrong_auth_args": "S024",
-    "reserve_withdrawal": "S023"
+
   },
   "overlap_legend": {
     "shared-covered": "Class has an EVM analogue and Sanctifier already flags it.",
@@ -60,9 +63,16 @@
     {
       "bug_class": "reinit",
       "title": "Re-initialization (unauthenticated initializer)",
-      "soroban": { "vulnerable": "reinit_vulnerable.rs", "fixed": "reinit_fixed.rs" },
+      "soroban": {
+        "vulnerable": "reinit_vulnerable.rs",
+        "fixed": "reinit_fixed.rs"
+      },
       "solidity": null,
-      "sanctifier": { "ideal_code": "S001", "observed_codes": ["S001"], "status": "flagged" },
+      "sanctifier": {
+        "ideal_code": "S001",
+        "observed_codes": ["S001"],
+        "status": "flagged"
+      },
       "slither": { "detectors": [], "expected": false },
       "aderyn": { "detectors": ["unprotected-initializer"], "expected": true },
       "overlap": "shared-covered",
@@ -71,42 +81,98 @@
     {
       "bug_class": "upgrade_auth",
       "title": "Unchecked upgrade authorization",
-      "soroban": { "vulnerable": "upgrade_auth_vulnerable.rs", "fixed": "upgrade_auth_fixed.rs" },
-      "solidity": { "vulnerable": "unprotected_upgrade_vulnerable.sol", "fixed": "unprotected_upgrade_fixed.sol" },
-      "sanctifier": { "ideal_code": "S010", "observed_codes": ["S001"], "status": "surfaced" },
+      "soroban": {
+        "vulnerable": "upgrade_auth_vulnerable.rs",
+        "fixed": "upgrade_auth_fixed.rs"
+      },
+      "solidity": {
+        "vulnerable": "unprotected_upgrade_vulnerable.sol",
+        "fixed": "unprotected_upgrade_fixed.sol"
+      },
+      "sanctifier": {
+        "ideal_code": "S010",
+        "observed_codes": ["S001", "SANCT_ADMIN_EVENT_MISSING"],
+        "status": "surfaced"
+      },
       "slither": { "detectors": ["unprotected-upgrade"], "expected": true },
-      "aderyn": { "detectors": ["centralization-risk", "unprotected-initializer"], "expected": true },
+      "aderyn": {
+        "detectors": ["centralization-risk", "unprotected-initializer"],
+        "expected": true
+      },
       "overlap": "shared-covered",
       "notes": "No dedicated S010 upgrade detector yet; the underlying unauthenticated admin setter is surfaced via S001 auth_gap. Slither's unprotected-upgrade is the direct analogue."
     },
     {
       "bug_class": "reentrancy",
       "title": "CEI violation / reentrancy",
-      "soroban": { "vulnerable": "reentrancy_vulnerable.rs", "fixed": "reentrancy_fixed.rs" },
-      "solidity": { "vulnerable": "reentrancy_vulnerable.sol", "fixed": "reentrancy_fixed.sol" },
-      "sanctifier": { "ideal_code": "S006", "observed_codes": [], "status": "planned" },
-      "slither": { "detectors": ["reentrancy-eth", "reentrancy-no-eth", "reentrancy-benign"], "expected": true },
-      "aderyn": { "detectors": ["state-change-after-external-call"], "expected": true },
+      "soroban": {
+        "vulnerable": "reentrancy_vulnerable.rs",
+        "fixed": "reentrancy_fixed.rs"
+      },
+      "solidity": {
+        "vulnerable": "reentrancy_vulnerable.sol",
+        "fixed": "reentrancy_fixed.sol"
+      },
+      "sanctifier": {
+        "ideal_code": "S006",
+        "observed_codes": [],
+        "status": "planned"
+      },
+      "slither": {
+        "detectors": [
+          "reentrancy-eth",
+          "reentrancy-no-eth",
+          "reentrancy-benign"
+        ],
+        "expected": true
+      },
+      "aderyn": {
+        "detectors": ["state-change-after-external-call"],
+        "expected": true
+      },
       "overlap": "shared-sanctifier-gap",
       "notes": "Both EVM tools flag interaction-before-effect. Sanctifier has no CEI/reentrancy detector yet; the vulnerable fixture currently produces an empty result (the regression baseline for the planned S006 detector)."
     },
     {
       "bug_class": "unbounded_loop",
       "title": "Unbounded loop / DoS by gas exhaustion",
-      "soroban": { "vulnerable": "unbounded_loop_vulnerable.rs", "fixed": "unbounded_loop_fixed.rs" },
-      "solidity": { "vulnerable": "unbounded_loop_vulnerable.sol", "fixed": "unbounded_loop_fixed.sol" },
-      "sanctifier": { "ideal_code": "SANCT_ARG_DOS", "observed_codes": ["SANCT_ARG_DOS"], "status": "flagged" },
-      "slither": { "detectors": ["calls-loop", "costly-loop"], "expected": true },
-      "aderyn": { "detectors": ["costly-operations-inside-loops"], "expected": true },
+      "soroban": {
+        "vulnerable": "unbounded_loop_vulnerable.rs",
+        "fixed": "unbounded_loop_fixed.rs"
+      },
+      "solidity": {
+        "vulnerable": "unbounded_loop_vulnerable.sol",
+        "fixed": "unbounded_loop_fixed.sol"
+      },
+      "sanctifier": {
+        "ideal_code": "SANCT_ARG_DOS",
+        "observed_codes": ["SANCT_ARG_DOS"],
+        "status": "flagged"
+      },
+      "slither": {
+        "detectors": ["calls-loop", "costly-loop"],
+        "expected": true
+      },
+      "aderyn": {
+        "detectors": ["costly-operations-inside-loops"],
+        "expected": true
+      },
       "overlap": "shared-covered",
       "notes": "Sanctifier flags caller-controlled Vec/Map argument iteration without a visible length cap via SANCT_ARG_DOS. Slither and Aderyn cover analogous EVM loop-cost patterns."
     },
     {
       "bug_class": "missing_ttl",
       "title": "Missing storage TTL bump (state archival)",
-      "soroban": { "vulnerable": "missing_ttl_vulnerable.rs", "fixed": "missing_ttl_fixed.rs" },
+      "soroban": {
+        "vulnerable": "missing_ttl_vulnerable.rs",
+        "fixed": "missing_ttl_fixed.rs"
+      },
       "solidity": null,
-      "sanctifier": { "ideal_code": "S006", "observed_codes": ["S006"], "status": "flagged" },
+      "sanctifier": {
+        "ideal_code": "S006",
+        "observed_codes": ["S006"],
+        "status": "flagged"
+      },
       "slither": { "detectors": [], "expected": false },
       "aderyn": { "detectors": [], "expected": false },
       "overlap": "soroban-specific",
@@ -115,9 +181,19 @@
     {
       "bug_class": "weak_randomness",
       "title": "Weak / predictable randomness",
-      "soroban": { "vulnerable": "weak_randomness_vulnerable.rs", "fixed": "weak_randomness_fixed.rs" },
-      "solidity": { "vulnerable": "weak_randomness_vulnerable.sol", "fixed": "weak_randomness_fixed.sol" },
-      "sanctifier": { "ideal_code": "S006", "observed_codes": [], "status": "planned" },
+      "soroban": {
+        "vulnerable": "weak_randomness_vulnerable.rs",
+        "fixed": "weak_randomness_fixed.rs"
+      },
+      "solidity": {
+        "vulnerable": "weak_randomness_vulnerable.sol",
+        "fixed": "weak_randomness_fixed.sol"
+      },
+      "sanctifier": {
+        "ideal_code": "S006",
+        "observed_codes": [],
+        "status": "planned"
+      },
       "slither": { "detectors": ["weak-prng"], "expected": true },
       "aderyn": { "detectors": ["weak-randomness"], "expected": true },
       "overlap": "shared-sanctifier-gap",
@@ -126,9 +202,16 @@
     {
       "bug_class": "integer_overflow",
       "title": "Unchecked integer overflow",
-      "soroban": { "vulnerable": "integer_overflow_vulnerable.rs", "fixed": "integer_overflow_fixed.rs" },
+      "soroban": {
+        "vulnerable": "integer_overflow_vulnerable.rs",
+        "fixed": "integer_overflow_fixed.rs"
+      },
       "solidity": null,
-      "sanctifier": { "ideal_code": "S003", "observed_codes": ["S003"], "status": "flagged" },
+      "sanctifier": {
+        "ideal_code": "S003",
+        "observed_codes": ["S003"],
+        "status": "flagged"
+      },
       "slither": { "detectors": [], "expected": false },
       "aderyn": { "detectors": [], "expected": false },
       "overlap": "divergent-approach",
@@ -137,9 +220,16 @@
     {
       "bug_class": "allowance_race",
       "title": "Allowance race / approve TOCTOU",
-      "soroban": { "vulnerable": "allowance_race_vulnerable.rs", "fixed": "allowance_race_fixed.rs" },
+      "soroban": {
+        "vulnerable": "allowance_race_vulnerable.rs",
+        "fixed": "allowance_race_fixed.rs"
+      },
       "solidity": null,
-      "sanctifier": { "ideal_code": "SANCT_ALLOWANCE_RACE", "observed_codes": ["SANCT_ALLOWANCE_RACE"], "status": "flagged" },
+      "sanctifier": {
+        "ideal_code": "SANCT_ALLOWANCE_RACE",
+        "observed_codes": ["SANCT_ALLOWANCE_RACE"],
+        "status": "flagged"
+      },
       "slither": { "detectors": [], "expected": false },
       "aderyn": { "detectors": [], "expected": false },
       "overlap": "soroban-specific",
@@ -148,9 +238,16 @@
     {
       "bug_class": "oracle_staleness",
       "title": "Oracle price staleness",
-      "soroban": { "vulnerable": "oracle_staleness_vulnerable.rs", "fixed": "oracle_staleness_fixed.rs" },
+      "soroban": {
+        "vulnerable": "oracle_staleness_vulnerable.rs",
+        "fixed": "oracle_staleness_fixed.rs"
+      },
       "solidity": null,
-      "sanctifier": { "ideal_code": "S006", "observed_codes": [], "status": "planned" },
+      "sanctifier": {
+        "ideal_code": "S006",
+        "observed_codes": [],
+        "status": "planned"
+      },
       "slither": { "detectors": [], "expected": false },
       "aderyn": { "detectors": [], "expected": false },
       "overlap": "mutual-gap",
@@ -159,11 +256,27 @@
     {
       "bug_class": "confused_deputy",
       "title": "Confused-deputy authorization",
-      "soroban": { "vulnerable": "confused_deputy_vulnerable.rs", "fixed": "confused_deputy_fixed.rs" },
-      "solidity": { "vulnerable": "confused_deputy_vulnerable.sol", "fixed": "confused_deputy_fixed.sol" },
-      "sanctifier": { "ideal_code": "S001", "observed_codes": [], "status": "planned" },
-      "slither": { "detectors": ["arbitrary-send-eth", "tx-origin"], "expected": true },
-      "aderyn": { "detectors": ["arbitrary-from-in-transfer-from"], "expected": true },
+      "soroban": {
+        "vulnerable": "confused_deputy_vulnerable.rs",
+        "fixed": "confused_deputy_fixed.rs"
+      },
+      "solidity": {
+        "vulnerable": "confused_deputy_vulnerable.sol",
+        "fixed": "confused_deputy_fixed.sol"
+      },
+      "sanctifier": {
+        "ideal_code": "S001",
+        "observed_codes": [],
+        "status": "planned"
+      },
+      "slither": {
+        "detectors": ["arbitrary-send-eth", "tx-origin"],
+        "expected": true
+      },
+      "aderyn": {
+        "detectors": ["arbitrary-from-in-transfer-from"],
+        "expected": true
+      },
       "overlap": "shared-sanctifier-gap",
       "notes": "The vulnerable contract authenticates the wrong party (it calls require_auth, just on an attacker-influenced address), so the presence-only auth_gap detector stays silent (empty result). Refining S001 into a confused-deputy / arbitrary-from check is the action item; Aderyn's arbitrary-from-in-transfer-from is the closest analogue."
     }
