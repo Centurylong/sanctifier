@@ -439,6 +439,15 @@ fn snapshot_unbounded_return() {
 }
 
 #[test]
+fn snapshot_eager_unwrap_or() {
+    assert_detector_snapshot(
+        "eager_unwrap_or",
+        &sanctifier_core::rules::eager_unwrap_or::EagerUnwrapOrRule::new(),
+        include_str!("fixtures/detectors/eager_unwrap_or.rs"),
+    );
+}
+
+#[test]
 fn snapshot_contracterror_enum() {
     assert_detector_snapshot(
         "contracterror_enum",
