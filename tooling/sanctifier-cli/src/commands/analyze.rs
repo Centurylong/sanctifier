@@ -5,9 +5,11 @@ use clap::Args;
 use colored::*;
 use sanctifier_core::baseline::{apply_baseline, load_baseline, BaselineEntry};
 use sanctifier_core::finding_codes;
+use sanctifier_core::memory::{MemoryGuard, MemoryTracker};
 use sanctifier_core::{Analyzer, SanctifyConfig, SizeWarningLevel};
 use serde_json;
 use std::fs;
+use std::io::{self, Write};
 use std::path::{Path, PathBuf};
 
 use crate::vulndb::{VulnDatabase, VulnMatch};
@@ -36,6 +38,14 @@ pub struct AnalyzeArgs {
     /// Ignore .sanctify-baseline.json and report all findings.
     #[arg(long)]
     pub no_baseline: bool,
+
+    /// Profile peak memory usage and report it at the end of the scan.
+    #[arg(long)]
+    pub profile: bool,
+
+    /// Abort the scan if peak RSS exceeds this limit (in MB).
+    #[arg(long)]
+    pub max_memory: Option<u64>,
 }
 
 pub fn exec(args: AnalyzeArgs) -> anyhow::Result<()> {
@@ -75,13 +85,25 @@ pub fn exec(args: AnalyzeArgs) -> anyhow::Result<()> {
             path
         );
         println!("{} Analyzing contract at {:?}...", "🔍".blue(), path);
-        use std::io::{self, Write};
         io::stdout().flush().ok();
     }
 
     let mut config = load_config(path);
     config.ledger_limit = args.limit; // Apply CLI limit to config
     let analyzer = Analyzer::new(config);
+
+    let mut mem_tracker = MemoryTracker::new();
+    let mem_guard = args.max_memory.map(MemoryGuard::new);
+
+    // ── Memory profiling: initial sample ─────────────────────────────────────
+    if args.profile {
+        let snap = mem_tracker.sample();
+        eprintln!(
+            "{} Memory (start): {} MB RSS",
+            "📊".blue(),
+            snap.current_rss_kb / 1024
+        );
+    }
 
     // Load vulnerability database
     let vuln_db = match &args.vuln_db {
@@ -155,6 +177,17 @@ pub fn exec(args: AnalyzeArgs) -> anyhow::Result<()> {
             upgrade_reports.push(analyzer.analyze_upgrade_patterns(&content));
             smt_issues.extend(analyzer.verify_smt_invariants(&content));
         }
+    }
+
+    // ── Memory profiling: after file collection ─────────────────────────────
+    if args.profile {
+        let snap = mem_tracker.sample();
+        eprintln!(
+            "{} Memory (after collection): {} MB RSS (peak: {} MB)",
+            "📊".blue(),
+            snap.current_rss_kb / 1024,
+            snap.peak_rss_kb / 1024
+        );
     }
 
     // ── Inline suppression ───────────────────────────────────────────────────
@@ -405,6 +438,25 @@ pub fn exec(args: AnalyzeArgs) -> anyhow::Result<()> {
             .sum::<usize>()
         + smt_issues.len();
 
+    // ── Memory guard check ───────────────────────────────────────────────────
+    if let Some(ref guard) = mem_guard {
+        if let Err(e) = guard.check(&mem_tracker) {
+            eprintln!("{} {}", "🛑".red(), e);
+            std::process::exit(1);
+        }
+    }
+
+    // ── Memory profiling: after suppression ──────────────────────────────────
+    if args.profile {
+        let snap = mem_tracker.sample();
+        eprintln!(
+            "{} Memory (after suppression): {} MB RSS (peak: {} MB)",
+            "📊".blue(),
+            snap.current_rss_kb / 1024,
+            snap.peak_rss_kb / 1024
+        );
+    }
+
     let has_critical =
         !auth_gaps.is_empty() || panic_issues.iter().any(|p| p.issue_type == "panic!");
     let has_high = !arithmetic_issues.is_empty()
@@ -577,7 +629,18 @@ pub fn exec(args: AnalyzeArgs) -> anyhow::Result<()> {
                 })).collect::<Vec<_>>(),
             },
         });
-        println!("{}", serde_json::to_string_pretty(&report)?);
+        serde_json::to_writer_pretty(io::stdout().lock(), &report)?;
+        println!();
+
+        if args.profile {
+            let snap = mem_tracker.sample();
+            eprintln!(
+                "{} Memory (final): {} MB RSS (peak: {} MB)",
+                "📊".blue(),
+                snap.current_rss_kb / 1024,
+                snap.peak_rss_kb / 1024
+            );
+        }
 
         if has_critical || has_high {
             std::process::exit(1);
@@ -767,6 +830,16 @@ pub fn exec(args: AnalyzeArgs) -> anyhow::Result<()> {
     }
 
     println!("\n{} Static analysis complete.", "✨".green());
+
+    if args.profile {
+        let snap = mem_tracker.sample();
+        eprintln!(
+            "{} Memory (final): {} MB RSS (peak: {} MB)",
+            "📊".blue(),
+            snap.current_rss_kb / 1024,
+            snap.peak_rss_kb / 1024
+        );
+    }
 
     Ok(())
 }

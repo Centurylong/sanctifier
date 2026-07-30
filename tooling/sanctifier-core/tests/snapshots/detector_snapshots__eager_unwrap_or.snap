@@ -1,0 +1,19 @@
+---
+source: tooling/sanctifier-core/tests/detector_snapshots.rs
+expression: findings
+---
+- rule_name: eager_unwrap_or
+  severity: Warning
+  message: "Eagerly-computed expensive fallback in `unwrap_or()` wastes gas on the hit path"
+  location: "do_thing:11"
+  suggestion: "Use `unwrap_or_else(|| ...)` to evaluate the fallback lazily only when needed"
+- rule_name: eager_unwrap_or
+  severity: Warning
+  message: "Eagerly-computed expensive fallback in `unwrap_or()` wastes gas on the hit path"
+  location: "do_thing:14"
+  suggestion: "Use `unwrap_or_else(|| ...)` to evaluate the fallback lazily only when needed"
+- rule_name: eager_unwrap_or
+  severity: Warning
+  message: "Eagerly-computed expensive fallback in `unwrap_or()` wastes gas on the hit path"
+  location: "do_thing:17"
+  suggestion: "Use `unwrap_or_else(|| ...)` to evaluate the fallback lazily only when needed"

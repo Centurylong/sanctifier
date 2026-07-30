@@ -3,7 +3,9 @@ pub mod arg_dos;
 pub mod arithmetic_overflow;
 pub mod auth_gap;
 pub mod balance_equality;
+pub mod contracterror_enum;
 pub mod division_by_zero;
+pub mod eager_unwrap_or;
 pub mod edge_amount;
 pub mod error_code_collision;
 pub mod event_data_cast;
@@ -15,15 +17,18 @@ pub mod ledger_seconds;
 pub mod ledger_size;
 pub mod missing_ttl;
 pub mod panic_detection;
+pub mod reserve_withdrawal;
 pub mod sanct_unwrap;
 pub mod shift_overflow;
 pub mod state_write_in_view;
 pub mod tier_boundary_off_by_one;
+pub mod unbounded_return;
 pub mod unbounded_storage;
 pub mod unhandled_result;
 pub mod unsigned_underflow;
 pub mod unused_variable;
 pub mod view_panic;
+pub mod wrong_auth_args;
 
 use serde::Serialize;
 use std::any::Any;
@@ -163,6 +168,7 @@ impl RuleRegistry {
         registry.register(hardcoded_addr::HardcodedAddrRule::new());
         registry.register(error_code_collision::ErrorCodeCollisionRule::new());
         registry.register(edge_amount::EdgeAmountRule::new());
+        registry.register(wrong_auth_args::WrongAuthArgsRule::new());
         registry.register(balance_equality::BalanceEqualityRule::new());
         registry.register(fee_rounding::FeeRoundingRule::new());
         registry.register(excessive_clone::ExcessiveCloneRule::new());
@@ -176,10 +182,14 @@ impl RuleRegistry {
         registry.register(allowance_race::AllowanceRaceRule::new());
         registry.register(state_write_in_view::StateWriteInViewRule::new());
         registry.register(division_by_zero::DivisionByZeroRule::new());
+        registry.register(eager_unwrap_or::EagerUnwrapOrRule::new());
         registry.register(unsigned_underflow::UnsignedUnderflowRule::new());
         registry.register(ledger_seconds::LedgerSecondsRule::new());
         registry.register(tier_boundary_off_by_one::TierBoundaryOffByOneRule::new());
         registry.register(event_data_cast::EventDataCastRule::new());
+        registry.register(unbounded_return::UnboundedReturnRule::new());
+        registry.register(reserve_withdrawal::ReserveWithdrawalRule::new());
+        registry.register(contracterror_enum::ContracterrorEnumRule::new());
         registry
     }
 }

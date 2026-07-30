@@ -30,6 +30,8 @@ pub enum Commands {
     Badge(commands::badge::BadgeArgs),
     /// Compare findings between working tree and a git reference
     Diff(commands::diff::DiffArgs),
+    /// Run CI gating and compliance checks
+    Ci(commands::ci::CiArgs),
     /// Generate suggested fix diffs for findings and apply them only after
     /// explicit confirmation (offline; deterministic local suggestions)
     Fix(commands::fix::FixArgs),
@@ -97,6 +99,9 @@ fn main() -> anyhow::Result<()> {
                 branding::print_logo();
             }
             commands::diff::exec(args)?;
+        }
+        Commands::Ci(args) => {
+            commands::ci::exec(args)?;
         }
         Commands::Fix(args) => {
             commands::fix::exec(args)?;

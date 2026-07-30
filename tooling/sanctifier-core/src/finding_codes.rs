@@ -16,6 +16,7 @@ pub const EDGE_AMOUNT: &str = "S013";
 pub const DEPRECATED_SDK: &str = "S014";
 pub const DEAD_CODE: &str = "S015";
 pub const ERROR_CODE_COLLISION: &str = "S016";
+pub const UNBOUND_AUTH: &str = "S024";
 pub const FEE_ROUNDING: &str = "S017";
 pub const UNSIGNED_UNDERFLOW: &str = "S019";
 pub const LEDGER_SECONDS: &str = "S021";
@@ -32,6 +33,7 @@ pub const ALLOWANCE_RACE: &str = "SANCT_ALLOWANCE_RACE";
 pub const STATE_WRITE_IN_VIEW: &str = "SANCT_STATE_WRITE_IN_VIEW";
 pub const DIVISION_BY_ZERO: &str = "S018";
 pub const TIER_BOUNDARY_OFF_BY_ONE: &str = "S022";
+pub const MISSING_RESERVE_AUTH: &str = "S023";
 
 // ── Source-optional (compiled WASM) checks ────────────────────────────────────
 // Emitted only by `sanctifier wasm`, which analyzes a deployed module directly.
@@ -137,6 +139,11 @@ pub fn all_finding_codes() -> Vec<FindingCode> {
             description: "Inconsistent or duplicate discriminants in #[contracterror] enum",
         },
         FindingCode {
+            code: UNBOUND_AUTH,
+            category: "authentication",
+            description: "Internal function uses require_auth() instead of require_auth_for_args()",
+        },
+        FindingCode {
             code: FEE_ROUNDING,
             category: "arithmetic",
             description:
@@ -226,6 +233,11 @@ pub fn all_finding_codes() -> Vec<FindingCode> {
                 "if/else-if boundary ladder mixes strict (<, >) and inclusive (<=, >=) comparisons against the same variable, a common source of off-by-one tier/rank misassignment",
         },
         FindingCode {
+            code: MISSING_RESERVE_AUTH,
+            category: "authorization",
+            description: "Missing strict authorization guard on reserve or treasury funds withdrawal",
+        },
+        FindingCode {
             code: WASM_NOT_SOROBAN,
             category: "wasm",
             description:
@@ -280,5 +292,6 @@ mod tests {
         assert!(codes.iter().any(|c| c.code == SANCT_VIEW_PANIC));
         assert!(codes.iter().any(|c| c.code == ALLOWANCE_RACE));
         assert!(codes.iter().any(|c| c.code == DIVISION_BY_ZERO));
+        assert!(codes.iter().any(|c| c.code == MISSING_RESERVE_AUTH));
     }
 }

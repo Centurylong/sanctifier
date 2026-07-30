@@ -47,6 +47,11 @@ detector page and to the relevant [Glossary](../glossary.md) term.
 | [`division_by_zero`](division_by_zero.md) | [`S018`](../error-codes.md) | arithmetic | Medium | `/` or `%` by a non-constant value not proven non-zero |
 | [`shift_overflow`](shift_overflow.md) | [`SANCT_SHIFT_OVERFLOW`](../error-codes.md) | arithmetic | Warning/Error | Bit shift by an amount that may be `>=` the operand's bit width |
 | [`tier_boundary_off_by_one`](tier_boundary_off_by_one.md) | [`S022`](../error-codes.md) | logic | Info | `if`/`else if` tier/rank ladder mixes strict and inclusive comparisons on the same variable |
+| [`wrong_auth_args`](wrong_auth_args.md) | [`S024`](../error-codes.md) | authentication | Medium | Internal function uses `require_auth()` instead of `require_auth_for_args()` |
+| [`reserve_withdrawal`](reserve_withdrawal.md) | [`S023`](../error-codes.md) | authorization | High | Missing strict authorization guard on reserve or treasury funds withdrawal |
+| [`unbounded_return`](unbounded_return.md) | [`SANCT_UNBOUNDED_RETURN`](../error-codes.md) | scalability | Medium | Public entrypoint returning an unbounded collection (`Vec` or `Map`) |
+| [`eager_unwrap_or`](eager_unwrap_or.md) | [`SANCT_EAGER_UNWRAP_OR`](../error-codes.md) | gas_efficiency | Warning | Eagerly-computed expensive fallback in `unwrap_or()` |
+| [`contracterror_enum`](contracterror_enum.md) | [`SANCT_CONTRACTERROR_ENUM`](../error-codes.md) | logic | Warning | Public function returns error enum missing `#[contracterror]` or repr |
 
 ## Page anatomy
 

@@ -47,7 +47,15 @@
     "division_by_zero": "S018",
     "shift_overflow": "SANCT_SHIFT_OVERFLOW",
     "SANCT_SHIFT_OVERFLOW": "SANCT_SHIFT_OVERFLOW",
-    "tier_boundary_off_by_one": "S022"
+    "tier_boundary_off_by_one": "S022",
+    "reserve_withdrawal": "S023",
+    "unbounded_return": "SANCT_UNBOUNDED_RETURN",
+    "SANCT_UNBOUNDED_RETURN": "SANCT_UNBOUNDED_RETURN",
+    "wrong_auth_args": "S024",
+    "eager_unwrap_or": "SANCT_EAGER_UNWRAP_OR",
+    "SANCT_EAGER_UNWRAP_OR": "SANCT_EAGER_UNWRAP_OR",
+    "contracterror_enum": "SANCT_CONTRACTERROR_ENUM",
+    "SANCT_CONTRACTERROR_ENUM": "SANCT_CONTRACTERROR_ENUM"
   },
   "overlap_legend": {
     "shared-covered": "Class has an EVM analogue and Sanctifier already flags it.",

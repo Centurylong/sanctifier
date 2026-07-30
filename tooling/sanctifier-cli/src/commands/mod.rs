@@ -2,6 +2,7 @@ pub mod analyze;
 pub mod attest;
 pub mod badge;
 pub mod baseline;
+pub mod ci;
 pub mod cve;
 pub mod diff;
 pub mod fix;

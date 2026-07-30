@@ -16,17 +16,17 @@ use sanctifier_core::rules::auth_gap::VisibilityLeakRule;
 use sanctifier_core::rules::{
     allowance_race::AllowanceRaceRule, arg_dos::ArgDosRule,
     arithmetic_overflow::ArithmeticOverflowRule, auth_gap::AuthGapRule,
-    balance_equality::BalanceEqualityRule, division_by_zero::DivisionByZeroRule,
-    edge_amount::EdgeAmountRule, error_code_collision::ErrorCodeCollisionRule,
-    event_data_cast::EventDataCastRule, excessive_clone::ExcessiveCloneRule,
+    balance_equality::BalanceEqualityRule, contracterror_enum::ContracterrorEnumRule,
+    division_by_zero::DivisionByZeroRule, edge_amount::EdgeAmountRule,
+    error_code_collision::ErrorCodeCollisionRule, excessive_clone::ExcessiveCloneRule,
     fee_rounding::FeeRoundingRule, hardcoded_addr::HardcodedAddrRule,
     init_hardcoded_admin::InitHardcodedAdminRule, ledger_seconds::LedgerSecondsRule,
-    ledger_size::LedgerSizeRule, missing_ttl::MissingTtlRule,
-    panic_detection::PanicDetectionRule, sanct_unwrap::SanctUnwrapRule,
-    shift_overflow::ShiftOverflowRule, state_write_in_view::StateWriteInViewRule,
-    tier_boundary_off_by_one::TierBoundaryOffByOneRule, unbounded_storage::UnboundedStorageRule,
-    unhandled_result::UnhandledResultRule, unsigned_underflow::UnsignedUnderflowRule,
-    unused_variable::UnusedVariableRule, view_panic::ViewPanicRule, Rule, RuleRegistry,
+    ledger_size::LedgerSizeRule, missing_ttl::MissingTtlRule, panic_detection::PanicDetectionRule,
+    sanct_unwrap::SanctUnwrapRule, shift_overflow::ShiftOverflowRule,
+    state_write_in_view::StateWriteInViewRule, tier_boundary_off_by_one::TierBoundaryOffByOneRule,
+    unbounded_storage::UnboundedStorageRule, unhandled_result::UnhandledResultRule,
+    unsigned_underflow::UnsignedUnderflowRule, unused_variable::UnusedVariableRule,
+    view_panic::ViewPanicRule, wrong_auth_args::WrongAuthArgsRule, Rule, RuleRegistry,
 };
 
 /// Run a detector against its fixture and snapshot the resulting findings.
@@ -125,6 +125,15 @@ fn snapshot_edge_amount() {
         "edge_amount",
         &EdgeAmountRule::new(),
         include_str!("fixtures/detectors/edge_amount.rs"),
+    );
+}
+
+#[test]
+fn snapshot_wrong_auth_args() {
+    assert_detector_snapshot(
+        "wrong_auth_args",
+        &WrongAuthArgsRule::new(),
+        include_str!("fixtures/detectors/wrong_auth_args.rs"),
     );
 }
 
@@ -418,4 +427,40 @@ fn sanct_visibility_flags_only_the_exposed_unauthenticated_helper() {
     assert!(messages
         .iter()
         .any(|message| message.contains("internal_set_flag")));
+}
+
+#[test]
+fn snapshot_reserve_withdrawal() {
+    assert_detector_snapshot(
+        "reserve_withdrawal",
+        &sanctifier_core::rules::reserve_withdrawal::ReserveWithdrawalRule::new(),
+        include_str!("fixtures/detectors/reserve_withdrawal.rs"),
+    );
+}
+
+#[test]
+fn snapshot_unbounded_return() {
+    assert_detector_snapshot(
+        "unbounded_return",
+        &sanctifier_core::rules::unbounded_return::UnboundedReturnRule::new(),
+        include_str!("fixtures/detectors/unbounded_return.rs"),
+    );
+}
+
+#[test]
+fn snapshot_eager_unwrap_or() {
+    assert_detector_snapshot(
+        "eager_unwrap_or",
+        &sanctifier_core::rules::eager_unwrap_or::EagerUnwrapOrRule::new(),
+        include_str!("fixtures/detectors/eager_unwrap_or.rs"),
+    );
+}
+
+#[test]
+fn snapshot_contracterror_enum() {
+    assert_detector_snapshot(
+        "contracterror_enum",
+        &ContracterrorEnumRule::new(),
+        include_str!("fixtures/detectors/contracterror_enum.rs"),
+    );
 }
