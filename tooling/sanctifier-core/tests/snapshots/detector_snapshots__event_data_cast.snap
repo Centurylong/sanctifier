@@ -1,0 +1,25 @@
+---
+source: tooling/sanctifier-core/tests/detector_snapshots.rs
+assertion_line: 31
+expression: findings
+---
+- rule_name: SANCT_EVENT_DATA_CAST
+  severity: Warning
+  message: "SANCT_EVENT_DATA_CAST: narrowing cast `i128 as u32` in event data — indexers receive truncated value"
+  location: "deposit:18"
+  suggestion: Emit the full-width value in the event to prevent data loss for indexers
+- rule_name: SANCT_EVENT_DATA_CAST
+  severity: Warning
+  message: "SANCT_EVENT_DATA_CAST: narrowing cast `i64 as u64` in event data — indexers receive truncated value"
+  location: "wrap_signed:23"
+  suggestion: Emit the full-width value in the event to prevent data loss for indexers
+- rule_name: SANCT_EVENT_DATA_CAST
+  severity: Warning
+  message: "SANCT_EVENT_DATA_CAST: narrowing cast `i128 as u64` in event data — indexers receive truncated value"
+  location: "swap:30"
+  suggestion: Emit the full-width value in the event to prevent data loss for indexers
+- rule_name: SANCT_EVENT_DATA_CAST
+  severity: Warning
+  message: "SANCT_EVENT_DATA_CAST: narrowing cast `i64 as u32` in event data — indexers receive truncated value"
+  location: "swap:30"
+  suggestion: Emit the full-width value in the event to prevent data loss for indexers

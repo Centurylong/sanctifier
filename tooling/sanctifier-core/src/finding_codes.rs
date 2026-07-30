@@ -24,6 +24,7 @@ pub const EXCESSIVE_CLONE: &str = "S020";
 pub const ARG_DOS: &str = "SANCT_ARG_DOS";
 pub const BALANCE_EQUALITY: &str = "SANCT_BALANCE_EQ";
 pub const SANCT_UNWRAP: &str = "SANCT_UNWRAP";
+pub const SANCT_EVENT_DATA_CAST: &str = "SANCT_EVENT_DATA_CAST";
 pub const INIT_HARDCODED_ADMIN: &str = "SANCT_INIT_HARDCODED_ADMIN";
 pub const SANCT_VISIBILITY: &str = "SANCT_VISIBILITY";
 pub const UNBOUNDED_STORAGE: &str = "SANCT_UNBOUNDED_STORAGE";
@@ -177,6 +178,12 @@ pub fn all_finding_codes() -> Vec<FindingCode> {
             category: "panic_handling",
             description:
                 "Contract entrypoint uses unwrap, expect, or a risky unwrap_or_default fallback",
+        },
+        FindingCode {
+            code: SANCT_EVENT_DATA_CAST,
+            category: "events",
+            description:
+                "Narrowing integer cast in event emission data silently truncates values indexers receive",
         },
         FindingCode {
             code: INIT_HARDCODED_ADMIN,

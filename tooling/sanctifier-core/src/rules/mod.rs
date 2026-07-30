@@ -8,6 +8,7 @@ pub mod division_by_zero;
 pub mod eager_unwrap_or;
 pub mod edge_amount;
 pub mod error_code_collision;
+pub mod event_data_cast;
 pub mod excessive_clone;
 pub mod fee_rounding;
 pub mod hardcoded_addr;
@@ -185,6 +186,7 @@ impl RuleRegistry {
         registry.register(unsigned_underflow::UnsignedUnderflowRule::new());
         registry.register(ledger_seconds::LedgerSecondsRule::new());
         registry.register(tier_boundary_off_by_one::TierBoundaryOffByOneRule::new());
+        registry.register(event_data_cast::EventDataCastRule::new());
         registry.register(unbounded_return::UnboundedReturnRule::new());
         registry.register(reserve_withdrawal::ReserveWithdrawalRule::new());
         registry.register(contracterror_enum::ContracterrorEnumRule::new());

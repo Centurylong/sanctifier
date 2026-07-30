@@ -22,6 +22,7 @@ the fix, and references.
 | `S016` | code_hygiene | Duplicate/inconsistent `#[contracterror]` discriminants | [`error_code_collision`](detectors/error_code_collision.md) |
 | `S017` | arithmetic | Fee/interest integer division that rounds to zero for micro-amounts | [`fee_rounding`](detectors/fee_rounding.md) |
 | `SANCT_ARG_DOS` | denial_of_service | `Vec`/`Map` argument iterated without a length cap | [`arg_dos`](detectors/arg_dos.md) |
+| `SANCT_EVENT_DATA_CAST` | events | Narrowing integer cast in event emission data silently truncates values indexers receive | [`event_data_cast`](detectors/event_data_cast.md) |
 | `SANCT_UNWRAP` | panic_handling | `unwrap` / `expect` / risky `unwrap_or_default` inside `#[contractimpl]` entrypoints; replace with typed errors or explicit domain defaults | [`sanct_unwrap`](detectors/sanct_unwrap.md) |
 | `SANCT_VISIBILITY` | authentication | Helper-shaped state mutator exposed through `#[contractimpl]` without authorization | [`sanct_visibility`](detectors/sanct_visibility.md) |
 | `SANCT_UNBOUNDED_STORAGE` | denial_of_service | Persistent/instance collection grows via append/insert with no removal or length cap | [`unbounded_storage`](detectors/unbounded_storage.md) |

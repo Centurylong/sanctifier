@@ -282,6 +282,15 @@ fn snapshot_unsigned_underflow() {
 }
 
 #[test]
+fn snapshot_event_data_cast() {
+    assert_detector_snapshot(
+        "event_data_cast",
+        &EventDataCastRule::new(),
+        include_str!("fixtures/detectors/event_data_cast.rs"),
+    );
+}
+
+#[test]
 fn unbounded_storage_detector_flags_only_uncapped_persistent_growth() {
     let findings = RuleRegistry::with_default_rules().run_by_name(
         include_str!("fixtures/detectors/unbounded_storage.rs"),
