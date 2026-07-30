@@ -6,6 +6,7 @@ pub mod balance_equality;
 pub mod division_by_zero;
 pub mod edge_amount;
 pub mod error_code_collision;
+pub mod event_data_cast;
 pub mod excessive_clone;
 pub mod fee_rounding;
 pub mod hardcoded_addr;
@@ -178,6 +179,7 @@ impl RuleRegistry {
         registry.register(unsigned_underflow::UnsignedUnderflowRule::new());
         registry.register(ledger_seconds::LedgerSecondsRule::new());
         registry.register(tier_boundary_off_by_one::TierBoundaryOffByOneRule::new());
+        registry.register(event_data_cast::EventDataCastRule::new());
         registry
     }
 }

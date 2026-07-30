@@ -18,9 +18,10 @@ use sanctifier_core::rules::{
     arithmetic_overflow::ArithmeticOverflowRule, auth_gap::AuthGapRule,
     balance_equality::BalanceEqualityRule, division_by_zero::DivisionByZeroRule,
     edge_amount::EdgeAmountRule, error_code_collision::ErrorCodeCollisionRule,
-    excessive_clone::ExcessiveCloneRule, fee_rounding::FeeRoundingRule,
-    hardcoded_addr::HardcodedAddrRule, init_hardcoded_admin::InitHardcodedAdminRule,
-    ledger_seconds::LedgerSecondsRule, ledger_size::LedgerSizeRule, missing_ttl::MissingTtlRule,
+    event_data_cast::EventDataCastRule, excessive_clone::ExcessiveCloneRule,
+    fee_rounding::FeeRoundingRule, hardcoded_addr::HardcodedAddrRule,
+    init_hardcoded_admin::InitHardcodedAdminRule, ledger_seconds::LedgerSecondsRule,
+    ledger_size::LedgerSizeRule, missing_ttl::MissingTtlRule,
     panic_detection::PanicDetectionRule, sanct_unwrap::SanctUnwrapRule,
     shift_overflow::ShiftOverflowRule, state_write_in_view::StateWriteInViewRule,
     tier_boundary_off_by_one::TierBoundaryOffByOneRule, unbounded_storage::UnboundedStorageRule,
@@ -268,6 +269,15 @@ fn snapshot_unsigned_underflow() {
         "unsigned_underflow",
         &UnsignedUnderflowRule::new(),
         include_str!("fixtures/detectors/unsigned_underflow.rs"),
+    );
+}
+
+#[test]
+fn snapshot_event_data_cast() {
+    assert_detector_snapshot(
+        "event_data_cast",
+        &EventDataCastRule::new(),
+        include_str!("fixtures/detectors/event_data_cast.rs"),
     );
 }
 
