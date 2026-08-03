@@ -7,7 +7,7 @@ license     = "MIT"
 
 [dependencies]
 ark-groth16  = { version = "0.4", features = ["r1cs"] }
-ark-bls12-381 = "0.4"
+ark-bls12-381 = "0.6"
 ark-r1cs-std = { version = "0.4", features = ["parallel"] }
 ark-relations = "0.4"
 ark-ff        = "0.4"
