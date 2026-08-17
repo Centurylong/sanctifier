@@ -77,6 +77,12 @@ impl RuleViolation {
     }
 }
 
+#[derive(Debug, Clone, Serialize)]
+pub struct RuleTiming {
+    pub rule_name: String,
+    pub duration: std::time::Duration,
+}
+
 pub struct RuleRegistry {
     pub(crate) rules: Vec<Box<dyn Rule>>,
 }
@@ -111,6 +117,34 @@ impl RuleRegistry {
             .collect()
     }
 
+    /// Like `run_all`, but also returns how long each rule took to run —
+    /// useful for spotting a pathologically slow detector on a large file.
+    ///
+    /// Scope limitation: unlike `run_all`, this does not perform any
+    /// macro-expansion second pass — it only measures per-rule cost on the
+    /// primary source, which is the useful diagnostic signal for timing.
+    pub fn run_all_with_timings(&self, source: &str) -> (Vec<RuleViolation>, Vec<RuleTiming>) {
+        let mut violations = Vec::new();
+        let mut timings = Vec::new();
+        for rule in &self.rules {
+            let start = std::time::Instant::now();
+            let mut v = rule.check(source);
+            timings.push(RuleTiming {
+                rule_name: rule.name().to_string(),
+                duration: start.elapsed(),
+            });
+            violations.append(&mut v);
+        }
+        (violations, timings)
+    }
+
+    /// Rules from `timings` whose duration exceeded `threshold` — a simple
+    /// slow-rule diagnostic so a pathological detector doesn't silently eat
+    /// scan time.
+    pub fn slow_rules(timings: &[RuleTiming], threshold: std::time::Duration) -> Vec<&RuleTiming> {
+        timings.iter().filter(|t| t.duration > threshold).collect()
+    }
+
     pub fn available_rules(&self) -> Vec<&str> {
         self.rules.iter().map(|rule| rule.name()).collect()
     }
@@ -132,5 +166,41 @@ impl RuleRegistry {
         registry.register(arg_dos::ArgDosRule::new());
         registry.register(sanct_unwrap::SanctUnwrapRule::new());
         registry
+    }
+}
+
+#[cfg(test)]
+mod rule_timing_tests {
+    use super::*;
+
+    #[test]
+    fn run_all_with_timings_returns_one_timing_per_rule_in_order() {
+        let registry = RuleRegistry::with_default_rules();
+        let (_violations, timings) = registry.run_all_with_timings("fn main() {}");
+
+        assert_eq!(timings.len(), registry.available_rules().len());
+        let expected_names: Vec<&str> = registry.available_rules();
+        let actual_names: Vec<&str> = timings.iter().map(|t| t.rule_name.as_str()).collect();
+        assert_eq!(actual_names, expected_names);
+    }
+
+    #[test]
+    fn slow_rules_filters_by_threshold() {
+        let timings = vec![
+            RuleTiming {
+                rule_name: "fast_rule".to_string(),
+                duration: std::time::Duration::from_millis(1),
+            },
+            RuleTiming {
+                rule_name: "slow_rule".to_string(),
+                duration: std::time::Duration::from_millis(100),
+            },
+        ];
+
+        let threshold = std::time::Duration::from_millis(50);
+        let slow = RuleRegistry::slow_rules(&timings, threshold);
+
+        assert_eq!(slow.len(), 1);
+        assert_eq!(slow[0].rule_name, "slow_rule");
     }
 }
