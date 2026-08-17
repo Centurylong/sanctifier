@@ -1,0 +1,91 @@
+name: Mutation Testing (detectors)
+
+on:
+  # Mutation testing rebuilds and retests sanctifier-core once per mutant —
+  # 1000+ mutation sites across the rules directory (see
+  # .cargo/mutants.toml) — so this cannot run on every push or PR without
+  # making CI unusably slow. Weekly schedule catches coverage drift over
+  # time; workflow_dispatch lets a contributor run it on demand, optionally
+  # scoped to one file while iterating on a specific detector.
+  schedule:
+    - cron: "0 6 * * 1" # Mondays, 06:00 UTC
+  workflow_dispatch:
+    inputs:
+      file:
+        description: "Optional: scope to one file (workspace-relative path), e.g. tooling/sanctifier-core/src/rules/division_by_zero.rs"
+        required: false
+        type: string
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  mutants:
+    name: cargo mutants (sanctifier-core detectors)
+    runs-on: ubuntu-latest
+    # Mutation testing is exploratory, not a merge gate — see
+    # docs/mutation-testing.md for the triage process. A survivor here is a
+    # worklist item, not a broken build.
+    continue-on-error: true
+    timeout-minutes: 120
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install pinned Rust toolchain
+        # Pinned to 1.85.0 — see ci.yml for rationale (ethnum 1.5.0 / base64ct edition2024).
+        uses: dtolnay/rust-toolchain@1.85.0
+
+      - name: Cache cargo registry & build artifacts
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry/index/
+            ~/.cargo/registry/cache/
+            ~/.cargo/git/db/
+            target/
+          key: ${{ runner.os }}-cargo-mutants-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-cargo-mutants-
+            ${{ runner.os }}-cargo-
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libz3-dev libdbus-1-dev
+
+      - name: Install cargo-mutants
+        # 26.0.0 is the newest release still compatible with the pinned
+        # 1.85.0 toolchain (27.x requires rustc 1.88+).
+        run: cargo install cargo-mutants --version 26.0.0 --locked
+
+      - name: Run mutation tests
+        run: |
+          if [ -n "${{ inputs.file }}" ]; then
+            scripts/run-mutation-tests.sh --file "${{ inputs.file }}"
+          else
+            scripts/run-mutation-tests.sh
+          fi
+
+      - name: Summarize results
+        if: always()
+        run: |
+          echo "## Mutation testing report" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          if [ -d mutants.out ]; then
+            caught=$(wc -l < mutants.out/caught.txt 2>/dev/null | tr -d ' ' || echo "?")
+            missed=$(wc -l < mutants.out/missed.txt 2>/dev/null | tr -d ' ' || echo "?")
+            echo "- Caught: ${caught}" >> "$GITHUB_STEP_SUMMARY"
+            echo "- Survived (needs triage — see docs/mutation-testing.md): ${missed}" >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "No mutants.out produced — see job log." >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+      - name: Upload mutation report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: mutation-report-${{ github.run_id }}
+          path: mutants.out/
+          retention-days: 30
