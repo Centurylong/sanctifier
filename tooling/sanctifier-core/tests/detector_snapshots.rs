@@ -24,7 +24,8 @@ use sanctifier_core::rules::{
     ledger_seconds::LedgerSecondsRule, ledger_size::LedgerSizeRule, missing_ttl::MissingTtlRule,
     panic_detection::PanicDetectionRule, sanct_unwrap::SanctUnwrapRule,
     shift_overflow::ShiftOverflowRule, state_write_in_view::StateWriteInViewRule,
-    tier_boundary_off_by_one::TierBoundaryOffByOneRule, unbounded_storage::UnboundedStorageRule,
+    tier_boundary_off_by_one::TierBoundaryOffByOneRule,
+    unbounded_event_emission::UnboundedEventEmissionRule, unbounded_storage::UnboundedStorageRule,
     unhandled_result::UnhandledResultRule, unsigned_underflow::UnsignedUnderflowRule,
     unused_variable::UnusedVariableRule, vesting_schedule::VestingScheduleRule,
     view_panic::ViewPanicRule, wrong_auth_args::WrongAuthArgsRule, Rule, RuleRegistry,
@@ -484,5 +485,14 @@ fn snapshot_cross_contract_call_in_loop() {
         "cross_contract_call_in_loop",
         &CrossContractCallInLoopRule::new(),
         include_str!("fixtures/detectors/cross_contract_call_in_loop.rs"),
+    );
+}
+
+#[test]
+fn snapshot_unbounded_event_emission() {
+    assert_detector_snapshot(
+        "unbounded_event_emission",
+        &UnboundedEventEmissionRule::new(),
+        include_str!("fixtures/detectors/unbounded_event_emission.rs"),
     );
 }
