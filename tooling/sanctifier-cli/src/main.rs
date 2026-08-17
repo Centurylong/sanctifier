@@ -65,6 +65,8 @@ pub enum Commands {
     Cve(commands::cve::CveArgs),
     /// Analyze a compiled .wasm module directly when source is unavailable (source-optional mode)
     Wasm(commands::wasm::WasmArgs),
+    /// Audit toolchain and soroban-sdk version pinning for reproducible builds
+    Toolchain(commands::toolchain::ToolchainArgs),
     /// (internal) Regenerate the Markdown CLI reference from the clap definitions.
     ///
     /// Prints the reference to stdout. Hidden from `--help`; used by the docs
@@ -181,6 +183,9 @@ fn main() -> anyhow::Result<()> {
                 branding::print_logo();
             }
             commands::wasm::exec(args)?;
+        }
+        Commands::Toolchain(args) => {
+            commands::toolchain::exec(args)?;
         }
         Commands::GenerateDocs => {
             // Render the full command tree to Markdown straight from the clap
