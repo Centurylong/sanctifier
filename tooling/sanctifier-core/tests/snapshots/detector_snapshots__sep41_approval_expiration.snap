@@ -1,0 +1,14 @@
+---
+source: tooling/sanctifier-core/tests/detector_snapshots.rs
+expression: findings
+---
+- rule_name: SANCT_SEP41_APPROVAL_NO_EXPIRATION
+  severity: Error
+  message: "SANCT_SEP41_APPROVAL_NO_EXPIRATION: `approve` has no expiration_ledger parameter, so the allowance it grants never expires (SEP-41 violation)"
+  location: "approve:14"
+  suggestion: "Add an `expiration_ledger: u32` parameter and store/extend the allowance's TTL to it"
+- rule_name: SANCT_SEP41_APPROVAL_NO_EXPIRATION
+  severity: Warning
+  message: "SANCT_SEP41_APPROVAL_NO_EXPIRATION: `approve_unused_expiry` accepts `expiration_ledger` but never uses it, so the caller-requested expiration is silently ignored (SEP-41 violation)"
+  location: "approve_unused_expiry:20"
+  suggestion: "Store `expiration_ledger` alongside the allowance and extend its TTL to it, or reject the approval once the current ledger passes `expiration_ledger`"
