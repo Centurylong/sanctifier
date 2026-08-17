@@ -221,6 +221,50 @@ deploy_contract() {
 }
 
 #======================================================================
+# Deploy-time bytecode verification
+#======================================================================
+# Confirms the WASM actually installed on-chain is byte-for-byte the same
+# artifact that was reviewed/audited locally, not a different build that
+# happened to deploy successfully. Fetches the deployed code back from the
+# network and compares its SHA-256 against the local build's hash — this
+# is deliberately not just a "did the deploy return a contract ID" check,
+# since that alone can't tell a source mismatch from a clean deploy.
+
+verify_bytecode_hash() {
+    local contract_id=$1
+    local wasm_file=$2
+
+    if [[ "$DRY_RUN" == "true" ]]; then
+        log_success "[DRY RUN] Bytecode hash verification skipped (no real deployment to fetch)"
+        return 0
+    fi
+
+    local source_hash
+    source_hash=$(sha256sum "$wasm_file" | awk '{print $1}')
+
+    local fetched_wasm="${TEMP_DIR}/onchain_$(basename "$wasm_file" .wasm)_${contract_id}.wasm"
+    if ! soroban contract fetch \
+        --id "$contract_id" \
+        --network "$NETWORK" \
+        --out-file "$fetched_wasm" 2>>"$DEPLOYMENT_LOG"; then
+        log_error "Could not fetch deployed bytecode for $contract_id to verify hash"
+        return 1
+    fi
+
+    local deployed_hash
+    deployed_hash=$(sha256sum "$fetched_wasm" | awk '{print $1}')
+
+    if [[ "$source_hash" != "$deployed_hash" ]]; then
+        log_error "Bytecode hash mismatch for $contract_id: source=$source_hash deployed=$deployed_hash"
+        log_error "The on-chain WASM does not match the audited source build. Aborting this deployment."
+        return 1
+    fi
+
+    log_success "Bytecode hash verified for $contract_id: $source_hash"
+    return 0
+}
+
+#======================================================================
 # Contract Validation
 #======================================================================
 
@@ -380,6 +424,14 @@ deploy_runtime_guards() {
             continue
         fi
 
+        # Verify the deployed bytecode matches the audited source build
+        # before doing anything else with this deployment — a hash
+        # mismatch aborts it the same way a failed deploy does.
+        if ! verify_bytecode_hash "$contract_id" "$wasm_file"; then
+            log_error "Skipping $contract_name due to bytecode hash mismatch"
+            continue
+        fi
+
         # Validate
         if $VALIDATE_AFTER_DEPLOY; then
             if ! validate_contract "$contract_id"; then
@@ -514,4 +566,11 @@ main() {
     log_info "Deployment log: $DEPLOYMENT_LOG"
 }
 
-main "$@"
+# Guarded so this script can be `source`d (e.g. by
+# scripts/tests/test-verify-bytecode-hash.sh) to unit-test individual
+# functions like verify_bytecode_hash without triggering a full deployment
+# run. Direct execution (`./deploy-soroban-testnet.sh ...`) is unaffected —
+# BASH_SOURCE[0] equals $0 in that case.
+if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
+    main "$@"
+fi
