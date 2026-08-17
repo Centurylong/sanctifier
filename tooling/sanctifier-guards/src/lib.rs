@@ -173,6 +173,84 @@ macro_rules! guard_invariant_pass {
     }};
 }
 
+// ---------------------------------------------------------------------------
+// Access-control guards (role / owner / timelock)
+//
+// Most Soroban contracts reimplement the same three access-control shapes:
+// "only this one address", "only an address in this set", and "not before
+// this ledger timestamp". Each guard below is a thin wrapper over
+// `guard_invariant!` / `guard_invariant_result!` so violations get the same
+// `inv_fail` audit-trail event as every other guard in this crate — a
+// monitor subscribed to one topic sees invariant breaks, owner rejections,
+// role rejections, and timelock rejections alike.
+//
+// These guards check *identity* and *timing*, not *authentication*. Callers
+// are expected to have already called `.require_auth()` (or equivalent) on
+// the relevant `Address` before reaching the guard; the guard only asserts
+// that the authenticated caller is the right one.
+// ---------------------------------------------------------------------------
+
+/// Trap unless `caller` equals `expected` exactly (single-owner access
+/// control). Publishes `inv_fail` and traps via `panic_with_error!` on
+/// mismatch, same as `guard_invariant!`.
+#[macro_export]
+macro_rules! guard_owner {
+    ($env:expr, $caller:expr, $expected:expr, $err:expr) => {{
+        $crate::guard_invariant!($env, $caller == $expected, $err);
+    }};
+}
+
+/// Result-returning variant of [`guard_owner!`]. Returns `Err($err)` instead
+/// of trapping, so callers whose signature already returns `Result` can `?`
+/// it inline.
+#[macro_export]
+macro_rules! guard_owner_result {
+    ($env:expr, $caller:expr, $expected:expr, $err:expr) => {{
+        $crate::guard_invariant_result!($env, $caller == $expected, $err);
+    }};
+}
+
+/// Trap unless `caller` is a member of `authorized` (role-based access
+/// control). `authorized` may be any collection with a `contains(&Address)
+/// -> bool` method — a `soroban_sdk::Vec<Address>` read back from storage is
+/// the common case. The membership check happens exactly once, matching the
+/// single-evaluation guarantee of `guard_invariant!`.
+#[macro_export]
+macro_rules! guard_role {
+    ($env:expr, $caller:expr, $authorized:expr, $err:expr) => {{
+        let __sanctifier_guards_has_role: bool = $authorized.contains(&$caller);
+        $crate::guard_invariant!($env, __sanctifier_guards_has_role, $err);
+    }};
+}
+
+/// Result-returning variant of [`guard_role!`].
+#[macro_export]
+macro_rules! guard_role_result {
+    ($env:expr, $caller:expr, $authorized:expr, $err:expr) => {{
+        let __sanctifier_guards_has_role: bool = $authorized.contains(&$caller);
+        $crate::guard_invariant_result!($env, __sanctifier_guards_has_role, $err);
+    }};
+}
+
+/// Trap unless the ledger's current timestamp has reached `unlock_at`
+/// (timelock access control). Reads `env.ledger().timestamp()` exactly once.
+#[macro_export]
+macro_rules! guard_timelock_elapsed {
+    ($env:expr, $unlock_at:expr, $err:expr) => {{
+        let __sanctifier_guards_now: u64 = $env.ledger().timestamp();
+        $crate::guard_invariant!($env, __sanctifier_guards_now >= $unlock_at, $err);
+    }};
+}
+
+/// Result-returning variant of [`guard_timelock_elapsed!`].
+#[macro_export]
+macro_rules! guard_timelock_elapsed_result {
+    ($env:expr, $unlock_at:expr, $err:expr) => {{
+        let __sanctifier_guards_now: u64 = $env.ledger().timestamp();
+        $crate::guard_invariant_result!($env, __sanctifier_guards_now >= $unlock_at, $err);
+    }};
+}
+
 #[cfg(test)]
 extern crate std;
 
@@ -411,4 +489,120 @@ mod tests {
     // pulled in implicitly via the macro expansion.
     #[allow(dead_code)]
     fn _suppress_unused<V: IntoVal<Env, Val>>(_: V) {}
+
+    mod access_control {
+        use soroban_sdk::{
+            contract, contracterror, contractimpl, testutils::Address as _, testutils::Ledger as _,
+            Address, Env, Vec,
+        };
+
+        #[contracterror]
+        #[derive(Copy, Clone, Debug, Eq, PartialEq, PartialOrd, Ord)]
+        #[repr(u32)]
+        pub enum AccessError {
+            NotOwner = 1,
+            NotAuthorized = 2,
+            TimelockActive = 3,
+        }
+
+        #[contract]
+        pub struct AccessDemo;
+
+        #[contractimpl]
+        impl AccessDemo {
+            pub fn only_owner(
+                env: Env,
+                caller: Address,
+                owner: Address,
+            ) -> Result<(), soroban_sdk::Error> {
+                crate::guard_owner_result!(&env, caller, owner, AccessError::NotOwner);
+                Ok(())
+            }
+
+            pub fn only_role(
+                env: Env,
+                caller: Address,
+                authorized: Vec<Address>,
+            ) -> Result<(), soroban_sdk::Error> {
+                crate::guard_role_result!(&env, caller, authorized, AccessError::NotAuthorized);
+                Ok(())
+            }
+
+            pub fn after_timelock(env: Env, unlock_at: u64) -> Result<(), soroban_sdk::Error> {
+                crate::guard_timelock_elapsed_result!(&env, unlock_at, AccessError::TimelockActive);
+                Ok(())
+            }
+        }
+
+        fn setup() -> (Env, soroban_sdk::Address) {
+            let env = Env::default();
+            let id = env.register_contract(None, AccessDemo);
+            (env, id)
+        }
+
+        #[test]
+        fn owner_guard_passes_for_matching_caller() {
+            let (env, id) = setup();
+            let client = AccessDemoClient::new(&env, &id);
+            let owner = Address::generate(&env);
+            let res = client.try_only_owner(&owner, &owner);
+            assert!(res.is_ok(), "matching owner should pass");
+        }
+
+        #[test]
+        fn owner_guard_rejects_mismatched_caller() {
+            let (env, id) = setup();
+            let client = AccessDemoClient::new(&env, &id);
+            let owner = Address::generate(&env);
+            let intruder = Address::generate(&env);
+            let res = client.try_only_owner(&intruder, &owner);
+            let err: soroban_sdk::Error = AccessError::NotOwner.into();
+            assert_eq!(res.unwrap_err().unwrap(), err);
+        }
+
+        #[test]
+        fn role_guard_passes_for_member() {
+            let (env, id) = setup();
+            let client = AccessDemoClient::new(&env, &id);
+            let member = Address::generate(&env);
+            let mut authorized = Vec::new(&env);
+            authorized.push_back(member.clone());
+            let res = client.try_only_role(&member, &authorized);
+            assert!(res.is_ok(), "role member should pass");
+        }
+
+        #[test]
+        fn role_guard_rejects_non_member() {
+            let (env, id) = setup();
+            let client = AccessDemoClient::new(&env, &id);
+            let member = Address::generate(&env);
+            let outsider = Address::generate(&env);
+            let authorized = Vec::from_array(&env, [member]);
+            let res = client.try_only_role(&outsider, &authorized);
+            let err: soroban_sdk::Error = AccessError::NotAuthorized.into();
+            assert_eq!(res.unwrap_err().unwrap(), err);
+        }
+
+        #[test]
+        fn timelock_guard_rejects_before_unlock() {
+            let (env, id) = setup();
+            env.ledger().with_mut(|li| li.timestamp = 100);
+            let client = AccessDemoClient::new(&env, &id);
+            let res = client.try_after_timelock(&200);
+            let err: soroban_sdk::Error = AccessError::TimelockActive.into();
+            assert_eq!(res.unwrap_err().unwrap(), err);
+        }
+
+        #[test]
+        fn timelock_guard_passes_after_unlock() {
+            let (env, id) = setup();
+            env.ledger().with_mut(|li| li.timestamp = 300);
+            let client = AccessDemoClient::new(&env, &id);
+            let res = client.try_after_timelock(&200);
+            assert!(
+                res.is_ok(),
+                "unlock time already elapsed, guard should pass"
+            );
+        }
+    }
 }
