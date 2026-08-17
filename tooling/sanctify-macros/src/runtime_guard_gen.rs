@@ -1,11 +1,13 @@
 use proc_macro2::{Span, TokenStream};
 use quote::quote;
-use syn::{Ident, ItemImpl};
+use syn::{Expr, Ident, ItemImpl};
+
+use crate::ident_suffix::invariant_ident_suffix;
 
 /// Emit a sibling `impl` block containing a runtime-checkable counterpart of
 /// the static `#[sanctify::invariant(...)]` expression.
 ///
-/// The generated method, `__sanctify_check_invariant_N`, evaluates the same
+/// The generated method, `__sanctify_check_invariant_<suffix>`, evaluates the same
 /// invariant expression the static side verifies and publishes the exact
 /// `inv_fail` / `inv_pass` event schema `sanctifier_guards::guard_invariant!`
 /// publishes (topic `inv_fail`/`inv_pass`, data payload
@@ -34,13 +36,24 @@ use syn::{Ident, ItemImpl};
 /// "toggle per build profile" from the issue — so it is exactly zero cost
 /// in a release Soroban build. A consuming crate can force it on in release
 /// too by declaring a `sanctify-runtime-invariants` feature and enabling it.
-pub fn runtime_guard_impl(impl_item: &ItemImpl, expr: &TokenStream, index: usize) -> TokenStream {
+///
+/// `impl_name` is the same self-type name string the caller already derived
+/// for `kani_gen::kani_harness`; `index` is likewise passed straight through
+/// (see that function's doc comment for why the real uniqueness guarantee
+/// comes from hashing `expr`, not from `index`).
+pub fn runtime_guard_impl(
+    impl_item: &ItemImpl,
+    impl_name: &str,
+    expr: &Expr,
+    index: usize,
+) -> TokenStream {
     let self_ty = &impl_item.self_ty;
+    let suffix = invariant_ident_suffix(impl_name, expr, index);
     let fn_name = Ident::new(
-        &format!("__sanctify_check_invariant_{index}"),
+        &format!("__sanctify_check_invariant_{suffix}"),
         Span::call_site(),
     );
-    let expr_str = expr.to_string();
+    let expr_str = quote!(#expr).to_string();
 
     quote! {
         #[cfg(any(debug_assertions, feature = "sanctify-runtime-invariants"))]

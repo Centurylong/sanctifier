@@ -98,14 +98,14 @@ impl Token {
 
     /// Runtime check for the invariant declared on this `impl` block's
     /// `#[invariant(...)]` attribute. Delegates to the derived
-    /// `__sanctify_check_invariant_0`, which publishes an `inv_pass`/
+    /// `__sanctify_check_invariant_pure_supply_is_conserved_after_t_8615f3f5192f6cc9`, which publishes an `inv_pass`/
     /// `inv_fail` event and returns whether the invariant held — see that
     /// method's doc comment for the schema. Exposed as a real entry point
     /// so callers (and this crate's own tests) exercise it the same way
     /// production code would: through the contract client, inside a real
     /// invocation context, not as a bare function call.
     pub fn check_supply_invariant(env: Env) -> bool {
-        Self::__sanctify_check_invariant_0(&env)
+        Self::__sanctify_check_invariant_pure_supply_is_conserved_after_t_8615f3f5192f6cc9(&env)
     }
 }
 
@@ -188,7 +188,10 @@ mod tests {
         // expression's semantics.
         let env = Env::default();
         let direct = pure::supply_is_conserved_after_transfer(0, 0, 0);
-        let derived = Token::__sanctify_check_invariant_0(&env);
+        let derived =
+            Token::__sanctify_check_invariant_pure_supply_is_conserved_after_t_8615f3f5192f6cc9(
+                &env,
+            );
         assert_eq!(direct, derived);
     }
 }
