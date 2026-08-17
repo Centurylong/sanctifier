@@ -16,6 +16,7 @@ This document contains the help content for the `sanctifier` command-line progra
 * [`sanctifier fix`↴](#sanctifier-fix)
 * [`sanctifier report`↴](#sanctifier-report)
 * [`sanctifier init`↴](#sanctifier-init)
+* [`sanctifier license`↴](#sanctifier-license)
 * [`sanctifier callgraph`↴](#sanctifier-callgraph)
 * [`sanctifier update`↴](#sanctifier-update)
 * [`sanctifier watch`↴](#sanctifier-watch)
@@ -47,6 +48,7 @@ Stellar Soroban Security & Formal Verification Suite
 * `fix` — Generate suggested fix diffs for findings and apply them only after explicit confirmation (offline; deterministic local suggestions)
 * `report` — Generate a security report
 * `init` — Initialize Sanctifier in a new project
+* `license` — Check dependency licenses (from `cargo metadata`) against an allow/deny list
 * `callgraph` — Generate a Graphviz DOT call graph of cross-contract calls (env.invoke_contract)
 * `update` — Check for and download the latest Sanctifier binary
 * `watch` — Watch source files and re-run analysis automatically on change (debounced)
@@ -232,6 +234,28 @@ Initialize Sanctifier in a new project
 ###### **Options:**
 
 * `-f`, `--force` — Force overwrite existing configuration file
+
+
+
+## `sanctifier license`
+
+Check dependency licenses (from `cargo metadata`) against an allow/deny list
+
+**Usage:** `sanctifier license [OPTIONS] [PATH]`
+
+###### **Arguments:**
+
+* `<PATH>` — Path to the crate or workspace to check
+
+  Default value: `.`
+
+###### **Options:**
+
+* `-f`, `--format <FORMAT>` — Output format (text, json)
+
+  Default value: `text`
+* `--allow <ALLOW>` — Comma-separated list of additional SPDX license identifiers to allow
+* `--deny <DENY>` — Comma-separated list of SPDX license identifiers to explicitly deny, even if they'd otherwise be allowed
 
 
 
