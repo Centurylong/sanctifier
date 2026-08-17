@@ -47,8 +47,9 @@ pub(crate) fn collect_rs_files(dir: &Path, ignore: &[String], out: &mut Vec<Path
     }
 }
 
-/// Scan `path` (file or directory) and return all invariant declarations found.
-pub(crate) fn discover_invariants(path: &Path) -> Vec<InvariantDecl> {
+/// Scan `path` (file or directory) and return all invariant declarations found,
+/// alongside every `#[sanctify::assume(...)]` declaration that can bound them.
+pub(crate) fn discover_invariants(path: &Path) -> (Vec<InvariantDecl>, Vec<InvariantDecl>) {
     let config = SanctifyConfig::default();
     let analyzer = Analyzer::new(config.clone());
 
@@ -60,36 +61,39 @@ pub(crate) fn discover_invariants(path: &Path) -> Vec<InvariantDecl> {
     }
 
     let mut all_decls: Vec<InvariantDecl> = Vec::new();
+    let mut all_assumes: Vec<InvariantDecl> = Vec::new();
     for file in rs_files {
         let source = match std::fs::read_to_string(&file) {
             Ok(s) => s,
             Err(_) => continue,
         };
         let label = file.display().to_string();
-        let decls = analyzer.scan_invariant_attrs(&source, &label);
-        all_decls.extend(decls);
+        all_decls.extend(analyzer.scan_invariant_attrs(&source, &label));
+        all_assumes.extend(analyzer.scan_assume_attrs(&source, &label));
     }
-    all_decls
+    (all_decls, all_assumes)
 }
 
-/// Run the SMT verifier over all discovered invariants and return paired results.
+/// Run the SMT verifier over all discovered invariants, bounding each with
+/// any `assumptions` declared on the same contract, and return paired results.
 ///
 /// Returns `(InvariantDecl, InvariantVerifyResult)` for every invariant found.
 /// When the `smt` feature is absent the function returns `Unsupported` for
 /// everything so the CLI can still print a meaningful message.
 pub(crate) fn run_verification(
     decls: Vec<InvariantDecl>,
+    assumptions: &[InvariantDecl],
 ) -> Vec<(InvariantDecl, InvariantVerifyResult)> {
     if decls.is_empty() {
         return vec![];
     }
 
     let verifier = SmtInvariantVerifier::new();
-    verifier.verify_all(&decls)
+    verifier.verify_all_with_assumptions(&decls, assumptions)
 }
 
 pub fn exec(args: VerifyArgs) -> anyhow::Result<()> {
-    let decls = discover_invariants(&args.path);
+    let (decls, assumptions) = discover_invariants(&args.path);
 
     if decls.is_empty() {
         if !args.json {
@@ -104,7 +108,7 @@ pub fn exec(args: VerifyArgs) -> anyhow::Result<()> {
         return Ok(());
     }
 
-    let results = run_verification(decls);
+    let results = run_verification(decls, &assumptions);
 
     if args.json {
         let json = serde_json::to_string_pretty(

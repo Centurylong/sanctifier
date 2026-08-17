@@ -458,6 +458,21 @@ impl Analyzer {
         with_panic_guard(|| invariant::scan_invariant_attrs(source, file_label))
     }
 
+    /// Scan `source` for `#[sanctify::assume(...)]` attributes and return one
+    /// `InvariantDecl` per assumption found. An assumption bounds the state a
+    /// paired `#[sanctify::invariant(...)]` on the same `impl` is checked
+    /// against, rather than being something to prove itself.
+    ///
+    /// Returns an empty `Vec` when `source` fails to parse as valid Rust.
+    /// Panics inside the visitor are caught and turned into an empty result.
+    pub fn scan_assume_attrs(
+        &self,
+        source: &str,
+        file_label: &str,
+    ) -> Vec<invariant::InvariantDecl> {
+        with_panic_guard(|| invariant::scan_assume_attrs(source, file_label))
+    }
+
     #[cfg(feature = "smt")]
     pub fn verify_smt_invariants(&self, _source: &str) -> Vec<smt::SmtInvariantIssue> {
         with_panic_guard(|| self.verify_smt_invariants_impl())
