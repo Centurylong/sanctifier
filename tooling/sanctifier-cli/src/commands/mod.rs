@@ -7,6 +7,7 @@ pub mod cve;
 pub mod diff;
 pub mod fix;
 pub mod init;
+pub mod license;
 pub mod prove;
 pub mod update;
 pub mod verify;

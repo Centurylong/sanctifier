@@ -43,6 +43,8 @@ pub enum Commands {
     },
     /// Initialize Sanctifier in a new project
     Init(commands::init::InitArgs),
+    /// Check dependency licenses (from `cargo metadata`) against an allow/deny list
+    License(commands::license::LicenseArgs),
     /// Generate a Graphviz DOT call graph of cross-contract calls (env.invoke_contract)
     Callgraph {
         /// Path to a contract directory, workspace directory, or a single .rs file
@@ -115,6 +117,9 @@ fn main() -> anyhow::Result<()> {
         }
         Commands::Init(args) => {
             commands::init::exec(args, None)?;
+        }
+        Commands::License(args) => {
+            commands::license::exec(args)?;
         }
         Commands::Callgraph { path, output } => {
             let config = load_config(&path);
