@@ -61,8 +61,26 @@ pub fn invariant(args: TokenStream, input: TokenStream) -> TokenStream {
         .source_text()
         .unwrap_or_else(|| "Contract".to_string());
 
-    let harness = kani_gen::kani_harness(&self_name, &args2, 0);
-    let runtime_guard = runtime_guard_gen::runtime_guard_impl(&impl_item, &args2, 0);
+    // When multiple `#[invariant(...)]` attributes are stacked on the same
+    // `impl` block (the documented usage pattern above), Rust expands
+    // stacked attribute macros one at a time, top-to-bottom: each
+    // invocation's `input` still carries whichever sibling `#[invariant]`
+    // attributes haven't been expanded yet (they sit unprocessed in
+    // `impl_item.attrs` until the compiler works its way down to them).
+    // Counting those remaining siblings gives every invocation on the same
+    // impl block a distinct index (N-1, N-2, ..., 0 for N stacked
+    // invariants), so the generated `__sanctify_check_invariant_N` /
+    // `verify_invariant_N` names never collide. A single, unstacked
+    // `#[invariant(...)]` always sees zero remaining siblings and keeps
+    // index 0, unchanged from before.
+    let index = impl_item
+        .attrs
+        .iter()
+        .filter(|attr| attr.path().is_ident("invariant"))
+        .count();
+
+    let harness = kani_gen::kani_harness(&self_name, &args2, index);
+    let runtime_guard = runtime_guard_gen::runtime_guard_impl(&impl_item, &args2, index);
 
     let expanded = quote! {
         #impl_item
