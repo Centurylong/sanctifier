@@ -6,6 +6,8 @@ Runtime guard macros for Soroban smart contracts. Companion to `sanctifier-core`
 
 This bridges static analysis and runtime defence. Static rules catch what you can prove at compile time; the macro catches what you cannot, and leaves a queryable on-chain audit trail when it does.
 
+> **Building a monitor?** See [`docs/telemetry-schema.md`](docs/telemetry-schema.md) for the exact, stable event shape every guard in this crate publishes on a trip — topic, data payload, and subscription guidance.
+
 ## Usage
 
 ```rust,ignore
