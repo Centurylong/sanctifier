@@ -1,6 +1,7 @@
 use serde::{Deserialize, Serialize};
 use std::panic::catch_unwind;
 pub mod baseline;
+pub mod counterexample_render;
 pub mod finding_codes;
 pub mod gas_estimator;
 pub mod gas_report;
