@@ -3,6 +3,7 @@ pub mod attest;
 pub mod audit;
 pub mod badge;
 pub mod baseline;
+pub mod check_public_inputs;
 pub mod ci;
 pub mod cve;
 pub mod diff;
