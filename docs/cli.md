@@ -10,6 +10,7 @@ This document contains the help content for the `sanctifier` command-line progra
 * [`sanctifier analyze`↴](#sanctifier-analyze)
 * [`sanctifier baseline`↴](#sanctifier-baseline)
 * [`sanctifier attest`↴](#sanctifier-attest)
+* [`sanctifier audit`↴](#sanctifier-audit)
 * [`sanctifier badge`↴](#sanctifier-badge)
 * [`sanctifier diff`↴](#sanctifier-diff)
 * [`sanctifier ci`↴](#sanctifier-ci)
@@ -43,6 +44,7 @@ Stellar Soroban Security & Formal Verification Suite
 * `analyze` — Analyze a Soroban contract for vulnerabilities
 * `baseline` — Snapshot current findings into .sanctify-baseline.json (use --update to refresh)
 * `attest` — Generate (or verify) a zero-knowledge attestation that a scan passed a score threshold
+* `audit` — Run `cargo audit` against the RUSTSEC advisory database for known-vulnerable dependencies
 * `badge` — Generate a dynamic Sanctifier status badge
 * `diff` — Compare findings between working tree and a git reference
 * `ci` — Run CI gating and compliance checks
@@ -128,6 +130,30 @@ Generate (or verify) a zero-knowledge attestation that a scan passed a score thr
   Default value: `90`
 * `-o`, `--out <OUT>` — Write the attestation artifact here (defaults to stdout)
 * `--verify <FILE>` — Verify an existing attestation artifact instead of generating one
+
+
+
+## `sanctifier audit`
+
+Run `cargo audit` against the RUSTSEC advisory database for known-vulnerable dependencies
+
+**Usage:** `sanctifier audit [OPTIONS] [PATH]`
+
+###### **Arguments:**
+
+* `<PATH>` — Path to the crate or workspace to audit (must contain Cargo.lock)
+
+  Default value: `.`
+
+###### **Options:**
+
+* `-f`, `--format <FORMAT>` — Output format (text, json)
+
+  Default value: `text`
+* `--no-fail` — Do not fail (non-zero exit) even if vulnerable advisories are found
+* `--min-severity <MIN_SEVERITY>` — Only fail on advisories at or above this severity (low, medium, high, critical)
+
+  Default value: `low`
 
 
 

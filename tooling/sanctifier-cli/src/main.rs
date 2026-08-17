@@ -26,6 +26,8 @@ pub enum Commands {
     Baseline(commands::baseline::BaselineArgs),
     /// Generate (or verify) a zero-knowledge attestation that a scan passed a score threshold
     Attest(commands::attest::AttestArgs),
+    /// Run `cargo audit` against the RUSTSEC advisory database for known-vulnerable dependencies
+    Audit(commands::audit::AuditArgs),
     /// Generate a dynamic Sanctifier status badge
     Badge(commands::badge::BadgeArgs),
     /// Compare findings between working tree and a git reference
@@ -96,6 +98,9 @@ fn main() -> anyhow::Result<()> {
         }
         Commands::Attest(args) => {
             commands::attest::exec(args)?;
+        }
+        Commands::Audit(args) => {
+            commands::audit::exec(args)?;
         }
         Commands::Badge(args) => {
             commands::badge::exec(args)?;

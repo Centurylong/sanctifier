@@ -1,5 +1,6 @@
 pub mod analyze;
 pub mod attest;
+pub mod audit;
 pub mod badge;
 pub mod baseline;
 pub mod ci;
