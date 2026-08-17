@@ -61,8 +61,29 @@ pub fn invariant(args: TokenStream, input: TokenStream) -> TokenStream {
         .source_text()
         .unwrap_or_else(|| "Contract".to_string());
 
-    let harness = kani_gen::kani_harness(&self_name, &args2, 0);
-    let runtime_guard = runtime_guard_gen::runtime_guard_impl(&impl_item, &args2, 0);
+    // Multiple `#[invariant(...)]` attributes can be stacked on one impl
+    // block (see contracts/sep41-token-invariants), and each is expanded as
+    // an independent macro invocation — a fixed index (the previous
+    // behavior) collided because every invocation generated the same
+    // `__sanctify_check_invariant_0`. Attribute macros are expanded
+    // top-to-bottom, and each invocation only sees the attributes still
+    // unexpanded below it (the ones above it, including itself, are already
+    // stripped by the time it runs) — so the count of remaining sibling
+    // `#[invariant(...)]` attributes gives each one a distinct, deterministic
+    // index, assigned bottom-up: the attribute closest to the impl item
+    // (processed last) always gets index 0. That preserves the documented
+    // `__sanctify_check_invariant_0` name — and every existing call site
+    // that hardcodes it, e.g. contracts/token-invariants — for the common
+    // case of a single invariant on an impl block, where there are no
+    // remaining siblings to count.
+    let index = impl_item
+        .attrs
+        .iter()
+        .filter(|a| a.path().is_ident("invariant"))
+        .count();
+
+    let harness = kani_gen::kani_harness(&self_name, &args2, index);
+    let runtime_guard = runtime_guard_gen::runtime_guard_impl(&impl_item, &args2, index);
 
     let expanded = quote! {
         #impl_item
