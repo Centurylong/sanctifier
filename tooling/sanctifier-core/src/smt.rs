@@ -12,6 +12,41 @@ pub struct SmtInvariantIssue {
     pub location: String,
 }
 
+/// Default per-proof wall-clock budget handed to Z3, in milliseconds.
+///
+/// CI runs many small, independent proofs; a per-proof cap keeps one
+/// pathological query from eating the whole job's time budget while still
+/// giving the solver enough room to finish the invariants in this crate's
+/// suite (see `docs/smt-tuning.md` for the measurement that picked this
+/// value).
+pub const DEFAULT_Z3_TIMEOUT_MS: u64 = 5_000;
+
+/// Build a Z3 [`z3::Config`] with an explicit timeout/resource budget.
+///
+/// Centralizing this (instead of every call site doing bare `Config::new()`)
+/// means a slower CI runner or a tighter local iteration loop can override
+/// the budget in one place: `configured_z3_config(timeout_ms)`, or
+/// `configured_z3_config(DEFAULT_Z3_TIMEOUT_MS)` for the default.
+pub fn configured_z3_config(timeout_ms: u64) -> z3::Config {
+    let mut cfg = z3::Config::new();
+    cfg.set_timeout_msec(timeout_ms);
+    cfg
+}
+
+#[cfg(test)]
+mod z3_config_tests {
+    use super::*;
+
+    #[test]
+    fn configured_context_is_usable_with_a_timeout() {
+        let cfg = configured_z3_config(250);
+        let ctx = Context::new(&cfg);
+        let verifier = SmtVerifier::new(&ctx);
+        // A budgeted context must still be able to complete a proof.
+        assert!(verifier.verify_addition_overflow("noop", "test").is_some());
+    }
+}
+
 pub struct SmtVerifier<'ctx> {
     ctx: &'ctx Context,
 }
@@ -620,7 +655,7 @@ impl SmtLatencyBenchmarkReport {
 }
 
 pub fn run_smt_latency_benchmark(iterations_per_strategy: usize) -> SmtLatencyBenchmarkReport {
-    use z3::{Config, Context};
+    use z3::Context;
 
     let iterations = iterations_per_strategy.max(1);
     let strategies = [
@@ -634,7 +669,7 @@ pub fn run_smt_latency_benchmark(iterations_per_strategy: usize) -> SmtLatencyBe
     for strategy in strategies {
         let mut samples = Vec::with_capacity(iterations);
         for _ in 0..iterations {
-            let cfg = Config::new();
+            let cfg = configured_z3_config(DEFAULT_Z3_TIMEOUT_MS);
             let ctx = Context::new(&cfg);
 
             let start = Instant::now();
