@@ -68,6 +68,25 @@ Publishes a single `inv_pass` event without trapping. Useful when a wrapper want
 
 `guard_invariant!` calls `panic_with_error!` which, in soroban-sdk 20.5's testutils, raises a non-unwinding panic that aborts the test runner before `#[should_panic]` or `std::panic::catch_unwind` can rescue it. The `guard_invariant_result!` companion has identical event-publishing semantics with a typed error return, so every assertion about event payload, condition source, and error code stays observable in unit tests by exercising the Result form. The trap path is then verified end to end in the `runtime-guard-wrapper` integration suite, where the wrapper's outer `Result<Val, Error>` signature bubbles the typed error to the caller.
 
+## Access-control guards (role / owner / timelock)
+
+Three thin wrappers over `guard_invariant!` / `guard_invariant_result!` cover the access-control shapes most contracts reimplement by hand. Each publishes the same `inv_fail` event as every other guard in this crate, so a monitor subscribed to one topic sees invariant breaks, owner rejections, role rejections, and timelock rejections alike. These guards check *identity* and *timing*, not *authentication* — call `.require_auth()` on the relevant `Address` first; the guard only asserts that the authenticated caller is the right one.
+
+```rust,ignore
+use sanctifier_guards::{guard_owner, guard_role, guard_timelock_elapsed};
+
+// Single-owner: trap unless `caller == owner`.
+guard_owner!(&env, caller, owner, Error::NotOwner);
+
+// Role-based: trap unless `caller` is in the `Vec<Address>` read from storage.
+guard_role!(&env, caller, authorized_signers, Error::NotAuthorized);
+
+// Timelock: trap unless the ledger has reached `unlock_at`.
+guard_timelock_elapsed!(&env, unlock_at, Error::TimelockActive);
+```
+
+Each has a `_result` variant (`guard_owner_result!`, `guard_role_result!`, `guard_timelock_elapsed_result!`) that returns `Err($err)` instead of trapping, matching `guard_invariant_result!`.
+
 ## Linkage with the static side
 
 `sanctify::invariant(...)` (from `tooling/sanctify-macros`) is the static counterpart that feeds `sanctifier-core`'s SMT backend at analysis time. `guard_invariant!` is the runtime counterpart. They share the same vocabulary on purpose so a human grepping logs for `inv_fail` finds both the static finding and the runtime event.
