@@ -1,0 +1,14 @@
+---
+source: tooling/sanctifier-core/tests/detector_snapshots.rs
+expression: findings
+---
+- rule_name: SANCT_UNBOUNDED_EVENT_EMISSION
+  severity: Warning
+  message: "SANCT_UNBOUNDED_EVENT_EMISSION: `notify_all` publishes an event from inside a loop, so the event count (and its XDR/budget cost) scales with the loop's iteration count"
+  location: "notify_all:16"
+  suggestion: "Emit a single summary event after the loop, or cap the number of iterations that can reach `publish`"
+- rule_name: SANCT_UNBOUNDED_EVENT_EMISSION
+  severity: Warning
+  message: "SANCT_UNBOUNDED_EVENT_EMISSION: `drain_queue` publishes an event from inside a loop, so the event count (and its XDR/budget cost) scales with the loop's iteration count"
+  location: "drain_queue:23"
+  suggestion: "Emit a single summary event after the loop, or cap the number of iterations that can reach `publish`"

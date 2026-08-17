@@ -54,7 +54,15 @@
     "SANCT_EAGER_UNWRAP_OR": "SANCT_EAGER_UNWRAP_OR",
     "contracterror_enum": "SANCT_CONTRACTERROR_ENUM",
     "SANCT_CONTRACTERROR_ENUM": "SANCT_CONTRACTERROR_ENUM",
-    "vesting_schedule": "SANCT_VESTING_RANGE"
+    "vesting_schedule": "SANCT_VESTING_RANGE",
+    "cross_contract_call_in_loop": "SANCT_CROSS_CONTRACT_CALL_IN_LOOP",
+    "SANCT_CROSS_CONTRACT_CALL_IN_LOOP": "SANCT_CROSS_CONTRACT_CALL_IN_LOOP",
+    "unbounded_event_emission": "SANCT_UNBOUNDED_EVENT_EMISSION",
+    "SANCT_UNBOUNDED_EVENT_EMISSION": "SANCT_UNBOUNDED_EVENT_EMISSION",
+    "sep41_allowance_decrement": "SANCT_SEP41_ALLOWANCE_NOT_DECREMENTED",
+    "SANCT_SEP41_ALLOWANCE_NOT_DECREMENTED": "SANCT_SEP41_ALLOWANCE_NOT_DECREMENTED",
+    "sep41_approval_expiration": "SANCT_SEP41_APPROVAL_NO_EXPIRATION",
+    "SANCT_SEP41_APPROVAL_NO_EXPIRATION": "SANCT_SEP41_APPROVAL_NO_EXPIRATION"
   },
   "overlap_legend": {
     "shared-covered": "Class has an EVM analogue and Sanctifier already flags it.",
@@ -146,7 +154,7 @@
       "title": "Allowance race / approve TOCTOU",
       "soroban": { "vulnerable": "allowance_race_vulnerable.rs", "fixed": "allowance_race_fixed.rs" },
       "solidity": null,
-      "sanctifier": { "ideal_code": "SANCT_ALLOWANCE_RACE", "observed_codes": ["SANCT_ALLOWANCE_RACE"], "status": "flagged" },
+      "sanctifier": { "ideal_code": "SANCT_ALLOWANCE_RACE", "observed_codes": ["SANCT_ALLOWANCE_RACE", "SANCT_SEP41_APPROVAL_NO_EXPIRATION"], "status": "flagged" },
       "slither": { "detectors": [], "expected": false },
       "aderyn": { "detectors": [], "expected": false },
       "overlap": "soroban-specific",

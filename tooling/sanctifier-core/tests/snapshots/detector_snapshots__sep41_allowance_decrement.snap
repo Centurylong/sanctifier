@@ -1,0 +1,14 @@
+---
+source: tooling/sanctifier-core/tests/detector_snapshots.rs
+expression: findings
+---
+- rule_name: SANCT_SEP41_ALLOWANCE_NOT_DECREMENTED
+  severity: Error
+  message: "SANCT_SEP41_ALLOWANCE_NOT_DECREMENTED: `transfer_from` reads the caller's allowance but never writes back a decremented value, so the same approval can be spent repeatedly (SEP-41 violation)"
+  location: "transfer_from:16"
+  suggestion: "After transferring, persist `allowance - amount` (or call the SDK's allowance-spend helper) before returning"
+- rule_name: SANCT_SEP41_ALLOWANCE_NOT_DECREMENTED
+  severity: Error
+  message: "SANCT_SEP41_ALLOWANCE_NOT_DECREMENTED: `transferFrom` reads the caller's allowance but never writes back a decremented value, so the same approval can be spent repeatedly (SEP-41 violation)"
+  location: "transferFrom:26"
+  suggestion: "After transferring, persist `allowance - amount` (or call the SDK's allowance-spend helper) before returning"

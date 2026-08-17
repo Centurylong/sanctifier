@@ -1,0 +1,14 @@
+---
+source: tooling/sanctifier-core/tests/detector_snapshots.rs
+expression: findings
+---
+- rule_name: SANCT_CROSS_CONTRACT_CALL_IN_LOOP
+  severity: Warning
+  message: "SANCT_CROSS_CONTRACT_CALL_IN_LOOP: `broadcast` issues a cross-contract call (`invoke_contract`) from inside a loop, so its cost scales with the loop's iteration count"
+  location: "broadcast:16"
+  suggestion: "Batch the cross-contract call outside the loop, or cap the number of iterations that can reach it"
+- rule_name: SANCT_CROSS_CONTRACT_CALL_IN_LOOP
+  severity: Warning
+  message: "SANCT_CROSS_CONTRACT_CALL_IN_LOOP: `drain` issues a cross-contract call (`transfer`) from inside a loop, so its cost scales with the loop's iteration count"
+  location: "drain:23"
+  suggestion: "Batch the cross-contract call outside the loop, or cap the number of iterations that can reach it"

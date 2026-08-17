@@ -52,6 +52,10 @@ detector page and to the relevant [Glossary](../glossary.md) term.
 | [`eager_unwrap_or`](eager_unwrap_or.md) | [`SANCT_EAGER_UNWRAP_OR`](../error-codes.md) | gas_efficiency | Warning | Eagerly-computed expensive fallback in `unwrap_or()` |
 | [`contracterror_enum`](contracterror_enum.md) | [`SANCT_CONTRACTERROR_ENUM`](../error-codes.md) | logic | Warning | Public function returns error enum missing `#[contracterror]` or repr |
 | [`vesting_schedule`](vesting_schedule.md) | [`SANCT_VESTING_RANGE`](../error-codes.md) | logic | Warning | Schedule duration (`end - start`) not proven `end > start` |
+| [`cross_contract_call_in_loop`](cross_contract_call_in_loop.md) | [`SANCT_CROSS_CONTRACT_CALL_IN_LOOP`](../error-codes.md) | resource_limits | Warning | Cross-contract call (`invoke_contract` or a `*Client`) issued from inside a loop |
+| [`unbounded_event_emission`](unbounded_event_emission.md) | [`SANCT_UNBOUNDED_EVENT_EMISSION`](../error-codes.md) | resource_limits | Warning | `env.events().publish(..)` issued from inside a loop with no iteration bound |
+| [`sep41_allowance_decrement`](sep41_allowance_decrement.md) | [`SANCT_SEP41_ALLOWANCE_NOT_DECREMENTED`](../error-codes.md) | authorization | Error | `transfer_from` reads the allowance but never writes back a decremented value |
+| [`sep41_approval_expiration`](sep41_approval_expiration.md) | [`SANCT_SEP41_APPROVAL_NO_EXPIRATION`](../error-codes.md) | authorization | Error/Warning | `approve` has no `expiration_ledger` parameter, or never uses the one it accepts |
 
 ## Page anatomy
 

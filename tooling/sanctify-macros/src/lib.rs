@@ -61,25 +61,27 @@ pub fn invariant(args: TokenStream, input: TokenStream) -> TokenStream {
         .source_text()
         .unwrap_or_else(|| "Contract".to_string());
 
-    // Multiple `#[invariant(...)]` attributes can be stacked on one impl
-    // block (see contracts/sep41-token-invariants), and each is expanded as
-    // an independent macro invocation — a fixed index (the previous
-    // behavior) collided because every invocation generated the same
-    // `__sanctify_check_invariant_0`. Attribute macros are expanded
-    // top-to-bottom, and each invocation only sees the attributes still
-    // unexpanded below it (the ones above it, including itself, are already
-    // stripped by the time it runs) — so the count of remaining sibling
-    // `#[invariant(...)]` attributes gives each one a distinct, deterministic
-    // index, assigned bottom-up: the attribute closest to the impl item
-    // (processed last) always gets index 0. That preserves the documented
-    // `__sanctify_check_invariant_0` name — and every existing call site
-    // that hardcodes it, e.g. contracts/token-invariants — for the common
-    // case of a single invariant on an impl block, where there are no
-    // remaining siblings to count.
+    // Stacking multiple `#[invariant(...)]` attributes on one `impl` expands
+    // them outermost-first: this invocation's own attribute has already been
+    // stripped from `input`, and any *other* `#[invariant(...)]` attributes
+    // below it in source order are still sitting unexpanded in
+    // `impl_item.attrs` (Rust hasn't gotten to them yet). Counting those
+    // gives each invocation a distinct, deterministic index — decreasing
+    // from (n-1) down to 0 as expansion proceeds top-to-bottom — without
+    // needing any state shared across invocations, which proc-macro
+    // attributes have no way to keep. Using a fixed `0` here (as before)
+    // made every invariant on the same impl generate an identically-named
+    // `__sanctify_check_invariant_0`, so a second or third invariant failed
+    // to compile with "duplicate definitions".
     let index = impl_item
         .attrs
         .iter()
-        .filter(|a| a.path().is_ident("invariant"))
+        .filter(|attr| {
+            attr.path()
+                .segments
+                .last()
+                .is_some_and(|seg| seg.ident == "invariant")
+        })
         .count();
 
     let harness = kani_gen::kani_harness(&self_name, &args2, index);

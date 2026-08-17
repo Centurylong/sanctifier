@@ -4,6 +4,7 @@ pub mod arithmetic_overflow;
 pub mod auth_gap;
 pub mod balance_equality;
 pub mod contracterror_enum;
+pub mod cross_contract_call_in_loop;
 pub mod division_by_zero;
 pub mod eager_unwrap_or;
 pub mod edge_amount;
@@ -18,9 +19,12 @@ pub mod missing_ttl;
 pub mod panic_detection;
 pub mod reserve_withdrawal;
 pub mod sanct_unwrap;
+pub mod sep41_allowance_decrement;
+pub mod sep41_approval_expiration;
 pub mod shift_overflow;
 pub mod state_write_in_view;
 pub mod tier_boundary_off_by_one;
+pub mod unbounded_event_emission;
 pub mod unbounded_return;
 pub mod unbounded_storage;
 pub mod unhandled_result;
@@ -224,6 +228,10 @@ impl RuleRegistry {
         registry.register(reserve_withdrawal::ReserveWithdrawalRule::new());
         registry.register(contracterror_enum::ContracterrorEnumRule::new());
         registry.register(vesting_schedule::VestingScheduleRule::new());
+        registry.register(cross_contract_call_in_loop::CrossContractCallInLoopRule::new());
+        registry.register(unbounded_event_emission::UnboundedEventEmissionRule::new());
+        registry.register(sep41_allowance_decrement::Sep41AllowanceDecrementRule::new());
+        registry.register(sep41_approval_expiration::Sep41ApprovalExpirationRule::new());
         registry
     }
 }
