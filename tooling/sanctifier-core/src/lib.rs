@@ -14,6 +14,7 @@ pub mod rules;
 pub mod smt;
 mod storage_collision;
 pub mod symbolic;
+pub mod triage;
 pub mod wasm;
 use std::collections::{HashMap, HashSet};
 use syn::spanned::Spanned;
