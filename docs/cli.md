@@ -28,6 +28,7 @@ This document contains the help content for the `sanctifier` command-line progra
 * [`sanctifier cve export`↴](#sanctifier-cve-export)
 * [`sanctifier cve serve`↴](#sanctifier-cve-serve)
 * [`sanctifier wasm`↴](#sanctifier-wasm)
+* [`sanctifier toolchain`↴](#sanctifier-toolchain)
 
 ## `sanctifier`
 
@@ -53,6 +54,7 @@ Stellar Soroban Security & Formal Verification Suite
 * `prove` — Run SMT-based formal verification on Soroban token contract invariants
 * `cve` — Search, list, show, and export the public Soroban/Stellar CVE database
 * `wasm` — Analyze a compiled .wasm module directly when source is unavailable (source-optional mode)
+* `toolchain` — Audit toolchain and soroban-sdk version pinning for reproducible builds
 
 
 
@@ -438,6 +440,21 @@ Analyze a compiled .wasm module directly when source is unavailable (source-opti
 
   Default value: `text`
 * `--show-limitations` — Print the source-vs-WASM limitations note (also shown at the end of text output)
+
+
+
+## `sanctifier toolchain`
+
+Audit toolchain and soroban-sdk version pinning for reproducible builds
+
+**Usage:** `sanctifier toolchain [OPTIONS]`
+
+###### **Options:**
+
+* `-p`, `--path <PATH>` — Path to the workspace/project root to audit
+
+  Default value: `.`
+* `--json` — Emit results as JSON
 
 
 
