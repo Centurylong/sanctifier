@@ -29,6 +29,7 @@ the fix, and references.
 | `SANCT_EAGER_UNWRAP_OR` | gas_efficiency | Eagerly-computed expensive fallback in `unwrap_or()` wastes gas | [`eager_unwrap_or`](detectors/eager_unwrap_or.md) |
 | `SANCT_CONTRACTERROR_ENUM` | logic | Public function returns error enum missing `#[contracterror]` or repr | [`contracterror_enum`](detectors/contracterror_enum.md) |
 | `SANCT_PROOF_LENGTH_UNVALIDATED` | zk_verification | Proof/public-input byte array reaches a verifier call with no length check first | [`proof_length_check`](detectors/proof_length_check.md) |
+| `SANCT_VK_PROVENANCE` | cryptography | ZK verifying key accepted at runtime and stored with no auth/hash-pin guard | [`vk_provenance`](detectors/vk_provenance.md) |
 
 > **Full catalog:** [Detector Catalog →](detectors/README.md)
 

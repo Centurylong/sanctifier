@@ -58,6 +58,7 @@ detector page and to the relevant [Glossary](../glossary.md) term.
 | [`sep41_approval_expiration`](sep41_approval_expiration.md) | [`SANCT_SEP41_APPROVAL_NO_EXPIRATION`](../error-codes.md) | authorization | Error/Warning | `approve` has no `expiration_ledger` parameter, or never uses the one it accepts |
 | [`nullifier_growth`](nullifier_growth.md) | [`SANCT_NULLIFIER_GROWTH`](../error-codes.md) | denial_of_service | Warning | ZK nullifier/commitment marked spent in persistent storage with no pruning, TTL extension, or size cap |
 | [`proof_length_check`](proof_length_check.md) | [`SANCT_PROOF_LENGTH_UNVALIDATED`](../error-codes.md) | zk_verification | Warning | Proof/public-input byte array reaches a verifier call with no length check first |
+| [`vk_provenance`](vk_provenance.md) | [`SANCT_VK_PROVENANCE`](../error-codes.md) | cryptography | High | ZK verifying key accepted at runtime and stored with no auth/hash-pin guard |
 
 ## Page anatomy
 

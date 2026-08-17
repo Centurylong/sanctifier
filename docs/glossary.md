@@ -339,6 +339,14 @@ Built-in token invariant: no account balance can become negative.
 Built-in token invariant: tokens cannot be minted without proper
 [authorization](#require_auth).
 
+### Verifying key
+<a id="verifying-key"></a>
+The public parameter a zero-knowledge proof (e.g. Groth16) is checked
+against — derived from the circuit during trusted setup. If it isn't pinned
+(hardcoded, hash-checked, or gated behind admin `require_auth()`), whoever
+controls it controls what "a valid proof" means; see
+[`vk_provenance`](detectors/vk_provenance.md).
+
 ---
 
 ## Tooling
