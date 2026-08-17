@@ -33,6 +33,7 @@ pub const STATE_WRITE_IN_VIEW: &str = "SANCT_STATE_WRITE_IN_VIEW";
 pub const DIVISION_BY_ZERO: &str = "S018";
 pub const TIER_BOUNDARY_OFF_BY_ONE: &str = "S022";
 pub const MISSING_RESERVE_AUTH: &str = "S023";
+pub const CROSS_CONTRACT_CALL_IN_LOOP: &str = "SANCT_CROSS_CONTRACT_CALL_IN_LOOP";
 
 // ── Source-optional (compiled WASM) checks ────────────────────────────────────
 // Emitted only by `sanctifier wasm`, which analyzes a deployed module directly.
@@ -229,6 +230,11 @@ pub fn all_finding_codes() -> Vec<FindingCode> {
             code: MISSING_RESERVE_AUTH,
             category: "authorization",
             description: "Missing strict authorization guard on reserve or treasury funds withdrawal",
+        },
+        FindingCode {
+            code: CROSS_CONTRACT_CALL_IN_LOOP,
+            category: "resource_limits",
+            description: "Cross-contract call (invoke_contract or a *Client) issued from inside a loop",
         },
         FindingCode {
             code: WASM_NOT_SOROBAN,

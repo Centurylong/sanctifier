@@ -61,8 +61,31 @@ pub fn invariant(args: TokenStream, input: TokenStream) -> TokenStream {
         .source_text()
         .unwrap_or_else(|| "Contract".to_string());
 
-    let harness = kani_gen::kani_harness(&self_name, &args2, 0);
-    let runtime_guard = runtime_guard_gen::runtime_guard_impl(&impl_item, &args2, 0);
+    // Stacking multiple `#[invariant(...)]` attributes on one `impl` expands
+    // them outermost-first: this invocation's own attribute has already been
+    // stripped from `input`, and any *other* `#[invariant(...)]` attributes
+    // below it in source order are still sitting unexpanded in
+    // `impl_item.attrs` (Rust hasn't gotten to them yet). Counting those
+    // gives each invocation a distinct, deterministic index — decreasing
+    // from (n-1) down to 0 as expansion proceeds top-to-bottom — without
+    // needing any state shared across invocations, which proc-macro
+    // attributes have no way to keep. Using a fixed `0` here (as before)
+    // made every invariant on the same impl generate an identically-named
+    // `__sanctify_check_invariant_0`, so a second or third invariant failed
+    // to compile with "duplicate definitions".
+    let index = impl_item
+        .attrs
+        .iter()
+        .filter(|attr| {
+            attr.path()
+                .segments
+                .last()
+                .is_some_and(|seg| seg.ident == "invariant")
+        })
+        .count();
+
+    let harness = kani_gen::kani_harness(&self_name, &args2, index);
+    let runtime_guard = runtime_guard_gen::runtime_guard_impl(&impl_item, &args2, index);
 
     let expanded = quote! {
         #impl_item

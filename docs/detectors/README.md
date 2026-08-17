@@ -52,6 +52,7 @@ detector page and to the relevant [Glossary](../glossary.md) term.
 | [`eager_unwrap_or`](eager_unwrap_or.md) | [`SANCT_EAGER_UNWRAP_OR`](../error-codes.md) | gas_efficiency | Warning | Eagerly-computed expensive fallback in `unwrap_or()` |
 | [`contracterror_enum`](contracterror_enum.md) | [`SANCT_CONTRACTERROR_ENUM`](../error-codes.md) | logic | Warning | Public function returns error enum missing `#[contracterror]` or repr |
 | [`vesting_schedule`](vesting_schedule.md) | [`SANCT_VESTING_RANGE`](../error-codes.md) | logic | Warning | Schedule duration (`end - start`) not proven `end > start` |
+| [`cross_contract_call_in_loop`](cross_contract_call_in_loop.md) | [`SANCT_CROSS_CONTRACT_CALL_IN_LOOP`](../error-codes.md) | resource_limits | Warning | Cross-contract call (`invoke_contract` or a `*Client`) issued from inside a loop |
 
 ## Page anatomy
 
