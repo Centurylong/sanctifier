@@ -96,3 +96,15 @@ Each has a `_result` variant (`guard_owner_result!`, `guard_role_result!`, `guar
 ## License
 
 MIT
+
+## Overflow-safe math guards
+
+Soroban contracts build in release, where Rust integer overflow silently wraps instead of panicking. `guard_checked_add!`, `guard_checked_sub!`, `guard_checked_mul!`, and `guard_checked_div!` make the safe path (`checked_*` plus an explicit trap) as easy to write as the unsafe one, and — like every other guard in this crate — publish the same `inv_fail` audit-trail event before trapping.
+
+```rust,ignore
+use sanctifier_guards::guard_checked_add;
+
+let total = guard_checked_add!(&env, balance, amount, Error::Overflow);
+```
+
+Each expands to an expression yielding the checked result on success, so it can be used inline. Each also has a `_result` variant (`guard_checked_add_result!`, etc.) that returns `Err($err)` instead of trapping, for callers whose signature already returns `Result`.

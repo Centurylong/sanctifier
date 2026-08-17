@@ -56,6 +56,312 @@ pub const INVARIANT_PASS_TOPIC: &str = "inv_pass";
 /// `soroban_sdk::*` themselves.
 pub use soroban_sdk;
 
+// ---------------------------------------------------------------------------
+// Overflow-safe math guards
+//
+// Rust integer overflow is a panic in debug builds and silent two's-complement
+// wraparound in release builds. Soroban contracts build in release, so an
+// un-guarded `a + b` on a balance or supply value that overflows does not
+// trap — it wraps, and the contract keeps executing on a corrupted number.
+// These macros make the safe path (`checked_*` + explicit trap) as easy to
+// write as the unsafe one, and — like every other guard in this crate —
+// leave an `inv_fail` audit-trail event before trapping, so an overflow that
+// *does* get caught is also visible to monitors, not just to the reverted
+// transaction.
+// ---------------------------------------------------------------------------
+
+/// Checked addition: traps with an `inv_fail` event on overflow instead of
+/// wrapping. Expands to an expression yielding the sum on success, so it
+/// can be used inline (`let total = guard_checked_add!(&env, a, b, Error::Overflow);`).
+/// Both operands are evaluated exactly once.
+#[macro_export]
+macro_rules! guard_checked_add {
+    ($env:expr, $a:expr, $b:expr, $err:expr) => {{
+        let __sanctifier_guards_a = $a;
+        let __sanctifier_guards_b = $b;
+        match __sanctifier_guards_a.checked_add(__sanctifier_guards_b) {
+            ::core::option::Option::Some(__sanctifier_guards_sum) => __sanctifier_guards_sum,
+            ::core::option::Option::None => {
+                $crate::__guard_math_trap!($env, "checked_add overflow", $err)
+            }
+        }
+    }};
+}
+
+/// Result-returning variant of [`guard_checked_add!`]. Returns `Err($err)`
+/// instead of trapping.
+#[macro_export]
+macro_rules! guard_checked_add_result {
+    ($env:expr, $a:expr, $b:expr, $err:expr) => {{
+        let __sanctifier_guards_a = $a;
+        let __sanctifier_guards_b = $b;
+        match __sanctifier_guards_a.checked_add(__sanctifier_guards_b) {
+            ::core::option::Option::Some(__sanctifier_guards_sum) => __sanctifier_guards_sum,
+            ::core::option::Option::None => {
+                $crate::__guard_math_trap_result!($env, "checked_add overflow", $err)
+            }
+        }
+    }};
+}
+
+/// Checked subtraction: traps with an `inv_fail` event on underflow instead
+/// of wrapping. Same evaluation and usage discipline as [`guard_checked_add!`].
+#[macro_export]
+macro_rules! guard_checked_sub {
+    ($env:expr, $a:expr, $b:expr, $err:expr) => {{
+        let __sanctifier_guards_a = $a;
+        let __sanctifier_guards_b = $b;
+        match __sanctifier_guards_a.checked_sub(__sanctifier_guards_b) {
+            ::core::option::Option::Some(__sanctifier_guards_diff) => __sanctifier_guards_diff,
+            ::core::option::Option::None => {
+                $crate::__guard_math_trap!($env, "checked_sub underflow", $err)
+            }
+        }
+    }};
+}
+
+/// Result-returning variant of [`guard_checked_sub!`].
+#[macro_export]
+macro_rules! guard_checked_sub_result {
+    ($env:expr, $a:expr, $b:expr, $err:expr) => {{
+        let __sanctifier_guards_a = $a;
+        let __sanctifier_guards_b = $b;
+        match __sanctifier_guards_a.checked_sub(__sanctifier_guards_b) {
+            ::core::option::Option::Some(__sanctifier_guards_diff) => __sanctifier_guards_diff,
+            ::core::option::Option::None => {
+                $crate::__guard_math_trap_result!($env, "checked_sub underflow", $err)
+            }
+        }
+    }};
+}
+
+/// Checked multiplication: traps with an `inv_fail` event on overflow
+/// instead of wrapping. Same evaluation and usage discipline as
+/// [`guard_checked_add!`].
+#[macro_export]
+macro_rules! guard_checked_mul {
+    ($env:expr, $a:expr, $b:expr, $err:expr) => {{
+        let __sanctifier_guards_a = $a;
+        let __sanctifier_guards_b = $b;
+        match __sanctifier_guards_a.checked_mul(__sanctifier_guards_b) {
+            ::core::option::Option::Some(__sanctifier_guards_prod) => __sanctifier_guards_prod,
+            ::core::option::Option::None => {
+                $crate::__guard_math_trap!($env, "checked_mul overflow", $err)
+            }
+        }
+    }};
+}
+
+/// Result-returning variant of [`guard_checked_mul!`].
+#[macro_export]
+macro_rules! guard_checked_mul_result {
+    ($env:expr, $a:expr, $b:expr, $err:expr) => {{
+        let __sanctifier_guards_a = $a;
+        let __sanctifier_guards_b = $b;
+        match __sanctifier_guards_a.checked_mul(__sanctifier_guards_b) {
+            ::core::option::Option::Some(__sanctifier_guards_prod) => __sanctifier_guards_prod,
+            ::core::option::Option::None => {
+                $crate::__guard_math_trap_result!($env, "checked_mul overflow", $err)
+            }
+        }
+    }};
+}
+
+/// Checked division: traps with an `inv_fail` event on division-by-zero
+/// instead of panicking with an unstructured runtime message. Same
+/// evaluation and usage discipline as [`guard_checked_add!`].
+#[macro_export]
+macro_rules! guard_checked_div {
+    ($env:expr, $a:expr, $b:expr, $err:expr) => {{
+        let __sanctifier_guards_a = $a;
+        let __sanctifier_guards_b = $b;
+        match __sanctifier_guards_a.checked_div(__sanctifier_guards_b) {
+            ::core::option::Option::Some(__sanctifier_guards_quot) => __sanctifier_guards_quot,
+            ::core::option::Option::None => {
+                $crate::__guard_math_trap!($env, "checked_div division by zero", $err)
+            }
+        }
+    }};
+}
+
+/// Result-returning variant of [`guard_checked_div!`].
+#[macro_export]
+macro_rules! guard_checked_div_result {
+    ($env:expr, $a:expr, $b:expr, $err:expr) => {{
+        let __sanctifier_guards_a = $a;
+        let __sanctifier_guards_b = $b;
+        match __sanctifier_guards_a.checked_div(__sanctifier_guards_b) {
+            ::core::option::Option::Some(__sanctifier_guards_quot) => __sanctifier_guards_quot,
+            ::core::option::Option::None => {
+                $crate::__guard_math_trap_result!($env, "checked_div division by zero", $err)
+            }
+        }
+    }};
+}
+
+/// Internal: publish the `inv_fail` event and trap. Shared by every
+/// `guard_checked_*!` trapping variant so the event schema stays identical
+/// to `guard_invariant!`'s. Not part of the public API.
+#[doc(hidden)]
+#[macro_export]
+macro_rules! __guard_math_trap {
+    ($env:expr, $msg:expr, $err:expr) => {{
+        let __sanctifier_guards_env: &$crate::soroban_sdk::Env = &$env;
+        __sanctifier_guards_env.events().publish(
+            ($crate::soroban_sdk::symbol_short!("inv_fail"),),
+            (
+                $crate::soroban_sdk::symbol_short!("cond"),
+                $crate::soroban_sdk::String::from_str(__sanctifier_guards_env, $msg),
+            ),
+        );
+        $crate::soroban_sdk::panic_with_error!(__sanctifier_guards_env, $err);
+    }};
+}
+
+/// Internal: publish the `inv_fail` event and return `Err`. Shared by every
+/// `guard_checked_*_result!` variant. Not part of the public API.
+#[doc(hidden)]
+#[macro_export]
+macro_rules! __guard_math_trap_result {
+    ($env:expr, $msg:expr, $err:expr) => {{
+        let __sanctifier_guards_env: &$crate::soroban_sdk::Env = &$env;
+        __sanctifier_guards_env.events().publish(
+            ($crate::soroban_sdk::symbol_short!("inv_fail"),),
+            (
+                $crate::soroban_sdk::symbol_short!("cond"),
+                $crate::soroban_sdk::String::from_str(__sanctifier_guards_env, $msg),
+            ),
+        );
+        return ::core::result::Result::Err($err.into());
+    }};
+}
+
+#[cfg(test)]
+mod math_guard_tests {
+    use soroban_sdk::{contract, contracterror, contractimpl, Env};
+
+    #[contracterror]
+    #[derive(Copy, Clone, Debug, Eq, PartialEq, PartialOrd, Ord)]
+    #[repr(u32)]
+    pub enum MathError {
+        Overflow = 1,
+        Underflow = 2,
+        DivByZero = 3,
+    }
+
+    #[contract]
+    pub struct MathDemo;
+
+    #[contractimpl]
+    impl MathDemo {
+        pub fn add(env: Env, a: u64, b: u64) -> Result<u64, soroban_sdk::Error> {
+            Ok(crate::guard_checked_add_result!(
+                &env,
+                a,
+                b,
+                MathError::Overflow
+            ))
+        }
+
+        pub fn sub(env: Env, a: u64, b: u64) -> Result<u64, soroban_sdk::Error> {
+            Ok(crate::guard_checked_sub_result!(
+                &env,
+                a,
+                b,
+                MathError::Underflow
+            ))
+        }
+
+        pub fn mul(env: Env, a: u64, b: u64) -> Result<u64, soroban_sdk::Error> {
+            Ok(crate::guard_checked_mul_result!(
+                &env,
+                a,
+                b,
+                MathError::Overflow
+            ))
+        }
+
+        pub fn div(env: Env, a: u64, b: u64) -> Result<u64, soroban_sdk::Error> {
+            Ok(crate::guard_checked_div_result!(
+                &env,
+                a,
+                b,
+                MathError::DivByZero
+            ))
+        }
+    }
+
+    fn setup() -> (Env, soroban_sdk::Address) {
+        let env = Env::default();
+        let id = env.register_contract(None, MathDemo);
+        (env, id)
+    }
+
+    #[test]
+    fn add_within_bounds_passes() {
+        let (env, id) = setup();
+        let client = MathDemoClient::new(&env, &id);
+        assert_eq!(client.try_add(&2u64, &3u64).unwrap().unwrap(), 5u64);
+    }
+
+    #[test]
+    fn add_overflow_traps_with_typed_error() {
+        let (env, id) = setup();
+        let client = MathDemoClient::new(&env, &id);
+        let res = client.try_add(&u64::MAX, &1u64);
+        let err: soroban_sdk::Error = MathError::Overflow.into();
+        assert_eq!(res.unwrap_err().unwrap(), err);
+    }
+
+    #[test]
+    fn sub_within_bounds_passes() {
+        let (env, id) = setup();
+        let client = MathDemoClient::new(&env, &id);
+        assert_eq!(client.try_sub(&5u64, &3u64).unwrap().unwrap(), 2u64);
+    }
+
+    #[test]
+    fn sub_underflow_traps_with_typed_error() {
+        let (env, id) = setup();
+        let client = MathDemoClient::new(&env, &id);
+        let res = client.try_sub(&1u64, &2u64);
+        let err: soroban_sdk::Error = MathError::Underflow.into();
+        assert_eq!(res.unwrap_err().unwrap(), err);
+    }
+
+    #[test]
+    fn mul_within_bounds_passes() {
+        let (env, id) = setup();
+        let client = MathDemoClient::new(&env, &id);
+        assert_eq!(client.try_mul(&4u64, &5u64).unwrap().unwrap(), 20u64);
+    }
+
+    #[test]
+    fn mul_overflow_traps_with_typed_error() {
+        let (env, id) = setup();
+        let client = MathDemoClient::new(&env, &id);
+        let res = client.try_mul(&u64::MAX, &2u64);
+        let err: soroban_sdk::Error = MathError::Overflow.into();
+        assert_eq!(res.unwrap_err().unwrap(), err);
+    }
+
+    #[test]
+    fn div_by_nonzero_passes() {
+        let (env, id) = setup();
+        let client = MathDemoClient::new(&env, &id);
+        assert_eq!(client.try_div(&10u64, &2u64).unwrap().unwrap(), 5u64);
+    }
+
+    #[test]
+    fn div_by_zero_traps_with_typed_error() {
+        let (env, id) = setup();
+        let client = MathDemoClient::new(&env, &id);
+        let res = client.try_div(&10u64, &0u64);
+        let err: soroban_sdk::Error = MathError::DivByZero.into();
+        assert_eq!(res.unwrap_err().unwrap(), err);
+    }
+}
+
 /// Assert a runtime invariant.
 ///
 /// If `cond` evaluates to `false`, this macro publishes a single
