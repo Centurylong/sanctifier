@@ -21,6 +21,7 @@ This document contains the help content for the `sanctifier` command-line progra
 * [`sanctifier watch`↴](#sanctifier-watch)
 * [`sanctifier verify`↴](#sanctifier-verify)
 * [`sanctifier prove`↴](#sanctifier-prove)
+* [`sanctifier sdk-check`↴](#sanctifier-sdk-check)
 * [`sanctifier cve`↴](#sanctifier-cve)
 * [`sanctifier cve search`↴](#sanctifier-cve-search)
 * [`sanctifier cve list`↴](#sanctifier-cve-list)
@@ -51,6 +52,7 @@ Stellar Soroban Security & Formal Verification Suite
 * `watch` — Watch source files and re-run analysis automatically on change (debounced)
 * `verify` — Verify #[sanctify::invariant] declarations across a contract or workspace
 * `prove` — Run SMT-based formal verification on Soroban token contract invariants
+* `sdk-check` — Check the resolved soroban-sdk version(s) in Cargo.lock against known-vulnerable version ranges
 * `cve` — Search, list, show, and export the public Soroban/Stellar CVE database
 * `wasm` — Analyze a compiled .wasm module directly when source is unavailable (source-optional mode)
 
@@ -322,6 +324,27 @@ Run SMT-based formal verification on Soroban token contract invariants
 * `--output-dir <OUTPUT_DIR>` — Directory to write proof certificates (default: <path>/.sanctifier/proofs)
 * `--no-save` — Skip saving proof certificates to disk (useful for CI smoke checks)
 * `--json` — Emit results as JSON
+
+
+
+## `sanctifier sdk-check`
+
+Check the resolved soroban-sdk version(s) in Cargo.lock against known-vulnerable version ranges
+
+**Usage:** `sanctifier sdk-check [OPTIONS] [PATH]`
+
+###### **Arguments:**
+
+* `<PATH>` — Path to the crate or workspace to check (must contain Cargo.lock)
+
+  Default value: `.`
+
+###### **Options:**
+
+* `-f`, `--format <FORMAT>` — Output format (text, json)
+
+  Default value: `text`
+* `--vuln-db <VULN_DB>` — Path to a custom vulnerability database JSON file
 
 
 

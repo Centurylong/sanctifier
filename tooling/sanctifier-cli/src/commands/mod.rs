@@ -8,6 +8,7 @@ pub mod diff;
 pub mod fix;
 pub mod init;
 pub mod prove;
+pub mod sdk_check;
 pub mod update;
 pub mod verify;
 pub mod wasm;
