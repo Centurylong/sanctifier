@@ -88,6 +88,12 @@ jobs:
           echo "WASM size: $(du -h "$WASM_PATH" | cut -f1)"
           echo "WASM_PATH=$WASM_PATH" >> $GITHUB_ENV
 
+      - name: Unit-test deploy-time bytecode verification
+        # Runs offline (fake `soroban` shell function, no network) — proves
+        # the source-vs-on-chain hash gate actually aborts on mismatch
+        # before trusting it to gate a real deployment below.
+        run: bash scripts/tests/test-verify-bytecode-hash.sh
+
       - name: Show Soroban network info
         run: |
           soroban network ls
