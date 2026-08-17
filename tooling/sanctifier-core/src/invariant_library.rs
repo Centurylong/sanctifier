@@ -97,7 +97,11 @@ mod tests {
         );
 
         let decls = scan_invariant_attrs(&source, "example.rs");
-        assert_eq!(decls.len(), 1, "template did not scan as an invariant: {expr}");
+        assert_eq!(
+            decls.len(),
+            1,
+            "template did not scan as an invariant: {expr}"
+        );
         // `expr_str` is re-serialized from tokens by `quote!`, which spaces
         // punctuation (`pure :: conservation :: ...`), so compare with
         // whitespace stripped rather than an exact substring.
@@ -111,7 +115,10 @@ mod tests {
     #[test]
     fn conservation_templates_are_adoptable() {
         assert_adoptable(&conservation::total_preserved("total_supply"));
-        assert_adoptable(&conservation::split_sum_preserved("from_balance", "to_balance"));
+        assert_adoptable(&conservation::split_sum_preserved(
+            "from_balance",
+            "to_balance",
+        ));
     }
 
     #[test]
