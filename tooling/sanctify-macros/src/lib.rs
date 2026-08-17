@@ -8,6 +8,8 @@ mod runtime_guard_gen;
 use proc_macro::TokenStream;
 use proc_macro2::TokenStream as TokenStream2;
 use quote::quote;
+use std::collections::hash_map::DefaultHasher;
+use std::hash::{Hash, Hasher};
 use syn::{parse2, parse_macro_input, spanned::Spanned, Expr, ItemImpl};
 
 /// Declare a contract-level invariant that Sanctifier will verify.
@@ -61,8 +63,20 @@ pub fn invariant(args: TokenStream, input: TokenStream) -> TokenStream {
         .source_text()
         .unwrap_or_else(|| "Contract".to_string());
 
-    let harness = kani_gen::kani_harness(&self_name, &args2, 0);
-    let runtime_guard = runtime_guard_gen::runtime_guard_impl(&impl_item, &args2, 0);
+    // Stacking multiple `#[invariant(...)]` attributes on the same impl block
+    // expands each one as an independent macro invocation with no shared
+    // ordinal — hardcoding index 0 here previously made every invariant on
+    // the same impl generate the identical `__sanctify_check_invariant_0`
+    // symbol (both here and in the sibling runtime-guard method), which
+    // fails to compile (E0592: duplicate definitions) as soon as a second
+    // invariant is added. Hash the expression's own token text instead, so
+    // distinct invariants get distinct, deterministic names.
+    let mut hasher = DefaultHasher::new();
+    args2.to_string().hash(&mut hasher);
+    let disambiguator = hasher.finish();
+
+    let harness = kani_gen::kani_harness(&self_name, &args2, disambiguator);
+    let runtime_guard = runtime_guard_gen::runtime_guard_impl(&impl_item, &args2, disambiguator);
 
     let expanded = quote! {
         #impl_item

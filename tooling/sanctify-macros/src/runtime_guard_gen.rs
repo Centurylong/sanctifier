@@ -34,10 +34,14 @@ use syn::{Ident, ItemImpl};
 /// "toggle per build profile" from the issue — so it is exactly zero cost
 /// in a release Soroban build. A consuming crate can force it on in release
 /// too by declaring a `sanctify-runtime-invariants` feature and enabling it.
-pub fn runtime_guard_impl(impl_item: &ItemImpl, expr: &TokenStream, index: usize) -> TokenStream {
+pub fn runtime_guard_impl(
+    impl_item: &ItemImpl,
+    expr: &TokenStream,
+    disambiguator: u64,
+) -> TokenStream {
     let self_ty = &impl_item.self_ty;
     let fn_name = Ident::new(
-        &format!("__sanctify_check_invariant_{index}"),
+        &format!("__sanctify_check_invariant_{disambiguator:x}"),
         Span::call_site(),
     );
     let expr_str = expr.to_string();
