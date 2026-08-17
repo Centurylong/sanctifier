@@ -8,6 +8,7 @@ pub mod invariant;
 pub mod macro_expand;
 pub mod memory;
 pub mod patcher;
+pub mod priority;
 pub mod rules;
 #[cfg(feature = "smt")]
 pub mod smt;
