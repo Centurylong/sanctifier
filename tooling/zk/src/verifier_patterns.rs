@@ -39,8 +39,19 @@ impl ProofSystem {
 /// Crate/type signatures characteristic of each proof system's Rust
 /// verifier implementations.
 const GROTH16_MARKERS: &[&str] = &["ark_groth16", "ark-groth16", "Groth16::", "VerifyingKey"];
-const PLONK_MARKERS: &[&str] = &["ark_plonk", "ark-plonk", "plonky2", "PlonkVerifier", "plonk::"];
-const HALO2_MARKERS: &[&str] = &["halo2_proofs", "halo2-proofs", "halo2curves", "halo2_gadgets"];
+const PLONK_MARKERS: &[&str] = &[
+    "ark_plonk",
+    "ark-plonk",
+    "plonky2",
+    "PlonkVerifier",
+    "plonk::",
+];
+const HALO2_MARKERS: &[&str] = &[
+    "halo2_proofs",
+    "halo2-proofs",
+    "halo2curves",
+    "halo2_gadgets",
+];
 
 /// Best-effort detection of every proof system referenced in `source`.
 ///
