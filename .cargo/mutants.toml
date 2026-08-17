@@ -1,0 +1,24 @@
+# Configuration for `cargo mutants` (https://mutants.rs), scoped to the
+# detector rules — the part of sanctifier-core where a survived mutant
+# means "a detector's own test suite wouldn't notice if its logic broke."
+# See docs/mutation-testing.md for how to run this and triage results.
+
+# Only mutate the detector rules themselves. Mutating the shared engine
+# (parsing, the finding-reporting plumbing, CLI glue) mixes two very
+# different questions — "is this detector's test suite strong" vs "is the
+# engine's own test suite strong" — into one report, and the engine side
+# is already covered by its own unit tests without needing the mutation
+# harness to prove it.
+examine_globs = ["tooling/sanctifier-core/src/rules/*.rs"]
+
+# Detector unit tests each construct a small source snippet and assert on
+# findings; they run in well under a second per test even under a mutant,
+# so a generous-looking multiplier still keeps a full run well bounded.
+minimum_test_timeout = 20
+timeout_multiplier = 5.0
+
+# Every detector must already have a golden `insta` snapshot per
+# CONTRIBUTING.md; running with `--all-features` matches how CI invokes
+# `cargo test -p sanctifier-core --all-features` so mutants aren't
+# reported as caught/missed differently than what CI actually exercises.
+additional_cargo_test_args = ["--all-features"]

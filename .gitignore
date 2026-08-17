@@ -21,3 +21,7 @@ tooling/sanctifier-wasm/pkg-node/
 
 # Stored analysis reports (runtime data)
 data/reports/*.json
+
+# cargo-mutants scratch/report output (see scripts/run-mutation-tests.sh)
+mutants.out/
+mutants.out.old/
