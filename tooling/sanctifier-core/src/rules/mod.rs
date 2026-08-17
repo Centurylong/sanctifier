@@ -151,6 +151,20 @@ impl RuleRegistry {
             }
         }
 
+        // Ensure a deterministic, run-independent ordering: sort by source
+        // location first, then rule name, then message. This makes output
+        // reproducible regardless of rule registration/iteration order or
+        // any future parallel scheduling (e.g. par_iter or concurrent
+        // multi-file scans), which matters for diffing scan output,
+        // snapshot tests, and CI reproducibility.
+        violations.sort_by(|a, b| {
+            (&a.location, a.rule_name.as_str(), a.message.as_str()).cmp(&(
+                &b.location,
+                b.rule_name.as_str(),
+                b.message.as_str(),
+            ))
+        });
+
         violations
     }
 
@@ -271,5 +285,124 @@ mod rule_timing_tests {
 
         assert_eq!(slow.len(), 1);
         assert_eq!(slow[0].rule_name, "slow_rule");
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    struct FixedRule {
+        name: &'static str,
+        violations: Vec<RuleViolation>,
+    }
+
+    impl Rule for FixedRule {
+        fn name(&self) -> &str {
+            self.name
+        }
+
+        fn description(&self) -> &str {
+            "test-only rule that returns a fixed set of violations"
+        }
+
+        fn check(&self, _source: &str) -> Vec<RuleViolation> {
+            self.violations.clone()
+        }
+
+        fn as_any(&self) -> &dyn Any {
+            self
+        }
+    }
+
+    fn violation(rule_name: &str, message: &str, location: &str) -> RuleViolation {
+        RuleViolation::new(
+            rule_name,
+            Severity::Warning,
+            message.to_string(),
+            location.to_string(),
+        )
+    }
+
+    fn as_tuples(violations: &[RuleViolation]) -> Vec<(String, String, String)> {
+        violations
+            .iter()
+            .map(|v| (v.location.clone(), v.rule_name.clone(), v.message.clone()))
+            .collect()
+    }
+
+    #[test]
+    fn run_all_sorts_violations_by_location_then_rule_then_message() {
+        let mut registry = RuleRegistry::new();
+
+        // Register rules in an order, and with per-rule violation orders,
+        // that are deliberately "wrong" relative to the expected sort key.
+        registry.register(FixedRule {
+            name: "rule_z",
+            violations: vec![violation("rule_z", "z message", "src/lib.rs:9:1")],
+        });
+        registry.register(FixedRule {
+            name: "rule_a",
+            violations: vec![
+                violation("rule_a", "second", "src/lib.rs:2:5"),
+                violation("rule_a", "first", "src/lib.rs:1:1"),
+            ],
+        });
+        registry.register(FixedRule {
+            name: "rule_b",
+            violations: vec![violation("rule_b", "b message", "src/lib.rs:1:1")],
+        });
+
+        let violations = registry.run_all("unused");
+
+        let expected = vec![
+            (
+                "src/lib.rs:1:1".to_string(),
+                "rule_a".to_string(),
+                "first".to_string(),
+            ),
+            (
+                "src/lib.rs:1:1".to_string(),
+                "rule_b".to_string(),
+                "b message".to_string(),
+            ),
+            (
+                "src/lib.rs:2:5".to_string(),
+                "rule_a".to_string(),
+                "second".to_string(),
+            ),
+            (
+                "src/lib.rs:9:1".to_string(),
+                "rule_z".to_string(),
+                "z message".to_string(),
+            ),
+        ];
+
+        assert_eq!(as_tuples(&violations), expected);
+    }
+
+    #[test]
+    fn run_all_is_deterministic_across_repeated_runs() {
+        let mut registry = RuleRegistry::new();
+        registry.register(FixedRule {
+            name: "rule_z",
+            violations: vec![violation("rule_z", "z message", "src/lib.rs:10:1")],
+        });
+        registry.register(FixedRule {
+            name: "rule_a",
+            violations: vec![
+                violation("rule_a", "second", "src/lib.rs:1:5"),
+                violation("rule_a", "first", "src/lib.rs:1:1"),
+            ],
+        });
+        registry.register(FixedRule {
+            name: "rule_b",
+            violations: vec![violation("rule_b", "b message", "src/lib.rs:1:1")],
+        });
+
+        let first_run = registry.run_all("unused");
+        let second_run = registry.run_all("unused");
+
+        assert_eq!(as_tuples(&first_run), as_tuples(&second_run));
     }
 }

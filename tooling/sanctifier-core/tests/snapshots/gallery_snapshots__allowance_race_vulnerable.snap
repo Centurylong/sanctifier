@@ -2,13 +2,13 @@
 source: tooling/sanctifier-core/tests/gallery_snapshots.rs
 expression: findings
 ---
-- rule_name: SANCT_ALLOWANCE_RACE
-  severity: Warning
-  message: "SANCT_ALLOWANCE_RACE: `approve` overwrites the allowance at key `(owner . clone () , spender . clone ())` unconditionally from a caller-supplied amount, enabling the approve front-running race"
-  location: "approve:16"
-  suggestion: "Use delta semantics (`increase_allowance`/`decrease_allowance`) or a compare-and-set: read the current allowance and require an `expected_current` argument to match before writing the new value."
 - rule_name: SANCT_SEP41_APPROVAL_NO_EXPIRATION
   severity: Error
   message: "SANCT_SEP41_APPROVAL_NO_EXPIRATION: `approve` has no expiration_ledger parameter, so the allowance it grants never expires (SEP-41 violation)"
   location: "approve:14"
   suggestion: "Add an `expiration_ledger: u32` parameter and store/extend the allowance's TTL to it"
+- rule_name: SANCT_ALLOWANCE_RACE
+  severity: Warning
+  message: "SANCT_ALLOWANCE_RACE: `approve` overwrites the allowance at key `(owner . clone () , spender . clone ())` unconditionally from a caller-supplied amount, enabling the approve front-running race"
+  location: "approve:16"
+  suggestion: "Use delta semantics (`increase_allowance`/`decrease_allowance`) or a compare-and-set: read the current allowance and require an `expected_current` argument to match before writing the new value."
