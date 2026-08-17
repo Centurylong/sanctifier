@@ -16,6 +16,7 @@ pub mod init_hardcoded_admin;
 pub mod ledger_seconds;
 pub mod ledger_size;
 pub mod missing_ttl;
+pub mod nullifier_growth;
 pub mod panic_detection;
 pub mod reserve_withdrawal;
 pub mod sanct_unwrap;
@@ -232,6 +233,7 @@ impl RuleRegistry {
         registry.register(unbounded_event_emission::UnboundedEventEmissionRule::new());
         registry.register(sep41_allowance_decrement::Sep41AllowanceDecrementRule::new());
         registry.register(sep41_approval_expiration::Sep41ApprovalExpirationRule::new());
+        registry.register(nullifier_growth::NullifierGrowthRule::new());
         registry
     }
 }
