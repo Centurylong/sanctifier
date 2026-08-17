@@ -65,6 +65,8 @@ pub enum Commands {
     Watch(commands::watch::WatchArgs),
     /// Verify #[sanctify::invariant] declarations across a contract or workspace
     Verify(commands::verify::VerifyArgs),
+    /// Cross-check a ZK circuit's declared public inputs against a verifier contract's assumed encoding
+    CheckPublicInputs(commands::check_public_inputs::CheckPublicInputsArgs),
     /// Run SMT-based formal verification on Soroban token contract invariants
     Prove(commands::prove::ProveArgs),
     /// Check the resolved soroban-sdk version(s) in Cargo.lock against known-vulnerable version ranges
@@ -190,6 +192,9 @@ fn main() -> anyhow::Result<()> {
         }
         Commands::Verify(args) => {
             commands::verify::exec(args)?;
+        }
+        Commands::CheckPublicInputs(args) => {
+            commands::check_public_inputs::exec(args)?;
         }
         Commands::Prove(args) => {
             commands::prove::exec(args)?;

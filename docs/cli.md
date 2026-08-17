@@ -23,6 +23,7 @@ This document contains the help content for the `sanctifier` command-line progra
 * [`sanctifier update`↴](#sanctifier-update)
 * [`sanctifier watch`↴](#sanctifier-watch)
 * [`sanctifier verify`↴](#sanctifier-verify)
+* [`sanctifier check-public-inputs`↴](#sanctifier-check-public-inputs)
 * [`sanctifier prove`↴](#sanctifier-prove)
 * [`sanctifier sdk-check`↴](#sanctifier-sdk-check)
 * [`sanctifier cve`↴](#sanctifier-cve)
@@ -59,6 +60,7 @@ Stellar Soroban Security & Formal Verification Suite
 * `update` — Check for and download the latest Sanctifier binary
 * `watch` — Watch source files and re-run analysis automatically on change (debounced)
 * `verify` — Verify #[sanctify::invariant] declarations across a contract or workspace
+* `check-public-inputs` — Cross-check a ZK circuit's declared public inputs against a verifier contract's assumed encoding
 * `prove` — Run SMT-based formal verification on Soroban token contract invariants
 * `sdk-check` — Check the resolved soroban-sdk version(s) in Cargo.lock against known-vulnerable version ranges
 * `cve` — Search, list, show, and export the public Soroban/Stellar CVE database
@@ -378,6 +380,20 @@ Verify #[sanctify::invariant] declarations across a contract or workspace
 * `--quiet` — Suppress the summary line at the end of human-readable output
 
   Default value: `false`
+
+
+
+## `sanctifier check-public-inputs`
+
+Cross-check a ZK circuit's declared public inputs against a verifier contract's assumed encoding
+
+**Usage:** `sanctifier check-public-inputs [OPTIONS] --circuit <CIRCUIT> --contract <CONTRACT>`
+
+###### **Options:**
+
+* `--circuit <CIRCUIT>` — Path to the circuit source file (e.g. tooling/zk/src/circuit.rs)
+* `--contract <CONTRACT>` — Path to the verifier contract source file (e.g. contracts/zk-verifier/src/lib.rs)
+* `--json` — Emit the result as JSON
 
 
 

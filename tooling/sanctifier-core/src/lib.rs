@@ -10,6 +10,7 @@ pub mod memory;
 pub mod parse_cache;
 pub mod patcher;
 pub mod priority;
+pub mod public_input_consistency;
 pub mod rules;
 #[cfg(feature = "smt")]
 pub mod smt;
