@@ -5,6 +5,7 @@ pub mod finding_codes;
 pub mod gas_estimator;
 pub mod gas_report;
 pub mod invariant;
+pub mod invariant_library;
 pub mod macro_expand;
 pub mod memory;
 pub mod patcher;
