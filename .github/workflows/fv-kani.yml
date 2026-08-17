@@ -23,7 +23,7 @@ jobs:
       # Per-harness wall-clock budget handed to Kani.
       HARNESS_TIMEOUT: 120s
       # Crates that contain `#[cfg(kani)]` proof harnesses.
-      KANI_PACKAGES: kani-poc-contract token-invariants amm-pool reentrancy-guard
+      KANI_PACKAGES: kani-poc-contract token-invariants sep41-token-invariants amm-pool reentrancy-guard
 
     steps:
       - name: Checkout

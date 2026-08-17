@@ -236,7 +236,8 @@ impl Sep41Token {
 }
 
 // ── Pure invariant tests ──────────────────────────────────────────────────────
-// Integration tests (requiring env.register()) are in tests/integration_tests.rs
+// The rest of the pure-function invariant tests are in tests/pure_tests.rs
+// (kept out of this lib test binary to avoid an env.register() compile issue).
 
 #[cfg(test)]
 mod tests {

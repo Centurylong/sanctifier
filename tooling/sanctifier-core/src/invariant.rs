@@ -70,7 +70,11 @@ fn extract_invariant_expr(attr: &Attribute) -> Option<String> {
 
 /// Best-effort name of the impl's self-type.
 fn impl_self_name(node: &ItemImpl) -> String {
-    quote::quote!(#node.self_ty)
+    // Bind to a local first: `quote!`'s `#var` interpolation takes a single
+    // token, so `quote!(#node.self_ty)` would render the *entire* impl
+    // block's tokens followed by a literal `.self_ty`, not project the field.
+    let self_ty = &node.self_ty;
+    quote::quote!(#self_ty)
         .to_string()
         .split_whitespace()
         .collect::<Vec<_>>()
@@ -257,6 +261,26 @@ mod tests {
         assert!(decls.is_empty());
     }
 
+    /// Regression test for a bug where `impl_self_name` rendered the entire
+    /// `impl` block's tokens (doc comments included) instead of just the
+    /// self-type — surfaced by `sanctifier verify` producing an unreadable
+    /// `contract_name` for any impl with a multi-line doc comment, e.g.
+    /// `contracts/sep41-token-invariants`.
+    #[test]
+    fn test_contract_name_is_the_self_type_not_the_whole_impl_block() {
+        let source = r#"
+            /// A multi-line doc comment on the impl block, the kind that
+            /// previously ended up dumped into `contract_name` whole.
+            #[sanctify::invariant(total_supply == sum_of_balances())]
+            impl Token {
+                pub fn total_supply(_env: Env) -> i128 { 0 }
+            }
+        "#;
+        let decls = scan_invariant_attrs(source, "test.rs");
+        assert_eq!(decls.len(), 1);
+        assert_eq!(decls[0].contract_name, "Token");
+    }
+
     #[test]
     fn test_scan_multiple_invariants_on_separate_impls() {
         let source = r#"
@@ -268,6 +292,8 @@ mod tests {
         "#;
         let decls = scan_invariant_attrs(source, "multi.rs");
         assert_eq!(decls.len(), 2);
+        assert_eq!(decls[0].contract_name, "ContractA");
+        assert_eq!(decls[1].contract_name, "ContractB");
     }
 
     #[test]
