@@ -111,12 +111,37 @@ jobs:
           cargo build -p reentrancy-guard
           cargo build -p protected-vault
 
+      - name: Build and test SEP-41 reference token (issue #735)
+        # contracts/sep41-token-invariants is the SEP-41 conformance property
+        # set (transfer/approve/allowance/transfer_from/burn/mint, all pure
+        # + #[invariant]-annotated). Previously built locally but never run
+        # in CI, so it could silently bit-rot; the Kani proofs are covered
+        # separately by the fv-kani.yml KANI_PACKAGES matrix.
+        run: |
+          cargo build -p sep41-token-invariants
+          cargo test -p sep41-token-invariants
+
       - name: Verify SMT proof — supply_conserved
         run: |
           cd tooling/sanctifier-cli
           ./target/release/sanctifier prove \
             --invariant supply_conserved \
             --no-save
+
+      - name: Verify SEP-41 reference token invariants are discovered
+        # "Checked against a reference token" (issue #735): confirms
+        # `sanctifier verify` finds and correctly attributes all 3
+        # #[invariant] declarations on contracts/sep41-token-invariants.
+        run: |
+          cd tooling/sanctifier-cli
+          output=$(./target/release/sanctifier verify ../../contracts/sep41-token-invariants)
+          echo "$output"
+          echo "$output" | grep -q "Sep41Token :: pure :: supply_conserved_after_transfer " \
+            || { echo "::error::supply_conserved_after_transfer invariant not discovered"; exit 1; }
+          echo "$output" | grep -q "Sep41Token :: pure :: supply_conserved_after_transfer_from" \
+            || { echo "::error::supply_conserved_after_transfer_from invariant not discovered"; exit 1; }
+          echo "$output" | grep -q "Sep41Token :: pure :: allowance_is_set_by_approve" \
+            || { echo "::error::allowance_is_set_by_approve invariant not discovered"; exit 1; }
 
   soroban-sdk-compat:
     # Compatibility matrix (issue #779): verify each supported soroban-sdk
