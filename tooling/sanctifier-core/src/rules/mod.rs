@@ -26,6 +26,7 @@ pub mod unbounded_storage;
 pub mod unhandled_result;
 pub mod unsigned_underflow;
 pub mod unused_variable;
+pub mod vesting_schedule;
 pub mod view_panic;
 pub mod wrong_auth_args;
 
@@ -222,6 +223,7 @@ impl RuleRegistry {
         registry.register(unbounded_return::UnboundedReturnRule::new());
         registry.register(reserve_withdrawal::ReserveWithdrawalRule::new());
         registry.register(contracterror_enum::ContracterrorEnumRule::new());
+        registry.register(vesting_schedule::VestingScheduleRule::new());
         registry
     }
 }

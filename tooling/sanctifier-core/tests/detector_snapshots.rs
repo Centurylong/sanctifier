@@ -26,7 +26,8 @@ use sanctifier_core::rules::{
     state_write_in_view::StateWriteInViewRule, tier_boundary_off_by_one::TierBoundaryOffByOneRule,
     unbounded_storage::UnboundedStorageRule, unhandled_result::UnhandledResultRule,
     unsigned_underflow::UnsignedUnderflowRule, unused_variable::UnusedVariableRule,
-    view_panic::ViewPanicRule, wrong_auth_args::WrongAuthArgsRule, Rule, RuleRegistry,
+    vesting_schedule::VestingScheduleRule, view_panic::ViewPanicRule,
+    wrong_auth_args::WrongAuthArgsRule, Rule, RuleRegistry,
 };
 
 /// Run a detector against its fixture and snapshot the resulting findings.
@@ -352,6 +353,27 @@ fn shift_overflow_detector_is_registered_in_default_rules() {
     assert!(findings
         .iter()
         .all(|finding| finding.rule_name == "SANCT_SHIFT_OVERFLOW"));
+}
+
+#[test]
+fn snapshot_vesting_schedule() {
+    assert_detector_snapshot(
+        "vesting_schedule",
+        &VestingScheduleRule::new(),
+        include_str!("fixtures/detectors/vesting_schedule.rs"),
+    );
+}
+
+#[test]
+fn vesting_schedule_detector_is_registered_in_default_rules() {
+    let findings = RuleRegistry::with_default_rules().run_by_name(
+        include_str!("fixtures/detectors/vesting_schedule.rs"),
+        "vesting_schedule",
+    );
+
+    assert_eq!(findings.len(), 1, "{findings:#?}");
+    assert_eq!(findings[0].rule_name, "vesting_schedule");
+    assert!(findings[0].location.contains("unguarded"));
 }
 
 #[test]
