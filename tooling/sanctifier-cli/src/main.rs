@@ -67,6 +67,8 @@ pub enum Commands {
     Verify(commands::verify::VerifyArgs),
     /// Run SMT-based formal verification on Soroban token contract invariants
     Prove(commands::prove::ProveArgs),
+    /// Check the resolved soroban-sdk version(s) in Cargo.lock against known-vulnerable version ranges
+    SdkCheck(commands::sdk_check::SdkCheckArgs),
     /// Search, list, show, and export the public Soroban/Stellar CVE database
     Cve(commands::cve::CveArgs),
     /// Generate a CycloneDX-format Software Bill of Materials (SBOM) from Cargo.lock
@@ -191,6 +193,9 @@ fn main() -> anyhow::Result<()> {
         }
         Commands::Prove(args) => {
             commands::prove::exec(args)?;
+        }
+        Commands::SdkCheck(args) => {
+            commands::sdk_check::exec(args)?;
         }
         Commands::Cve(args) => {
             commands::cve::exec(args)?;
