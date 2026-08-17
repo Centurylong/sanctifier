@@ -30,6 +30,7 @@ This document contains the help content for the `sanctifier` command-line progra
 * [`sanctifier cve show`↴](#sanctifier-cve-show)
 * [`sanctifier cve export`↴](#sanctifier-cve-export)
 * [`sanctifier cve serve`↴](#sanctifier-cve-serve)
+* [`sanctifier sbom`↴](#sanctifier-sbom)
 * [`sanctifier wasm`↴](#sanctifier-wasm)
 * [`sanctifier toolchain`↴](#sanctifier-toolchain)
 
@@ -59,6 +60,7 @@ Stellar Soroban Security & Formal Verification Suite
 * `verify` — Verify #[sanctify::invariant] declarations across a contract or workspace
 * `prove` — Run SMT-based formal verification on Soroban token contract invariants
 * `cve` — Search, list, show, and export the public Soroban/Stellar CVE database
+* `sbom` — Generate a CycloneDX-format Software Bill of Materials (SBOM) from Cargo.lock
 * `wasm` — Analyze a compiled .wasm module directly when source is unavailable (source-optional mode)
 * `toolchain` — Audit toolchain and soroban-sdk version pinning for reproducible builds
 
@@ -489,6 +491,24 @@ Start a local HTTP server exposing GET /api/vulndb
 * `-p`, `--port <PORT>` — Port to listen on
 
   Default value: `7654`
+
+
+
+## `sanctifier sbom`
+
+Generate a CycloneDX-format Software Bill of Materials (SBOM) from Cargo.lock
+
+**Usage:** `sanctifier sbom [OPTIONS] [PATH]`
+
+###### **Arguments:**
+
+* `<PATH>` — Path to the crate or workspace to generate an SBOM for (must contain Cargo.lock)
+
+  Default value: `.`
+
+###### **Options:**
+
+* `-o`, `--output <OUTPUT>` — Output file path (defaults to stdout)
 
 
 

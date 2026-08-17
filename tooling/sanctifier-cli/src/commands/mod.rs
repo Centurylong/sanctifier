@@ -6,6 +6,7 @@ pub mod baseline;
 pub mod ci;
 pub mod cve;
 pub mod diff;
+pub mod sbom;
 pub mod fix;
 pub mod redact;
 pub mod init;

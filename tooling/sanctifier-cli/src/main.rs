@@ -69,6 +69,8 @@ pub enum Commands {
     Prove(commands::prove::ProveArgs),
     /// Search, list, show, and export the public Soroban/Stellar CVE database
     Cve(commands::cve::CveArgs),
+    /// Generate a CycloneDX-format Software Bill of Materials (SBOM) from Cargo.lock
+    Sbom(commands::sbom::SbomArgs),
     /// Analyze a compiled .wasm module directly when source is unavailable (source-optional mode)
     Wasm(commands::wasm::WasmArgs),
     /// Audit toolchain and soroban-sdk version pinning for reproducible builds
@@ -192,6 +194,9 @@ fn main() -> anyhow::Result<()> {
         }
         Commands::Cve(args) => {
             commands::cve::exec(args)?;
+        }
+        Commands::Sbom(args) => {
+            commands::sbom::exec(args)?;
         }
         Commands::Wasm(args) => {
             if args.format != "json" {
