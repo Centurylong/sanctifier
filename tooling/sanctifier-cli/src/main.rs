@@ -35,6 +35,8 @@ pub enum Commands {
     /// Generate suggested fix diffs for findings and apply them only after
     /// explicit confirmation (offline; deterministic local suggestions)
     Fix(commands::fix::FixArgs),
+    /// Scrub Stellar keys/addresses and home-directory paths from a saved report before sharing it
+    Redact(commands::redact::RedactArgs),
     /// Generate a security report
     Report {
         /// Output file path
@@ -109,6 +111,9 @@ fn main() -> anyhow::Result<()> {
         }
         Commands::Fix(args) => {
             commands::fix::exec(args)?;
+        }
+        Commands::Redact(args) => {
+            commands::redact::exec(args)?;
         }
         Commands::Report { output } => {
             if let Some(p) = output {

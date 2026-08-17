@@ -14,6 +14,7 @@ This document contains the help content for the `sanctifier` command-line progra
 * [`sanctifier diff`↴](#sanctifier-diff)
 * [`sanctifier ci`↴](#sanctifier-ci)
 * [`sanctifier fix`↴](#sanctifier-fix)
+* [`sanctifier redact`↴](#sanctifier-redact)
 * [`sanctifier report`↴](#sanctifier-report)
 * [`sanctifier init`↴](#sanctifier-init)
 * [`sanctifier license`↴](#sanctifier-license)
@@ -46,6 +47,7 @@ Stellar Soroban Security & Formal Verification Suite
 * `diff` — Compare findings between working tree and a git reference
 * `ci` — Run CI gating and compliance checks
 * `fix` — Generate suggested fix diffs for findings and apply them only after explicit confirmation (offline; deterministic local suggestions)
+* `redact` — Scrub Stellar keys/addresses and home-directory paths from a saved report before sharing it
 * `report` — Generate a security report
 * `init` — Initialize Sanctifier in a new project
 * `license` — Check dependency licenses (from `cargo metadata`) against an allow/deny list
@@ -210,6 +212,22 @@ Generate suggested fix diffs for findings and apply them only after explicit con
 * `-f`, `--format <FORMAT>` — Output format (text, json)
 
   Default value: `text`
+
+
+
+## `sanctifier redact`
+
+Scrub Stellar keys/addresses and home-directory paths from a saved report before sharing it
+
+**Usage:** `sanctifier redact [OPTIONS] <INPUT>`
+
+###### **Arguments:**
+
+* `<INPUT>` — Path to a report/finding file to redact (e.g. `sanctifier analyze --format json` output, or a `.sanctify-baseline.json`)
+
+###### **Options:**
+
+* `-o`, `--output <OUTPUT>` — Output file path (defaults to stdout)
 
 
 
