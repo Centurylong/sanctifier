@@ -490,6 +490,15 @@ fn snapshot_cross_contract_call_in_loop() {
 }
 
 #[test]
+fn snapshot_nullifier_growth() {
+    assert_detector_snapshot(
+        "nullifier_growth",
+        &sanctifier_core::rules::nullifier_growth::NullifierGrowthRule::new(),
+        include_str!("fixtures/detectors/nullifier_growth.rs"),
+    );
+}
+
+#[test]
 fn snapshot_unbounded_event_emission() {
     assert_detector_snapshot(
         "unbounded_event_emission",
@@ -514,4 +523,24 @@ fn snapshot_sep41_approval_expiration() {
         &Sep41ApprovalExpirationRule::new(),
         include_str!("fixtures/detectors/sep41_approval_expiration.rs"),
     );
+}
+
+#[test]
+fn nullifier_growth_detector_flags_only_unbounded_nullifier_writes() {
+    let findings = RuleRegistry::with_default_rules().run_by_name(
+        include_str!("fixtures/detectors/nullifier_growth.rs"),
+        "nullifier_growth",
+    );
+
+    assert_eq!(findings.len(), 2, "{findings:#?}");
+    assert!(findings
+        .iter()
+        .all(|finding| finding.rule_name == "SANCT_NULLIFIER_GROWTH"));
+    assert!(findings
+        .iter()
+        .any(|finding| finding.location.contains("spend_note")
+            && finding.message.contains("nullifier")));
+    assert!(findings
+        .iter()
+        .any(|finding| finding.location.contains("verify_and_claim")));
 }

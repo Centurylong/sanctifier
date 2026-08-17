@@ -1,0 +1,14 @@
+---
+source: tooling/sanctifier-core/tests/detector_snapshots.rs
+expression: findings
+---
+- rule_name: SANCT_NULLIFIER_GROWTH
+  severity: Warning
+  message: "SANCT_NULLIFIER_GROWTH: `spend_note` marks nullifier `nullifier` as spent in persistent storage but never prunes it, extends its TTL, or caps the nullifier set's size"
+  location: "spend_note:13"
+  suggestion: "Extend `nullifier`'s TTL with `extend_ttl`, prune stale nullifiers, or cap the nullifier set size so the durable nullifier store cannot grow without bound"
+- rule_name: SANCT_NULLIFIER_GROWTH
+  severity: Warning
+  message: "SANCT_NULLIFIER_GROWTH: `verify_and_claim` marks nullifier `nullifier` as spent in persistent storage but never prunes it, extends its TTL, or caps the nullifier set's size"
+  location: "verify_and_claim:18"
+  suggestion: "Extend `nullifier`'s TTL with `extend_ttl`, prune stale nullifiers, or cap the nullifier set size so the durable nullifier store cannot grow without bound"
