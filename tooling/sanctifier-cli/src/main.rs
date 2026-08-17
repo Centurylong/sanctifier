@@ -79,6 +79,8 @@ pub enum Commands {
     Wasm(commands::wasm::WasmArgs),
     /// Audit toolchain and soroban-sdk version pinning for reproducible builds
     Toolchain(commands::toolchain::ToolchainArgs),
+    /// Generate a rule-module scaffold from a short spec (offline, no LLM)
+    ScaffoldRule(commands::scaffold::ScaffoldRuleArgs),
     /// (internal) Regenerate the Markdown CLI reference from the clap definitions.
     ///
     /// Prints the reference to stdout. Hidden from `--help`; used by the docs
@@ -216,6 +218,9 @@ fn main() -> anyhow::Result<()> {
         }
         Commands::Toolchain(args) => {
             commands::toolchain::exec(args)?;
+        }
+        Commands::ScaffoldRule(args) => {
+            commands::scaffold::exec(args)?;
         }
         Commands::GenerateDocs => {
             // Render the full command tree to Markdown straight from the clap

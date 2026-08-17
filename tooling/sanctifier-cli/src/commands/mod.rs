@@ -13,6 +13,7 @@ pub mod redact;
 pub mod init;
 pub mod license;
 pub mod prove;
+pub mod scaffold;
 pub mod sdk_check;
 pub mod toolchain;
 pub mod update;
