@@ -34,8 +34,8 @@ pub fn render_as_test(ce: &Counterexample, test_name: &str) -> String {
 #[cfg(all(test, feature = "smt"))]
 mod tests {
     use super::*;
-    use crate::smt::{Counterexample, ProofStatus, SmtProver};
     use crate::smt::TokenInvariant;
+    use crate::smt::{Counterexample, ProofStatus, SmtProver};
     use z3::{Config, Context};
 
     #[test]
