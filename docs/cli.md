@@ -35,6 +35,7 @@ This document contains the help content for the `sanctifier` command-line progra
 * [`sanctifier sbom`↴](#sanctifier-sbom)
 * [`sanctifier wasm`↴](#sanctifier-wasm)
 * [`sanctifier toolchain`↴](#sanctifier-toolchain)
+* [`sanctifier scaffold-rule`↴](#sanctifier-scaffold-rule)
 
 ## `sanctifier`
 
@@ -67,6 +68,7 @@ Stellar Soroban Security & Formal Verification Suite
 * `sbom` — Generate a CycloneDX-format Software Bill of Materials (SBOM) from Cargo.lock
 * `wasm` — Analyze a compiled .wasm module directly when source is unavailable (source-optional mode)
 * `toolchain` — Audit toolchain and soroban-sdk version pinning for reproducible builds
+* `scaffold-rule` — Generate a rule-module scaffold from a short spec (offline, no LLM)
 
 
 
@@ -582,6 +584,23 @@ Audit toolchain and soroban-sdk version pinning for reproducible builds
 
   Default value: `.`
 * `--json` — Emit results as JSON
+
+
+
+## `sanctifier scaffold-rule`
+
+Generate a rule-module scaffold from a short spec (offline, no LLM)
+
+**Usage:** `sanctifier scaffold-rule [OPTIONS] <SPEC> <NAME>`
+
+###### **Arguments:**
+
+* `<SPEC>` — Short plain-English description of the bug pattern to detect (e.g. "flags unwrap() calls on storage reads that can panic")
+* `<NAME>` — Rule name (accepts snake_case, kebab-case, or PascalCase; used to derive the generated struct name, the `Rule::name()` string, and the default output file name)
+
+###### **Options:**
+
+* `--output <OUTPUT>` — Write the generated module to this path instead of the default `tooling/sanctifier-core/src/rules/<name>.rs`
 
 
 
