@@ -1,5 +1,4 @@
 use crate::rules::{Rule, RuleViolation, Severity};
-use syn::{parse_str, File};
 
 pub struct PanicDetectionRule;
 
@@ -32,9 +31,9 @@ impl Rule for PanicDetectionRule {
     }
 
     fn check(&self, source: &str) -> Vec<RuleViolation> {
-        let file = match parse_str::<File>(source) {
-            Ok(f) => f,
-            Err(_) => return vec![],
+        let file = match crate::parse_cache::parse_cached(source) {
+            Some(f) => (*f).clone(),
+            None => return vec![],
         };
 
         let mut issues = Vec::new();

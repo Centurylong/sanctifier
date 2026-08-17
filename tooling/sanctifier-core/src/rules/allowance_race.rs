@@ -1,7 +1,6 @@
 use crate::rules::{Rule, RuleViolation, Severity};
 use syn::spanned::Spanned;
 use syn::visit::Visit;
-use syn::{parse_str, File};
 
 const FINDING_CODE: &str = "SANCT_ALLOWANCE_RACE";
 
@@ -113,9 +112,9 @@ impl Rule for AllowanceRaceRule {
     }
 
     fn check(&self, source: &str) -> Vec<RuleViolation> {
-        let file = match parse_str::<File>(source) {
-            Ok(file) => file,
-            Err(_) => return vec![],
+        let file = match crate::parse_cache::parse_cached(source) {
+            Some(file) => (*file).clone(),
+            None => return vec![],
         };
 
         let mut visitor = AllowanceRaceRuleVisitor {

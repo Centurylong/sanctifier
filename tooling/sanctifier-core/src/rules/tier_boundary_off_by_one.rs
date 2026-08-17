@@ -1,7 +1,6 @@
 use crate::rules::{Rule, RuleViolation, Severity};
 use syn::spanned::Spanned;
 use syn::visit::Visit;
-use syn::{parse_str, File};
 
 /// Detects `if`/`else if` tier/rank ladders that compare the same variable
 /// against numeric thresholds using an inconsistent mix of strict (`<`, `>`)
@@ -40,9 +39,9 @@ impl Rule for TierBoundaryOffByOneRule {
     }
 
     fn check(&self, source: &str) -> Vec<RuleViolation> {
-        let file = match parse_str::<File>(source) {
-            Ok(f) => f,
-            Err(_) => return vec![],
+        let file = match crate::parse_cache::parse_cached(source) {
+            Some(f) => (*f).clone(),
+            None => return vec![],
         };
 
         let mut visitor = TierBoundaryVisitor {

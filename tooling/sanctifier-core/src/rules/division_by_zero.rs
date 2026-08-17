@@ -2,7 +2,6 @@ use crate::rules::{Rule, RuleViolation, Severity};
 use std::collections::HashSet;
 use syn::spanned::Spanned;
 use syn::visit::Visit;
-use syn::{parse_str, File};
 
 /// Detects `/` or `%` by a non-constant denominator that isn't proven non-zero
 /// first, which panics (aborts the transaction) on Soroban's host when the
@@ -32,9 +31,9 @@ impl Rule for DivisionByZeroRule {
     }
 
     fn check(&self, source: &str) -> Vec<RuleViolation> {
-        let file = match parse_str::<File>(source) {
-            Ok(f) => f,
-            Err(_) => return vec![],
+        let file = match crate::parse_cache::parse_cached(source) {
+            Some(f) => (*f).clone(),
+            None => return vec![],
         };
 
         let mut visitor = DivByZeroVisitor {

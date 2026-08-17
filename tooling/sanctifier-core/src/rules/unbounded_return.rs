@@ -1,6 +1,6 @@
 use crate::rules::{Rule, RuleViolation, Severity};
 use syn::visit::Visit;
-use syn::{parse_str, File, Visibility};
+use syn::Visibility;
 
 /// Detects public entrypoints returning unbounded collections (`Vec` or `Map`).
 pub struct UnboundedReturnRule;
@@ -27,9 +27,9 @@ impl Rule for UnboundedReturnRule {
     }
 
     fn check(&self, source: &str) -> Vec<RuleViolation> {
-        let file = match parse_str::<File>(source) {
-            Ok(f) => f,
-            Err(_) => return vec![],
+        let file = match crate::parse_cache::parse_cached(source) {
+            Some(f) => (*f).clone(),
+            None => return vec![],
         };
         let mut visitor = UnboundedReturnVisitor {
             violations: Vec::new(),

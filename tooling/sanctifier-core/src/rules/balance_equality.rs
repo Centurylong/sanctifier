@@ -2,7 +2,6 @@ use crate::finding_codes::BALANCE_EQUALITY;
 use crate::rules::{Rule, RuleViolation, Severity};
 use syn::spanned::Spanned;
 use syn::visit::Visit;
-use syn::{parse_str, File};
 
 /// Flags `==` / `!=` comparisons that gate a spend on a balance being *exactly*
 /// equal to an amount, where an inequality (`>=` / `<=`) was almost certainly
@@ -38,9 +37,9 @@ impl Rule for BalanceEqualityRule {
     }
 
     fn check(&self, source: &str) -> Vec<RuleViolation> {
-        let file = match parse_str::<File>(source) {
-            Ok(file) => file,
-            Err(_) => return Vec::new(),
+        let file = match crate::parse_cache::parse_cached(source) {
+            Some(file) => (*file).clone(),
+            None => return Vec::new(),
         };
 
         let mut visitor = BalanceEqualityVisitor {

@@ -2,7 +2,6 @@ use crate::rules::{Rule, RuleViolation, Severity};
 use std::collections::{HashMap, HashSet};
 use syn::spanned::Spanned;
 use syn::visit::Visit;
-use syn::{parse_str, File};
 
 /// Detects bit-shift operations whose shift amount can be greater than or equal
 /// to the bit width of the value being shifted (issue #797).
@@ -48,9 +47,9 @@ impl Rule for ShiftOverflowRule {
     }
 
     fn check(&self, source: &str) -> Vec<RuleViolation> {
-        let file = match parse_str::<File>(source) {
-            Ok(f) => f,
-            Err(_) => return vec![],
+        let file = match crate::parse_cache::parse_cached(source) {
+            Some(f) => (*f).clone(),
+            None => return vec![],
         };
 
         let mut visitor = ShiftVisitor {

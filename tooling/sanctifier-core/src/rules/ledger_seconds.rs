@@ -2,7 +2,6 @@ use crate::rules::{Rule, RuleViolation, Severity};
 use std::collections::HashSet;
 use syn::spanned::Spanned;
 use syn::visit::Visit;
-use syn::{parse_str, File};
 
 /// Detects ledgers-vs-seconds confusion: a ledger **sequence number**
 /// (`env.ledger().sequence()`) combined in the same expression with an integer
@@ -44,9 +43,9 @@ impl Rule for LedgerSecondsRule {
     }
 
     fn check(&self, source: &str) -> Vec<RuleViolation> {
-        let file = match parse_str::<File>(source) {
-            Ok(f) => f,
-            Err(_) => return vec![],
+        let file = match crate::parse_cache::parse_cached(source) {
+            Some(f) => (*f).clone(),
+            None => return vec![],
         };
         let mut visitor = SeqVisitor {
             fn_name: String::new(),

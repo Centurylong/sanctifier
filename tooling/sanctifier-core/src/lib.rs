@@ -7,6 +7,7 @@ pub mod gas_report;
 pub mod invariant;
 pub mod macro_expand;
 pub mod memory;
+pub mod parse_cache;
 pub mod patcher;
 pub mod priority;
 pub mod rules;
