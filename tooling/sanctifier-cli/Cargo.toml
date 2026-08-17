@@ -21,6 +21,18 @@ pkg-fmt = "tgz"
 pkg-url = "https://github.com/Centurylong/sanctifier/releases/download/v{ version }/sanctifier-{ version }-{ target }.zip"
 pkg-fmt = "zip"
 
+[features]
+# Build z3 from source and link it statically (via z3-sys's cmake build),
+# so a release binary has no runtime dependency on a system libz3. Used by
+# .github/workflows/release.yml and the Dockerfile; the default dev build
+# links dynamically against the libz3-dev package CI installs, which is
+# faster to build. Deliberately declared only here, not on sanctifier-core
+# (which ci.yml builds/tests with `--all-features`) — Cargo unifies features
+# for the one shared z3-sys instance in this build regardless, and keeping
+# it off sanctifier-core avoids `--all-features` pulling in a from-source z3
+# build there too, which ci.yml's dependency install doesn't provision for.
+static-link-z3 = ["z3/static-link-z3"]
+
 [dependencies]
 clap = { version = "4.4", features = ["derive"] }
 clap-markdown = "0.1"
