@@ -1,0 +1,10 @@
+---
+source: tooling/sanctifier-core/tests/detector_snapshots.rs
+assertion_line: 39
+expression: findings
+---
+- rule_name: vesting_schedule
+  severity: Warning
+  message: "`end_ledger - start_ledger` computes a schedule duration without first proving `end_ledger > start_ledger`; a caller-supplied `end_ledger <= start_ledger` panics (unsigned underflow) or silently produces a zero/negative-length schedule"
+  location: "unguarded:17"
+  suggestion: "Validate the range before using it, e.g. `if end_ledger <= start_ledger { return Err(...); }` or `assert!(end_ledger > start_ledger)`"

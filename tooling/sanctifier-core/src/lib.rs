@@ -8,11 +8,13 @@ pub mod invariant;
 pub mod macro_expand;
 pub mod memory;
 pub mod patcher;
+pub mod priority;
 pub mod rules;
 #[cfg(feature = "smt")]
 pub mod smt;
 mod storage_collision;
 pub mod symbolic;
+pub mod triage;
 pub mod wasm;
 use std::collections::{HashMap, HashSet};
 use syn::spanned::Spanned;
@@ -456,6 +458,21 @@ impl Analyzer {
         file_label: &str,
     ) -> Vec<invariant::InvariantDecl> {
         with_panic_guard(|| invariant::scan_invariant_attrs(source, file_label))
+    }
+
+    /// Scan `source` for `#[sanctify::assume(...)]` attributes and return one
+    /// `InvariantDecl` per assumption found. An assumption bounds the state a
+    /// paired `#[sanctify::invariant(...)]` on the same `impl` is checked
+    /// against, rather than being something to prove itself.
+    ///
+    /// Returns an empty `Vec` when `source` fails to parse as valid Rust.
+    /// Panics inside the visitor are caught and turned into an empty result.
+    pub fn scan_assume_attrs(
+        &self,
+        source: &str,
+        file_label: &str,
+    ) -> Vec<invariant::InvariantDecl> {
+        with_panic_guard(|| invariant::scan_assume_attrs(source, file_label))
     }
 
     #[cfg(feature = "smt")]

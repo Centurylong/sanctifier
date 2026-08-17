@@ -1,0 +1,13 @@
+# Config for `cross` (https://github.com/cross-rs/cross), used by
+# .github/workflows/release.yml to cross-compile the aarch64-unknown-linux-gnu
+# release binary. The base cross image for this target ships a C/C++
+# toolchain but not cmake, which the statically-linked z3 build
+# (Z3_SYS_Z3_LINK_STATIC=1) needs.
+[target.aarch64-unknown-linux-gnu]
+pre-build = ["apt-get update && apt-get install --assume-yes cmake"]
+
+[build.env]
+# CMAKE_POLICY_VERSION_MINIMUM is set on the host by release.yml but `cross`
+# runs the build inside its own container, so it must be passed through
+# explicitly to reach z3-sys's cmake invocation there too.
+passthrough = ["CMAKE_POLICY_VERSION_MINIMUM"]

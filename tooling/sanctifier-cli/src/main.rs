@@ -26,6 +26,8 @@ pub enum Commands {
     Baseline(commands::baseline::BaselineArgs),
     /// Generate (or verify) a zero-knowledge attestation that a scan passed a score threshold
     Attest(commands::attest::AttestArgs),
+    /// Run `cargo audit` against the RUSTSEC advisory database for known-vulnerable dependencies
+    Audit(commands::audit::AuditArgs),
     /// Generate a dynamic Sanctifier status badge
     Badge(commands::badge::BadgeArgs),
     /// Compare findings between working tree and a git reference
@@ -35,6 +37,8 @@ pub enum Commands {
     /// Generate suggested fix diffs for findings and apply them only after
     /// explicit confirmation (offline; deterministic local suggestions)
     Fix(commands::fix::FixArgs),
+    /// Scrub Stellar keys/addresses and home-directory paths from a saved report before sharing it
+    Redact(commands::redact::RedactArgs),
     /// Generate a security report
     Report {
         /// Output file path
@@ -43,6 +47,8 @@ pub enum Commands {
     },
     /// Initialize Sanctifier in a new project
     Init(commands::init::InitArgs),
+    /// Check dependency licenses (from `cargo metadata`) against an allow/deny list
+    License(commands::license::LicenseArgs),
     /// Generate a Graphviz DOT call graph of cross-contract calls (env.invoke_contract)
     Callgraph {
         /// Path to a contract directory, workspace directory, or a single .rs file
@@ -65,8 +71,12 @@ pub enum Commands {
     SdkCheck(commands::sdk_check::SdkCheckArgs),
     /// Search, list, show, and export the public Soroban/Stellar CVE database
     Cve(commands::cve::CveArgs),
+    /// Generate a CycloneDX-format Software Bill of Materials (SBOM) from Cargo.lock
+    Sbom(commands::sbom::SbomArgs),
     /// Analyze a compiled .wasm module directly when source is unavailable (source-optional mode)
     Wasm(commands::wasm::WasmArgs),
+    /// Audit toolchain and soroban-sdk version pinning for reproducible builds
+    Toolchain(commands::toolchain::ToolchainArgs),
     /// (internal) Regenerate the Markdown CLI reference from the clap definitions.
     ///
     /// Prints the reference to stdout. Hidden from `--help`; used by the docs
@@ -93,6 +103,9 @@ fn main() -> anyhow::Result<()> {
         Commands::Attest(args) => {
             commands::attest::exec(args)?;
         }
+        Commands::Audit(args) => {
+            commands::audit::exec(args)?;
+        }
         Commands::Badge(args) => {
             commands::badge::exec(args)?;
         }
@@ -108,6 +121,9 @@ fn main() -> anyhow::Result<()> {
         Commands::Fix(args) => {
             commands::fix::exec(args)?;
         }
+        Commands::Redact(args) => {
+            commands::redact::exec(args)?;
+        }
         Commands::Report { output } => {
             if let Some(p) = output {
                 println!("Report saved to {:?}", p);
@@ -117,6 +133,9 @@ fn main() -> anyhow::Result<()> {
         }
         Commands::Init(args) => {
             commands::init::exec(args, None)?;
+        }
+        Commands::License(args) => {
+            commands::license::exec(args)?;
         }
         Commands::Callgraph { path, output } => {
             let config = load_config(&path);
@@ -181,11 +200,17 @@ fn main() -> anyhow::Result<()> {
         Commands::Cve(args) => {
             commands::cve::exec(args)?;
         }
+        Commands::Sbom(args) => {
+            commands::sbom::exec(args)?;
+        }
         Commands::Wasm(args) => {
             if args.format != "json" {
                 branding::print_logo();
             }
             commands::wasm::exec(args)?;
+        }
+        Commands::Toolchain(args) => {
+            commands::toolchain::exec(args)?;
         }
         Commands::GenerateDocs => {
             // Render the full command tree to Markdown straight from the clap

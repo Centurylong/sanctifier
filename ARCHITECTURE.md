@@ -453,6 +453,7 @@ Contract source
 | `tooling/sanctifier-core/src/invariant.rs` | `InvariantDecl`, `InvariantVerifyResult`, `scan_invariant_attrs`, `SmtInvariantVerifier` |
 | `tooling/sanctifier-cli/src/commands/verify.rs` | `sanctifier verify` subcommand — walks files, calls scanner, renders results |
 | `contracts/token-invariants` | Reference contract demonstrating the attribute and Kani harnesses |
+| `contracts/sep41-token-invariants` | SEP-41 conformance reference token — `transfer`/`approve`/`allowance`/`transfer_from`/`burn`/`burn_from`/`mint`, all delegating to verified pure functions with `#[invariant]` annotations and 14 Kani harnesses (see `docs/sep41-formal-spec-template.md`) |
 
 ### Data flow
 

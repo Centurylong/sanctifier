@@ -4,6 +4,22 @@ use syn::{spanned::Spanned, visit::Visit, Attribute, File, ItemImpl};
 /// Walk a parsed `File` and collect every `#[sanctify::invariant(...)]` found
 /// on `impl` blocks.
 pub fn scan_invariant_attrs(source: &str, file_label: &str) -> Vec<InvariantDecl> {
+    scan_attrs_named(source, file_label, "invariant")
+}
+
+/// Walk a parsed `File` and collect every `#[sanctify::assume(...)]` (or
+/// `#[assume(...)]`) found on `impl` blocks.
+///
+/// An assumption bounds the state a paired `#[sanctify::invariant(...)]` is
+/// checked against — see [`SmtInvariantVerifier::verify_one_with_assumptions`].
+/// It is not itself something to prove.
+pub fn scan_assume_attrs(source: &str, file_label: &str) -> Vec<InvariantDecl> {
+    scan_attrs_named(source, file_label, "assume")
+}
+
+/// Walk a parsed `File` and collect every `#[sanctify::<name>(...)]` (or
+/// `#[<name>(...)]`) attribute found on `impl` blocks.
+fn scan_attrs_named(source: &str, file_label: &str, name: &str) -> Vec<InvariantDecl> {
     let ast: File = match syn::parse_str(source) {
         Ok(f) => f,
         Err(_) => return vec![],
@@ -11,6 +27,7 @@ pub fn scan_invariant_attrs(source: &str, file_label: &str) -> Vec<InvariantDecl
     let mut visitor = InvariantVisitor {
         decls: Vec::new(),
         file_label: file_label.to_string(),
+        attr_name: name.to_string(),
     };
     visitor.visit_file(&ast);
     visitor.decls
@@ -19,12 +36,13 @@ pub fn scan_invariant_attrs(source: &str, file_label: &str) -> Vec<InvariantDecl
 struct InvariantVisitor {
     decls: Vec<InvariantDecl>,
     file_label: String,
+    attr_name: String,
 }
 
 impl<'ast> Visit<'ast> for InvariantVisitor {
     fn visit_item_impl(&mut self, node: &'ast ItemImpl) {
         for attr in &node.attrs {
-            if let Some(expr_str) = extract_invariant_expr(attr) {
+            if let Some(expr_str) = extract_attr_expr(attr, &self.attr_name) {
                 let contract_name = impl_self_name(node);
                 let line = node.span().start().line;
                 self.decls.push(InvariantDecl {
@@ -38,19 +56,19 @@ impl<'ast> Visit<'ast> for InvariantVisitor {
     }
 }
 
-/// Return the expression string if `attr` is `#[sanctify::invariant(...)]` or
-/// `#[invariant(...)]`, otherwise `None`.
-fn extract_invariant_expr(attr: &Attribute) -> Option<String> {
+/// Return the expression string if `attr` is `#[sanctify::<name>(...)]` or
+/// `#[<name>(...)]`, otherwise `None`.
+fn extract_attr_expr(attr: &Attribute, name: &str) -> Option<String> {
     let path = attr.path();
     let segments: Vec<_> = path.segments.iter().map(|s| s.ident.to_string()).collect();
 
-    let is_invariant = match segments.as_slice() {
-        [name] => name == "invariant",
-        [ns, name] => ns == "sanctify" && name == "invariant",
+    let matches_name = match segments.as_slice() {
+        [n] => n == name,
+        [ns, n] => ns == "sanctify" && n == name,
         _ => false,
     };
 
-    if !is_invariant {
+    if !matches_name {
         return None;
     }
 
@@ -70,7 +88,11 @@ fn extract_invariant_expr(attr: &Attribute) -> Option<String> {
 
 /// Best-effort name of the impl's self-type.
 fn impl_self_name(node: &ItemImpl) -> String {
-    quote::quote!(#node.self_ty)
+    // Bind to a local first: `quote!`'s `#var` interpolation takes a single
+    // token, so `quote!(#node.self_ty)` would render the *entire* impl
+    // block's tokens followed by a literal `.self_ty`, not project the field.
+    let self_ty = &node.self_ty;
+    quote::quote!(#self_ty)
         .to_string()
         .split_whitespace()
         .collect::<Vec<_>>()
@@ -163,6 +185,85 @@ impl SmtInvariantVerifier {
         InvariantVerifyResult::Unsupported
     }
 
+    /// Like [`verify_one`](Self::verify_one), but additionally bounds the
+    /// state using `#[sanctify::assume(...)]` declarations scoped to the
+    /// same contract.
+    ///
+    /// This is how assume/assert annotations make an otherwise-undecidable
+    /// property tractable: `verify_one` alone can only prove an invariant of
+    /// the form `IDENT == LITERAL` when `IDENT` is itself a literal (or the
+    /// two sides are token-identical). A bare identifier is unconstrained, so
+    /// on its own the invariant is `Unsupported` and gets punted to Kani. An
+    /// assumption `#[sanctify::assume(IDENT == LITERAL)]` on the same impl
+    /// pins that identifier to a concrete value for the SMT pass, which is
+    /// enough to decide simple equality invariants over it without a full
+    /// symbolic-execution run.
+    ///
+    /// Assumptions that don't apply to any free identifier in `decl` are
+    /// ignored. Contradictory assumptions on the same identifier make the
+    /// assumed state unsatisfiable, so the invariant is vacuously `Proven` —
+    /// the same convention formal-verification tools use for an infeasible
+    /// precondition.
+    pub fn verify_one_with_assumptions(
+        &self,
+        decl: &InvariantDecl,
+        assumptions: &[InvariantDecl],
+    ) -> InvariantVerifyResult {
+        // The unconditional fast path (literal equality / tautology) never
+        // needs assumptions and always takes priority.
+        let unconditional = self.verify_one(decl);
+        if unconditional != InvariantVerifyResult::Unsupported {
+            return unconditional;
+        }
+
+        let Some((ident, target)) = parse_symbolic_equality(&decl.expr_str) else {
+            return InvariantVerifyResult::Unsupported;
+        };
+
+        let relevant: Vec<(String, i64)> = assumptions
+            .iter()
+            .filter(|a| a.contract_name == decl.contract_name)
+            .filter_map(|a| parse_symbolic_equality(&a.expr_str))
+            .filter(|(name, _)| *name == ident)
+            .collect();
+
+        if relevant.is_empty() {
+            return InvariantVerifyResult::Unsupported;
+        }
+
+        use z3::ast::{Ast, Int};
+        use z3::{Config, Context, SatResult, Solver};
+
+        let cfg = Config::new();
+        let ctx = Context::new(&cfg);
+        let solver = Solver::new(&ctx);
+
+        let var = Int::new_const(&ctx, ident.as_str());
+        for (_, value) in &relevant {
+            solver.assert(&var._eq(&Int::from_i64(&ctx, *value)));
+        }
+
+        let target_const = Int::from_i64(&ctx, target);
+        solver.assert(&var._eq(&target_const).not());
+
+        match solver.check() {
+            SatResult::Unsat => InvariantVerifyResult::Proven,
+            SatResult::Sat => {
+                let assumed = relevant
+                    .iter()
+                    .map(|(n, v)| format!("{n} == {v}"))
+                    .collect::<Vec<_>>()
+                    .join(", ");
+                InvariantVerifyResult::Refuted {
+                    counterexample: format!(
+                        "assuming {assumed}, {ident} != {target} is satisfiable"
+                    ),
+                }
+            }
+            SatResult::Unknown => InvariantVerifyResult::Unknown,
+        }
+    }
+
     /// Verify all declarations and return paired results.
     pub fn verify_all(
         &self,
@@ -171,6 +272,19 @@ impl SmtInvariantVerifier {
         decls
             .iter()
             .map(|d| (d.clone(), self.verify_one(d)))
+            .collect()
+    }
+
+    /// Verify all declarations, bounding each with any `assumptions` scoped
+    /// to the same contract (see [`verify_one_with_assumptions`](Self::verify_one_with_assumptions)).
+    pub fn verify_all_with_assumptions(
+        &self,
+        decls: &[InvariantDecl],
+        assumptions: &[InvariantDecl],
+    ) -> Vec<(InvariantDecl, InvariantVerifyResult)> {
+        decls
+            .iter()
+            .map(|d| (d.clone(), self.verify_one_with_assumptions(d, assumptions)))
             .collect()
     }
 }
@@ -204,6 +318,38 @@ fn parse_tautological_equality(expr: &str) -> Option<bool> {
     } else {
         None
     }
+}
+
+/// Parse `"IDENT == LITERAL"` or `"LITERAL == IDENT"`, where `IDENT` is a
+/// single Rust-style identifier and `LITERAL` is an `i64` decimal literal.
+/// Returns `(ident, literal)`. Used to resolve `#[sanctify::assume(...)]`
+/// declarations and the invariants they bound.
+#[cfg(feature = "smt")]
+fn parse_symbolic_equality(expr: &str) -> Option<(String, i64)> {
+    fn is_ident(s: &str) -> bool {
+        let mut chars = s.chars();
+        match chars.next() {
+            Some(c) if c.is_ascii_alphabetic() || c == '_' => {}
+            _ => return false,
+        }
+        chars.all(|c| c.is_ascii_alphanumeric() || c == '_')
+    }
+
+    let expr = expr.trim();
+    let parts: Vec<&str> = expr.splitn(2, "==").collect();
+    if parts.len() != 2 {
+        return None;
+    }
+    let lhs = parts[0].trim();
+    let rhs = parts[1].trim();
+
+    if let (true, Ok(lit)) = (is_ident(lhs), rhs.parse::<i64>()) {
+        return Some((lhs.to_string(), lit));
+    }
+    if let (Ok(lit), true) = (lhs.parse::<i64>(), is_ident(rhs)) {
+        return Some((rhs.to_string(), lit));
+    }
+    None
 }
 
 // ── Tests ─────────────────────────────────────────────────────────────────────
@@ -257,6 +403,26 @@ mod tests {
         assert!(decls.is_empty());
     }
 
+    /// Regression test for a bug where `impl_self_name` rendered the entire
+    /// `impl` block's tokens (doc comments included) instead of just the
+    /// self-type — surfaced by `sanctifier verify` producing an unreadable
+    /// `contract_name` for any impl with a multi-line doc comment, e.g.
+    /// `contracts/sep41-token-invariants`.
+    #[test]
+    fn test_contract_name_is_the_self_type_not_the_whole_impl_block() {
+        let source = r#"
+            /// A multi-line doc comment on the impl block, the kind that
+            /// previously ended up dumped into `contract_name` whole.
+            #[sanctify::invariant(total_supply == sum_of_balances())]
+            impl Token {
+                pub fn total_supply(_env: Env) -> i128 { 0 }
+            }
+        "#;
+        let decls = scan_invariant_attrs(source, "test.rs");
+        assert_eq!(decls.len(), 1);
+        assert_eq!(decls[0].contract_name, "Token");
+    }
+
     #[test]
     fn test_scan_multiple_invariants_on_separate_impls() {
         let source = r#"
@@ -268,6 +434,8 @@ mod tests {
         "#;
         let decls = scan_invariant_attrs(source, "multi.rs");
         assert_eq!(decls.len(), 2);
+        assert_eq!(decls[0].contract_name, "ContractA");
+        assert_eq!(decls[1].contract_name, "ContractB");
     }
 
     #[test]
@@ -309,6 +477,103 @@ mod tests {
             location: "test.rs:1".to_string(),
         };
         let result = SmtInvariantVerifier::new().verify_one(&decl);
+        assert_eq!(result, InvariantVerifyResult::Unsupported);
+    }
+
+    // ── assume/assert (issue #734) ───────────────────────────────────────
+
+    #[test]
+    fn test_scan_assume_finds_sanctify_namespace_attribute() {
+        let source = r#"
+            #[sanctify::assume(cap == 100)]
+            #[sanctify::invariant(cap == 100)]
+            impl Pool {
+                pub fn cap() -> i128 { 0 }
+            }
+        "#;
+        let assumes = scan_assume_attrs(source, "pool.rs");
+        let invariants = scan_invariant_attrs(source, "pool.rs");
+        assert_eq!(assumes.len(), 1);
+        assert_eq!(invariants.len(), 1);
+        assert_eq!(assumes[0].expr_str.trim(), "cap == 100");
+    }
+
+    #[test]
+    fn test_scan_assume_ignores_non_assume_attrs() {
+        let source = r#"
+            #[sanctify::invariant(x == x)]
+            impl Token { pub fn noop() {} }
+        "#;
+        assert!(scan_assume_attrs(source, "token.rs").is_empty());
+    }
+
+    /// Bounding example (acceptance criterion: "Example bounding a proof").
+    ///
+    /// `cap == 100` is a bare-identifier equality: on its own it is
+    /// `Unsupported` (nothing pins `cap` to a value, so the SMT fast path
+    /// can't decide it and would defer to Kani). Adding
+    /// `#[sanctify::assume(cap == 100)]` bounds `cap` enough for the same
+    /// invariant to be proven without ever invoking Kani.
+    #[cfg(feature = "smt")]
+    #[test]
+    fn test_assume_bounds_an_otherwise_unsupported_invariant() {
+        let decl = InvariantDecl {
+            contract_name: "Pool".to_string(),
+            expr_str: "cap == 100".to_string(),
+            location: "pool.rs:3".to_string(),
+        };
+        let verifier = SmtInvariantVerifier::new();
+
+        // Without the assumption, a bare identifier can't be decided.
+        assert_eq!(
+            verifier.verify_one(&decl),
+            InvariantVerifyResult::Unsupported
+        );
+
+        // With a matching assumption scoped to the same contract, it's provable.
+        let assumption = InvariantDecl {
+            contract_name: "Pool".to_string(),
+            expr_str: "cap == 100".to_string(),
+            location: "pool.rs:2".to_string(),
+        };
+        assert_eq!(
+            verifier.verify_one_with_assumptions(&decl, &[assumption]),
+            InvariantVerifyResult::Proven
+        );
+    }
+
+    #[cfg(feature = "smt")]
+    #[test]
+    fn test_assume_refutes_contradicted_invariant() {
+        let decl = InvariantDecl {
+            contract_name: "Pool".to_string(),
+            expr_str: "cap == 100".to_string(),
+            location: "pool.rs:3".to_string(),
+        };
+        let assumption = InvariantDecl {
+            contract_name: "Pool".to_string(),
+            expr_str: "cap == 50".to_string(),
+            location: "pool.rs:2".to_string(),
+        };
+        let result = SmtInvariantVerifier::new().verify_one_with_assumptions(&decl, &[assumption]);
+        assert!(matches!(result, InvariantVerifyResult::Refuted { .. }));
+    }
+
+    #[cfg(feature = "smt")]
+    #[test]
+    fn test_assume_from_a_different_contract_is_not_applied() {
+        let decl = InvariantDecl {
+            contract_name: "Pool".to_string(),
+            expr_str: "cap == 100".to_string(),
+            location: "pool.rs:3".to_string(),
+        };
+        let unrelated_assumption = InvariantDecl {
+            contract_name: "Vault".to_string(),
+            expr_str: "cap == 100".to_string(),
+            location: "vault.rs:2".to_string(),
+        };
+        let result =
+            SmtInvariantVerifier::new().verify_one_with_assumptions(&decl, &[unrelated_assumption]);
         assert_eq!(result, InvariantVerifyResult::Unsupported);
     }
 }

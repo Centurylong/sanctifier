@@ -10,12 +10,15 @@ This document contains the help content for the `sanctifier` command-line progra
 * [`sanctifier analyze`↴](#sanctifier-analyze)
 * [`sanctifier baseline`↴](#sanctifier-baseline)
 * [`sanctifier attest`↴](#sanctifier-attest)
+* [`sanctifier audit`↴](#sanctifier-audit)
 * [`sanctifier badge`↴](#sanctifier-badge)
 * [`sanctifier diff`↴](#sanctifier-diff)
 * [`sanctifier ci`↴](#sanctifier-ci)
 * [`sanctifier fix`↴](#sanctifier-fix)
+* [`sanctifier redact`↴](#sanctifier-redact)
 * [`sanctifier report`↴](#sanctifier-report)
 * [`sanctifier init`↴](#sanctifier-init)
+* [`sanctifier license`↴](#sanctifier-license)
 * [`sanctifier callgraph`↴](#sanctifier-callgraph)
 * [`sanctifier update`↴](#sanctifier-update)
 * [`sanctifier watch`↴](#sanctifier-watch)
@@ -28,7 +31,9 @@ This document contains the help content for the `sanctifier` command-line progra
 * [`sanctifier cve show`↴](#sanctifier-cve-show)
 * [`sanctifier cve export`↴](#sanctifier-cve-export)
 * [`sanctifier cve serve`↴](#sanctifier-cve-serve)
+* [`sanctifier sbom`↴](#sanctifier-sbom)
 * [`sanctifier wasm`↴](#sanctifier-wasm)
+* [`sanctifier toolchain`↴](#sanctifier-toolchain)
 
 ## `sanctifier`
 
@@ -41,12 +46,15 @@ Stellar Soroban Security & Formal Verification Suite
 * `analyze` — Analyze a Soroban contract for vulnerabilities
 * `baseline` — Snapshot current findings into .sanctify-baseline.json (use --update to refresh)
 * `attest` — Generate (or verify) a zero-knowledge attestation that a scan passed a score threshold
+* `audit` — Run `cargo audit` against the RUSTSEC advisory database for known-vulnerable dependencies
 * `badge` — Generate a dynamic Sanctifier status badge
 * `diff` — Compare findings between working tree and a git reference
 * `ci` — Run CI gating and compliance checks
 * `fix` — Generate suggested fix diffs for findings and apply them only after explicit confirmation (offline; deterministic local suggestions)
+* `redact` — Scrub Stellar keys/addresses and home-directory paths from a saved report before sharing it
 * `report` — Generate a security report
 * `init` — Initialize Sanctifier in a new project
+* `license` — Check dependency licenses (from `cargo metadata`) against an allow/deny list
 * `callgraph` — Generate a Graphviz DOT call graph of cross-contract calls (env.invoke_contract)
 * `update` — Check for and download the latest Sanctifier binary
 * `watch` — Watch source files and re-run analysis automatically on change (debounced)
@@ -54,7 +62,9 @@ Stellar Soroban Security & Formal Verification Suite
 * `prove` — Run SMT-based formal verification on Soroban token contract invariants
 * `sdk-check` — Check the resolved soroban-sdk version(s) in Cargo.lock against known-vulnerable version ranges
 * `cve` — Search, list, show, and export the public Soroban/Stellar CVE database
+* `sbom` — Generate a CycloneDX-format Software Bill of Materials (SBOM) from Cargo.lock
 * `wasm` — Analyze a compiled .wasm module directly when source is unavailable (source-optional mode)
+* `toolchain` — Audit toolchain and soroban-sdk version pinning for reproducible builds
 
 
 
@@ -124,6 +134,30 @@ Generate (or verify) a zero-knowledge attestation that a scan passed a score thr
   Default value: `90`
 * `-o`, `--out <OUT>` — Write the attestation artifact here (defaults to stdout)
 * `--verify <FILE>` — Verify an existing attestation artifact instead of generating one
+
+
+
+## `sanctifier audit`
+
+Run `cargo audit` against the RUSTSEC advisory database for known-vulnerable dependencies
+
+**Usage:** `sanctifier audit [OPTIONS] [PATH]`
+
+###### **Arguments:**
+
+* `<PATH>` — Path to the crate or workspace to audit (must contain Cargo.lock)
+
+  Default value: `.`
+
+###### **Options:**
+
+* `-f`, `--format <FORMAT>` — Output format (text, json)
+
+  Default value: `text`
+* `--no-fail` — Do not fail (non-zero exit) even if vulnerable advisories are found
+* `--min-severity <MIN_SEVERITY>` — Only fail on advisories at or above this severity (low, medium, high, critical)
+
+  Default value: `low`
 
 
 
@@ -211,6 +245,22 @@ Generate suggested fix diffs for findings and apply them only after explicit con
 
 
 
+## `sanctifier redact`
+
+Scrub Stellar keys/addresses and home-directory paths from a saved report before sharing it
+
+**Usage:** `sanctifier redact [OPTIONS] <INPUT>`
+
+###### **Arguments:**
+
+* `<INPUT>` — Path to a report/finding file to redact (e.g. `sanctifier analyze --format json` output, or a `.sanctify-baseline.json`)
+
+###### **Options:**
+
+* `-o`, `--output <OUTPUT>` — Output file path (defaults to stdout)
+
+
+
 ## `sanctifier report`
 
 Generate a security report
@@ -232,6 +282,28 @@ Initialize Sanctifier in a new project
 ###### **Options:**
 
 * `-f`, `--force` — Force overwrite existing configuration file
+
+
+
+## `sanctifier license`
+
+Check dependency licenses (from `cargo metadata`) against an allow/deny list
+
+**Usage:** `sanctifier license [OPTIONS] [PATH]`
+
+###### **Arguments:**
+
+* `<PATH>` — Path to the crate or workspace to check
+
+  Default value: `.`
+
+###### **Options:**
+
+* `-f`, `--format <FORMAT>` — Output format (text, json)
+
+  Default value: `text`
+* `--allow <ALLOW>` — Comma-separated list of additional SPDX license identifiers to allow
+* `--deny <DENY>` — Comma-separated list of SPDX license identifiers to explicitly deny, even if they'd otherwise be allowed
 
 
 
@@ -445,6 +517,24 @@ Start a local HTTP server exposing GET /api/vulndb
 
 
 
+## `sanctifier sbom`
+
+Generate a CycloneDX-format Software Bill of Materials (SBOM) from Cargo.lock
+
+**Usage:** `sanctifier sbom [OPTIONS] [PATH]`
+
+###### **Arguments:**
+
+* `<PATH>` — Path to the crate or workspace to generate an SBOM for (must contain Cargo.lock)
+
+  Default value: `.`
+
+###### **Options:**
+
+* `-o`, `--output <OUTPUT>` — Output file path (defaults to stdout)
+
+
+
 ## `sanctifier wasm`
 
 Analyze a compiled .wasm module directly when source is unavailable (source-optional mode)
@@ -461,6 +551,21 @@ Analyze a compiled .wasm module directly when source is unavailable (source-opti
 
   Default value: `text`
 * `--show-limitations` — Print the source-vs-WASM limitations note (also shown at the end of text output)
+
+
+
+## `sanctifier toolchain`
+
+Audit toolchain and soroban-sdk version pinning for reproducible builds
+
+**Usage:** `sanctifier toolchain [OPTIONS]`
+
+###### **Options:**
+
+* `-p`, `--path <PATH>` — Path to the workspace/project root to audit
+
+  Default value: `.`
+* `--json` — Emit results as JSON
 
 
 
