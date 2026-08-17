@@ -23,7 +23,8 @@ use sanctifier_core::rules::{
     hardcoded_addr::HardcodedAddrRule, init_hardcoded_admin::InitHardcodedAdminRule,
     ledger_seconds::LedgerSecondsRule, ledger_size::LedgerSizeRule, missing_ttl::MissingTtlRule,
     panic_detection::PanicDetectionRule, sanct_unwrap::SanctUnwrapRule,
-    sep41_allowance_decrement::Sep41AllowanceDecrementRule, shift_overflow::ShiftOverflowRule,
+    sep41_allowance_decrement::Sep41AllowanceDecrementRule,
+    sep41_approval_expiration::Sep41ApprovalExpirationRule, shift_overflow::ShiftOverflowRule,
     state_write_in_view::StateWriteInViewRule, tier_boundary_off_by_one::TierBoundaryOffByOneRule,
     unbounded_event_emission::UnboundedEventEmissionRule, unbounded_storage::UnboundedStorageRule,
     unhandled_result::UnhandledResultRule, unsigned_underflow::UnsignedUnderflowRule,
@@ -503,5 +504,14 @@ fn snapshot_sep41_allowance_decrement() {
         "sep41_allowance_decrement",
         &Sep41AllowanceDecrementRule::new(),
         include_str!("fixtures/detectors/sep41_allowance_decrement.rs"),
+    );
+}
+
+#[test]
+fn snapshot_sep41_approval_expiration() {
+    assert_detector_snapshot(
+        "sep41_approval_expiration",
+        &Sep41ApprovalExpirationRule::new(),
+        include_str!("fixtures/detectors/sep41_approval_expiration.rs"),
     );
 }

@@ -20,6 +20,7 @@ pub mod panic_detection;
 pub mod reserve_withdrawal;
 pub mod sanct_unwrap;
 pub mod sep41_allowance_decrement;
+pub mod sep41_approval_expiration;
 pub mod shift_overflow;
 pub mod state_write_in_view;
 pub mod tier_boundary_off_by_one;
@@ -230,6 +231,7 @@ impl RuleRegistry {
         registry.register(cross_contract_call_in_loop::CrossContractCallInLoopRule::new());
         registry.register(unbounded_event_emission::UnboundedEventEmissionRule::new());
         registry.register(sep41_allowance_decrement::Sep41AllowanceDecrementRule::new());
+        registry.register(sep41_approval_expiration::Sep41ApprovalExpirationRule::new());
         registry
     }
 }

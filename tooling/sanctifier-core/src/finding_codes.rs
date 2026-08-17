@@ -36,6 +36,7 @@ pub const MISSING_RESERVE_AUTH: &str = "S023";
 pub const CROSS_CONTRACT_CALL_IN_LOOP: &str = "SANCT_CROSS_CONTRACT_CALL_IN_LOOP";
 pub const UNBOUNDED_EVENT_EMISSION: &str = "SANCT_UNBOUNDED_EVENT_EMISSION";
 pub const SEP41_ALLOWANCE_NOT_DECREMENTED: &str = "SANCT_SEP41_ALLOWANCE_NOT_DECREMENTED";
+pub const SEP41_APPROVAL_NO_EXPIRATION: &str = "SANCT_SEP41_APPROVAL_NO_EXPIRATION";
 
 // ── Source-optional (compiled WASM) checks ────────────────────────────────────
 // Emitted only by `sanctifier wasm`, which analyzes a deployed module directly.
@@ -247,6 +248,11 @@ pub fn all_finding_codes() -> Vec<FindingCode> {
             code: SEP41_ALLOWANCE_NOT_DECREMENTED,
             category: "authorization",
             description: "transfer_from reads the caller's allowance but never writes back a decremented value",
+        },
+        FindingCode {
+            code: SEP41_APPROVAL_NO_EXPIRATION,
+            category: "authorization",
+            description: "approve has no expiration_ledger parameter, or never uses the one it accepts",
         },
         FindingCode {
             code: WASM_NOT_SOROBAN,
