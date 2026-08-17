@@ -1,0 +1,55 @@
+{
+  "schema_version": 1,
+  "description": "Real-world Soroban contracts vendored for benchmarking Sanctifier against production-style code, not just synthetic vulnerable/fixed fixtures. Complements tests/fixtures/gallery (true-positive detection on known-bad code) by measuring false-positive noise on known-good, officially-maintained reference code.",
+  "provenance": {
+    "source_repo": "https://github.com/stellar/soroban-examples",
+    "license": "Apache-2.0",
+    "commit": "f0d194fb9cda924b981e48cdf2ce9e74aad107a2",
+    "retrieved": "2026-08-17",
+    "notice": "Files are unmodified except for a 3-line attribution header identifying their origin. See ATTRIBUTION.md."
+  },
+  "contracts": [
+    {
+      "name": "atomic_swap",
+      "path": "atomic_swap.rs",
+      "labels": ["cross-contract", "auth", "token-transfer"]
+    },
+    {
+      "name": "increment",
+      "path": "increment.rs",
+      "labels": ["instance-storage", "counter"]
+    },
+    {
+      "name": "liquidity_pool",
+      "path": "liquidity_pool.rs",
+      "labels": ["amm", "arithmetic", "token-transfer", "auth"]
+    },
+    {
+      "name": "pause",
+      "path": "pause.rs",
+      "labels": ["admin", "circuit-breaker"]
+    },
+    {
+      "name": "single_offer",
+      "path": "single_offer.rs",
+      "labels": ["marketplace", "arithmetic", "token-transfer"]
+    },
+    {
+      "name": "timelock",
+      "path": "timelock.rs",
+      "labels": ["scheduling", "ledger-time", "claimable-balance"]
+    },
+    {
+      "name": "ttl",
+      "path": "ttl.rs",
+      "labels": ["storage-ttl", "extend_ttl"]
+    },
+    {
+      "name": "account",
+      "path": "account.rs",
+      "labels": ["custom-account", "auth", "multisig"]
+    }
+  ],
+  "target_size": 20,
+  "status": "incremental — 8 of 20+ target contracts added in this batch; see SCORECARD.md for the run against this initial set. Expanding to the full 20+ target and re-running the scorecard is tracked as follow-up work."
+}
