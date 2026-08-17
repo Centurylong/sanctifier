@@ -6,6 +6,7 @@ pub mod ci;
 pub mod cve;
 pub mod diff;
 pub mod fix;
+pub mod redact;
 pub mod init;
 pub mod prove;
 pub mod update;
