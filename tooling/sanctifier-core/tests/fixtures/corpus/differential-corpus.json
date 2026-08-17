@@ -53,7 +53,8 @@
     "eager_unwrap_or": "SANCT_EAGER_UNWRAP_OR",
     "SANCT_EAGER_UNWRAP_OR": "SANCT_EAGER_UNWRAP_OR",
     "contracterror_enum": "SANCT_CONTRACTERROR_ENUM",
-    "SANCT_CONTRACTERROR_ENUM": "SANCT_CONTRACTERROR_ENUM"
+    "SANCT_CONTRACTERROR_ENUM": "SANCT_CONTRACTERROR_ENUM",
+    "vesting_schedule": "SANCT_VESTING_RANGE"
   },
   "overlap_legend": {
     "shared-covered": "Class has an EVM analogue and Sanctifier already flags it.",
