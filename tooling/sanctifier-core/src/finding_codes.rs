@@ -38,6 +38,7 @@ pub const UNBOUNDED_EVENT_EMISSION: &str = "SANCT_UNBOUNDED_EVENT_EMISSION";
 pub const SEP41_ALLOWANCE_NOT_DECREMENTED: &str = "SANCT_SEP41_ALLOWANCE_NOT_DECREMENTED";
 pub const SEP41_APPROVAL_NO_EXPIRATION: &str = "SANCT_SEP41_APPROVAL_NO_EXPIRATION";
 pub const NULLIFIER_GROWTH: &str = "SANCT_NULLIFIER_GROWTH";
+pub const PROOF_LENGTH_UNVALIDATED: &str = "SANCT_PROOF_LENGTH_UNVALIDATED";
 
 // ── Source-optional (compiled WASM) checks ────────────────────────────────────
 // Emitted only by `sanctifier wasm`, which analyzes a deployed module directly.
@@ -260,6 +261,12 @@ pub fn all_finding_codes() -> Vec<FindingCode> {
             category: "denial_of_service",
             description:
                 "ZK nullifier/commitment marked spent in persistent storage with no pruning, TTL extension, or bounded-size check",
+        },
+        FindingCode {
+            code: PROOF_LENGTH_UNVALIDATED,
+            category: "zk_verification",
+            description:
+                "Proof or public-input byte array reaches a verifier call without a length check first",
         },
         FindingCode {
             code: WASM_NOT_SOROBAN,

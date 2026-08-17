@@ -18,6 +18,7 @@ pub mod ledger_size;
 pub mod missing_ttl;
 pub mod nullifier_growth;
 pub mod panic_detection;
+pub mod proof_length_check;
 pub mod reserve_withdrawal;
 pub mod sanct_unwrap;
 pub mod sep41_allowance_decrement;
@@ -248,6 +249,7 @@ impl RuleRegistry {
         registry.register(sep41_allowance_decrement::Sep41AllowanceDecrementRule::new());
         registry.register(sep41_approval_expiration::Sep41ApprovalExpirationRule::new());
         registry.register(nullifier_growth::NullifierGrowthRule::new());
+        registry.register(proof_length_check::ProofLengthCheckRule::new());
         registry
     }
 }
