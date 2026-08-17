@@ -54,6 +54,7 @@ detector page and to the relevant [Glossary](../glossary.md) term.
 | [`vesting_schedule`](vesting_schedule.md) | [`SANCT_VESTING_RANGE`](../error-codes.md) | logic | Warning | Schedule duration (`end - start`) not proven `end > start` |
 | [`cross_contract_call_in_loop`](cross_contract_call_in_loop.md) | [`SANCT_CROSS_CONTRACT_CALL_IN_LOOP`](../error-codes.md) | resource_limits | Warning | Cross-contract call (`invoke_contract` or a `*Client`) issued from inside a loop |
 | [`unbounded_event_emission`](unbounded_event_emission.md) | [`SANCT_UNBOUNDED_EVENT_EMISSION`](../error-codes.md) | resource_limits | Warning | `env.events().publish(..)` issued from inside a loop with no iteration bound |
+| [`sep41_allowance_decrement`](sep41_allowance_decrement.md) | [`SANCT_SEP41_ALLOWANCE_NOT_DECREMENTED`](../error-codes.md) | authorization | Error | `transfer_from` reads the allowance but never writes back a decremented value |
 
 ## Page anatomy
 

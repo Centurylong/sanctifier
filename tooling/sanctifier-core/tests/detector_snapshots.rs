@@ -23,8 +23,8 @@ use sanctifier_core::rules::{
     hardcoded_addr::HardcodedAddrRule, init_hardcoded_admin::InitHardcodedAdminRule,
     ledger_seconds::LedgerSecondsRule, ledger_size::LedgerSizeRule, missing_ttl::MissingTtlRule,
     panic_detection::PanicDetectionRule, sanct_unwrap::SanctUnwrapRule,
-    shift_overflow::ShiftOverflowRule, state_write_in_view::StateWriteInViewRule,
-    tier_boundary_off_by_one::TierBoundaryOffByOneRule,
+    sep41_allowance_decrement::Sep41AllowanceDecrementRule, shift_overflow::ShiftOverflowRule,
+    state_write_in_view::StateWriteInViewRule, tier_boundary_off_by_one::TierBoundaryOffByOneRule,
     unbounded_event_emission::UnboundedEventEmissionRule, unbounded_storage::UnboundedStorageRule,
     unhandled_result::UnhandledResultRule, unsigned_underflow::UnsignedUnderflowRule,
     unused_variable::UnusedVariableRule, vesting_schedule::VestingScheduleRule,
@@ -494,5 +494,14 @@ fn snapshot_unbounded_event_emission() {
         "unbounded_event_emission",
         &UnboundedEventEmissionRule::new(),
         include_str!("fixtures/detectors/unbounded_event_emission.rs"),
+    );
+}
+
+#[test]
+fn snapshot_sep41_allowance_decrement() {
+    assert_detector_snapshot(
+        "sep41_allowance_decrement",
+        &Sep41AllowanceDecrementRule::new(),
+        include_str!("fixtures/detectors/sep41_allowance_decrement.rs"),
     );
 }
