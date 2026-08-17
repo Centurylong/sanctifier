@@ -1,7 +1,7 @@
 use crate::finding_codes::SANCT_UNWRAP;
 use crate::rules::{Rule, RuleViolation, Severity};
 use syn::visit::Visit;
-use syn::{parse_str, Attribute, File};
+use syn::Attribute;
 
 /// Flags panic-prone option/result handling in Soroban contract entrypoints.
 pub struct SanctUnwrapRule;
@@ -28,9 +28,9 @@ impl Rule for SanctUnwrapRule {
     }
 
     fn check(&self, source: &str) -> Vec<RuleViolation> {
-        let file = match parse_str::<File>(source) {
-            Ok(file) => file,
-            Err(_) => return Vec::new(),
+        let file = match crate::parse_cache::parse_cached(source) {
+            Some(file) => (*file).clone(),
+            None => return Vec::new(),
         };
 
         let mut visitor = ContractUnwrapVisitor {

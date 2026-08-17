@@ -1,7 +1,7 @@
 use crate::finding_codes::STATE_WRITE_IN_VIEW;
 use crate::rules::{Rule, RuleViolation, Severity};
 use syn::visit::Visit;
-use syn::{parse_str, Attribute, File};
+use syn::Attribute;
 
 /// Detects storage mutations performed inside getter/view-style functions.
 ///
@@ -40,9 +40,9 @@ impl Rule for StateWriteInViewRule {
     }
 
     fn check(&self, source: &str) -> Vec<RuleViolation> {
-        let file = match parse_str::<File>(source) {
-            Ok(file) => file,
-            Err(_) => return Vec::new(),
+        let file = match crate::parse_cache::parse_cached(source) {
+            Some(file) => (*file).clone(),
+            None => return Vec::new(),
         };
 
         let mut visitor = ViewWriteVisitor {

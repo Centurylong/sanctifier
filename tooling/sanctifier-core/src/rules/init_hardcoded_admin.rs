@@ -2,7 +2,7 @@ use crate::finding_codes::INIT_HARDCODED_ADMIN;
 use crate::rules::{Rule, RuleViolation, Severity};
 use syn::spanned::Spanned;
 use syn::visit::Visit;
-use syn::{parse_str, Attribute, File};
+use syn::Attribute;
 
 /// Detects hardcoded admin addresses or default literal values in initialization functions.
 pub struct InitHardcodedAdminRule;
@@ -92,9 +92,9 @@ impl Rule for InitHardcodedAdminRule {
     }
 
     fn check(&self, source: &str) -> Vec<RuleViolation> {
-        let file = match parse_str::<File>(source) {
-            Ok(file) => file,
-            Err(_) => return Vec::new(),
+        let file = match crate::parse_cache::parse_cached(source) {
+            Some(file) => (*file).clone(),
+            None => return Vec::new(),
         };
 
         let mut visitor = InitAdminVisitor {

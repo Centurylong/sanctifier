@@ -3,7 +3,7 @@ use crate::rules::{Patch, Rule, RuleViolation, Severity};
 use std::collections::{HashMap, HashSet};
 use syn::spanned::Spanned;
 use syn::visit::{self, Visit};
-use syn::{parse_str, File, Item};
+use syn::{File, Item};
 
 pub struct AuthGapRule;
 
@@ -29,9 +29,9 @@ impl Rule for AuthGapRule {
     }
 
     fn check(&self, source: &str) -> Vec<RuleViolation> {
-        let file = match parse_str::<File>(source) {
-            Ok(f) => f,
-            Err(_) => return vec![],
+        let file = match crate::parse_cache::parse_cached(source) {
+            Some(f) => (*f).clone(),
+            None => return vec![],
         };
 
         let mut gaps = Vec::new();
@@ -67,9 +67,9 @@ impl Rule for AuthGapRule {
     }
 
     fn fix(&self, source: &str) -> Vec<Patch> {
-        let file = match parse_str::<File>(source) {
-            Ok(f) => f,
-            Err(_) => return vec![],
+        let file = match crate::parse_cache::parse_cached(source) {
+            Some(f) => (*f).clone(),
+            None => return vec![],
         };
 
         let mut patches = Vec::new();
@@ -157,9 +157,9 @@ impl Rule for VisibilityLeakRule {
     }
 
     fn check(&self, source: &str) -> Vec<RuleViolation> {
-        let file = match parse_str::<File>(source) {
-            Ok(file) => file,
-            Err(_) => return Vec::new(),
+        let file = match crate::parse_cache::parse_cached(source) {
+            Some(file) => (*file).clone(),
+            None => return Vec::new(),
         };
 
         let program = VisibilityProgram::from_file(&file);

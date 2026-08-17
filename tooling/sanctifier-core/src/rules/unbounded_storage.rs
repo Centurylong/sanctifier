@@ -2,7 +2,7 @@ use crate::finding_codes::UNBOUNDED_STORAGE;
 use crate::rules::{Rule, RuleViolation, Severity};
 use std::collections::HashSet;
 use syn::visit::Visit;
-use syn::{parse_str, Attribute, File};
+use syn::Attribute;
 
 /// Collection-growth methods that append entries without removing any.
 const GROWTH_METHODS: &[&str] = &["push_back", "push_front", "push", "append", "insert", "set"];
@@ -49,9 +49,9 @@ impl Rule for UnboundedStorageRule {
     }
 
     fn check(&self, source: &str) -> Vec<RuleViolation> {
-        let file = match parse_str::<File>(source) {
-            Ok(file) => file,
-            Err(_) => return Vec::new(),
+        let file = match crate::parse_cache::parse_cached(source) {
+            Some(file) => (*file).clone(),
+            None => return Vec::new(),
         };
 
         let mut visitor = ContractVisitor {

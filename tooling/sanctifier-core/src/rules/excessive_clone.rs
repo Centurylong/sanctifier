@@ -2,7 +2,6 @@ use crate::rules::{Rule, RuleViolation, Severity};
 use std::collections::HashSet;
 use syn::spanned::Spanned;
 use syn::visit::Visit;
-use syn::{parse_str, File};
 
 /// Detects gas-wasting clones of the Soroban `Env` handle (`env.clone()`).
 ///
@@ -36,9 +35,9 @@ impl Rule for ExcessiveCloneRule {
     }
 
     fn check(&self, source: &str) -> Vec<RuleViolation> {
-        let file = match parse_str::<File>(source) {
-            Ok(f) => f,
-            Err(_) => return vec![],
+        let file = match crate::parse_cache::parse_cached(source) {
+            Some(f) => (*f).clone(),
+            None => return vec![],
         };
         let mut visitor = CloneVisitor {
             fn_name: String::new(),

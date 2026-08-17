@@ -1,7 +1,7 @@
 use crate::rules::{Rule, RuleViolation, Severity};
 use std::collections::{HashMap, HashSet};
 use syn::spanned::Spanned;
-use syn::{parse_str, File, Item};
+use syn::Item;
 
 /// Detects inconsistent or duplicate discriminants in #[contracterror] enums
 pub struct ErrorCodeCollisionRule;
@@ -61,9 +61,9 @@ impl Rule for ErrorCodeCollisionRule {
     }
 
     fn check(&self, source: &str) -> Vec<RuleViolation> {
-        let file = match parse_str::<File>(source) {
-            Ok(f) => f,
-            Err(_) => return vec![],
+        let file = match crate::parse_cache::parse_cached(source) {
+            Some(f) => (*f).clone(),
+            None => return vec![],
         };
 
         let mut violations = Vec::new();
