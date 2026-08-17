@@ -53,3 +53,48 @@ Z3 can verify these patterns without needing to know the types or definitions
 of the expressions, making the fast-path safe. The general case (user-defined
 functions) requires either an Env stub or pure-function extraction, which is
 the Kani path. This is the same split as the existing kani-poc contract.
+
+## `#[sanctify::assume(...)]` (issue #734)
+
+Scoped assumptions let you bound the state a paired invariant is checked
+against, which is how real formal verification tackles properties that would
+otherwise be undecidable (or just out of reach of the fast Z3 path). Place one
+or more `#[sanctify::assume(EXPR)]` attributes on the same `impl` block as the
+`#[sanctify::invariant(...)]` they should bound:
+
+```rust
+#[sanctify::assume(cap == 100)]
+#[sanctify::invariant(cap == 100)]
+#[contractimpl]
+impl Pool {
+    // ...
+}
+```
+
+`sanctifier verify` scans both attributes per file (`Analyzer::scan_assume_attrs`
+mirrors `scan_invariant_attrs`) and calls
+`SmtInvariantVerifier::verify_one_with_assumptions` instead of `verify_one`.
+
+**Scope of this pass** (matching the existing "integer literals and
+tautologies" fast path): an assumption must be of the form `IDENT == LITERAL`
+(either order). It pins `IDENT` to a concrete Z3 integer constant, which is
+enough to decide an invariant of the same shape over the same identifier
+without falling back to Kani. Assumptions on a different contract, or that
+don't parse to that shape, are ignored — the invariant then behaves exactly as
+it did before (`Unsupported`, dispatched to Kani).
+
+**Example bounding a proof:** `cap == 100` alone is `Unsupported` — `cap` is
+an unconstrained free identifier, not a literal, so the SMT fast path can't
+decide it. Adding `#[sanctify::assume(cap == 100)]` bounds `cap` enough for
+the identical invariant to be `Proven` without Kani. See
+`tooling/sanctifier-core/src/invariant.rs::tests::test_assume_bounds_an_otherwise_unsupported_invariant`
+for the exact before/after.
+
+**An assumption that contradicts the invariant** (e.g. `assume(cap == 50)`
+next to `invariant(cap == 100)`) correctly reports `Refuted`: given `cap`
+pinned to 50, the invariant `cap == 100` does not hold, and the counterexample
+says so. (If two *assumptions* on the same identifier contradict each other —
+e.g. `assume(cap == 50)` and `assume(cap == 100)` together — the assumed state
+itself is unsatisfiable, which SMT solvers report as vacuously `Proven` for
+whatever's checked under it; that's the standard convention for an infeasible
+precondition, not a bug.)
