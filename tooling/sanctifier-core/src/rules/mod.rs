@@ -34,6 +34,7 @@ pub mod unsigned_underflow;
 pub mod unused_variable;
 pub mod vesting_schedule;
 pub mod view_panic;
+pub mod vk_provenance;
 pub mod wrong_auth_args;
 
 use serde::Serialize;
@@ -250,6 +251,7 @@ impl RuleRegistry {
         registry.register(sep41_approval_expiration::Sep41ApprovalExpirationRule::new());
         registry.register(nullifier_growth::NullifierGrowthRule::new());
         registry.register(proof_length_check::ProofLengthCheckRule::new());
+        registry.register(vk_provenance::VkProvenanceRule::new());
         registry
     }
 }

@@ -66,7 +66,9 @@
     "nullifier_growth": "SANCT_NULLIFIER_GROWTH",
     "SANCT_NULLIFIER_GROWTH": "SANCT_NULLIFIER_GROWTH",
     "proof_length_check": "SANCT_PROOF_LENGTH_UNVALIDATED",
-    "SANCT_PROOF_LENGTH_UNVALIDATED": "SANCT_PROOF_LENGTH_UNVALIDATED"
+    "SANCT_PROOF_LENGTH_UNVALIDATED": "SANCT_PROOF_LENGTH_UNVALIDATED",
+    "vk_provenance": "SANCT_VK_PROVENANCE",
+    "SANCT_VK_PROVENANCE": "SANCT_VK_PROVENANCE"
   },
   "overlap_legend": {
     "shared-covered": "Class has an EVM analogue and Sanctifier already flags it.",
