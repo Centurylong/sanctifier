@@ -30,6 +30,7 @@ the fix, and references.
 | `SANCT_CONTRACTERROR_ENUM` | logic | Public function returns error enum missing `#[contracterror]` or repr | [`contracterror_enum`](detectors/contracterror_enum.md) |
 | `SANCT_PROOF_LENGTH_UNVALIDATED` | zk_verification | Proof/public-input byte array reaches a verifier call with no length check first | [`proof_length_check`](detectors/proof_length_check.md) |
 | `SANCT_VK_PROVENANCE` | cryptography | ZK verifying key accepted at runtime and stored with no auth/hash-pin guard | [`vk_provenance`](detectors/vk_provenance.md) |
+| `SANCT_PUBLIC_INPUT_UNVALIDATED` | zk_verification | Verification consumes public inputs without checking they are canonical field elements in range | [`public_input_range`](detectors/public_input_range.md) |
 
 > **Full catalog:** [Detector Catalog →](detectors/README.md)
 
