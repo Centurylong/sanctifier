@@ -18,6 +18,8 @@
     "edge_amount": "S013",
     "balance_equality": "SANCT_BALANCE_EQ",
     "SANCT_BALANCE_EQ": "SANCT_BALANCE_EQ",
+    "bls_subgroup_check": "SANCT_BLS_SUBGROUP_UNCHECKED",
+    "SANCT_BLS_SUBGROUP_UNCHECKED": "SANCT_BLS_SUBGROUP_UNCHECKED",
     "unused_variable": "S015",
     "error_code_collision": "S016",
     "fee_rounding": "S017",

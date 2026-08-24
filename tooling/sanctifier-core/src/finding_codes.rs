@@ -23,6 +23,7 @@ pub const LEDGER_SECONDS: &str = "S021";
 pub const EXCESSIVE_CLONE: &str = "S020";
 pub const ARG_DOS: &str = "SANCT_ARG_DOS";
 pub const BALANCE_EQUALITY: &str = "SANCT_BALANCE_EQ";
+pub const BLS_SUBGROUP_UNCHECKED: &str = "SANCT_BLS_SUBGROUP_UNCHECKED";
 pub const SANCT_UNWRAP: &str = "SANCT_UNWRAP";
 pub const INIT_HARDCODED_ADMIN: &str = "SANCT_INIT_HARDCODED_ADMIN";
 pub const SANCT_VISIBILITY: &str = "SANCT_VISIBILITY";
@@ -126,6 +127,12 @@ pub fn all_finding_codes() -> Vec<FindingCode> {
             category: "logic",
             description:
                 "Balance gated against an amount with `==`/`!=` where `>=`/`<=` was likely intended",
+        },
+        FindingCode {
+            code: BLS_SUBGROUP_UNCHECKED,
+            category: "cryptography",
+            description:
+                "BLS12-381 proof point reaches a pairing call with no subgroup or curve membership check",
         },
         FindingCode {
             code: DEPRECATED_SDK,
