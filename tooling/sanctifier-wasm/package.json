@@ -1,0 +1,51 @@
+{
+  "name": "@sanctifier/wasm",
+  "version": "0.1.0",
+  "description": "Soroban smart contract security analysis in the browser and at the edge. No server round-trip.",
+  "license": "MIT",
+  "homepage": "https://github.com/Centurylong/sanctifier",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Centurylong/sanctifier.git",
+    "directory": "tooling/sanctifier-wasm"
+  },
+  "bugs": "https://github.com/Centurylong/sanctifier/issues",
+  "keywords": [
+    "soroban",
+    "stellar",
+    "security",
+    "smart-contracts",
+    "static-analysis",
+    "wasm",
+    "webassembly"
+  ],
+  "type": "module",
+  "main": "./js/index.js",
+  "types": "./js/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./js/index.d.ts",
+      "default": "./js/index.js"
+    }
+  },
+  "files": [
+    "js/",
+    "dist/",
+    "README.md"
+  ],
+  "sideEffects": [
+    "./dist/web/sanctifier_wasm.js",
+    "./dist/node/sanctifier_wasm.js"
+  ],
+  "engines": {
+    "node": ">=18"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "scripts": {
+    "build": "./scripts/build-npm.sh",
+    "test": "node --test test/*.test.mjs",
+    "demo": "python3 -m http.server 8080 --directory ."
+  }
+}

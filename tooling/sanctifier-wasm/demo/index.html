@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Sanctifier — in-browser Soroban analysis</title>
+    <link rel="stylesheet" href="./demo.css" />
+  </head>
+  <body>
+    <header>
+      <h1>Sanctifier <span class="badge">wasm</span></h1>
+      <p class="lede">
+        Paste Soroban contract source and get findings. The analysis runs entirely in this
+        tab — no server round-trip, and nothing you paste leaves your machine.
+      </p>
+      <p class="status" id="status" role="status">Loading analysis engine…</p>
+    </header>
+
+    <main>
+      <section class="pane">
+        <div class="pane-head">
+          <label for="source">Contract source</label>
+          <button type="button" id="load-sample" class="ghost">Load sample</button>
+        </div>
+        <textarea
+          id="source"
+          spellcheck="false"
+          placeholder="Paste a Soroban contract here…"
+          aria-describedby="status"
+        ></textarea>
+        <button type="button" id="analyze" disabled>Analyze</button>
+      </section>
+
+      <section class="pane">
+        <div class="pane-head">
+          <h2>Findings</h2>
+          <span class="timing" id="timing"></span>
+        </div>
+
+        <!-- Severity counts. Each carries its label and number, never the
+             colour alone, so the row is readable in greyscale, in
+             forced-colours mode, and to a colourblind reader. -->
+        <ul class="summary" id="summary" hidden></ul>
+
+        <div id="results" class="results" aria-live="polite">
+          <p class="empty">Findings will appear here.</p>
+        </div>
+      </section>
+    </main>
+
+    <footer>
+      <p>
+        Powered by <code>@sanctifier/wasm</code>. Source:
+        <a href="https://github.com/Centurylong/sanctifier">Centurylong/sanctifier</a>.
+      </p>
+    </footer>
+
+    <script type="module" src="./demo.js"></script>
+  </body>
+</html>
