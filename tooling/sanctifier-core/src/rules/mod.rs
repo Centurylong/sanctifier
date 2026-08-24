@@ -3,6 +3,7 @@ pub mod arg_dos;
 pub mod arithmetic_overflow;
 pub mod auth_gap;
 pub mod balance_equality;
+pub mod bls_subgroup_check;
 pub mod contracterror_enum;
 pub mod cross_contract_call_in_loop;
 pub mod division_by_zero;
@@ -224,6 +225,7 @@ impl RuleRegistry {
         registry.register(hardcoded_addr::HardcodedAddrRule::new());
         registry.register(error_code_collision::ErrorCodeCollisionRule::new());
         registry.register(edge_amount::EdgeAmountRule::new());
+        registry.register(bls_subgroup_check::BlsSubgroupCheckRule::new());
         registry.register(wrong_auth_args::WrongAuthArgsRule::new());
         registry.register(balance_equality::BalanceEqualityRule::new());
         registry.register(fee_rounding::FeeRoundingRule::new());
