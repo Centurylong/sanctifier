@@ -38,6 +38,11 @@ clap = { version = "4.4", features = ["derive"] }
 clap-markdown = "0.1"
 anyhow = "1.0"
 sanctifier-core = { version = "0.1.0", path = "../sanctifier-core", features = ["smt"] }
+# The language server lives in its own crate so editors can depend on it
+# without pulling in the CLI (and its z3 link); this dependency is only so
+# `sanctifier lsp` can start it in-process rather than shelling out to a
+# second binary the user would have to install separately.
+sanctifier-lsp = { version = "0.1.0", path = "../sanctifier-lsp" }
 toml = "0.8"
 tokio = { version = "1.0", features = ["full"] }
 colored = "2.0"

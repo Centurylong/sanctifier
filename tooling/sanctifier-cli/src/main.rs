@@ -59,6 +59,14 @@ pub enum Commands {
         #[arg(short, long, default_value = "callgraph.dot")]
         output: PathBuf,
     },
+    /// Run the Language Server Protocol server for real-time editor diagnostics
+    Lsp {
+        /// Communicate over stdin/stdout. Required, and currently the only
+        /// transport — editors always pass it, and without it a bare
+        /// invocation would sit silently waiting on stdin.
+        #[arg(long)]
+        stdio: bool,
+    },
     /// Check for and download the latest Sanctifier binary
     Update,
     /// Watch source files and re-run analysis automatically on change (debounced)
@@ -185,6 +193,12 @@ fn main() -> anyhow::Result<()> {
                 output,
                 edges.len()
             );
+        }
+        Commands::Lsp { stdio } => {
+            if !stdio {
+                anyhow::bail!("sanctifier lsp requires --stdio (the only supported transport)");
+            }
+            sanctifier_lsp::run_stdio()?;
         }
         Commands::Update => {
             commands::update::exec()?;

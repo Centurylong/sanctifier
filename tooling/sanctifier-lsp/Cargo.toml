@@ -1,0 +1,28 @@
+[workspace]
+members = ["."]
+
+[package]
+name = "sanctifier-lsp"
+version = "0.1.0"
+edition = "2021"
+rust-version = "1.78"
+description = "Language Server Protocol server for Sanctifier — real-time Soroban contract analysis in the editor"
+license = "MIT"
+homepage = "https://github.com/Centurylong/sanctifier"
+repository = "https://github.com/Centurylong/sanctifier"
+keywords = ["soroban", "stellar", "lsp", "security", "static-analysis"]
+categories = ["development-tools"]
+
+[[bin]]
+name = "sanctifier-lsp"
+path = "src/main.rs"
+
+[dependencies]
+# Deliberately no tower-lsp and no async runtime. LSP over stdio is a
+# request/response loop on two pipes; tokio would add a large dependency tree
+# and a build-time cost to every editor install for concurrency this server
+# does not have. The protocol layer here is ~200 lines and unit-testable
+# without a runtime.
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+sanctifier-core = { path = "../sanctifier-core", default-features = false }

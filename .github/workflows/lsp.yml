@@ -1,0 +1,79 @@
+name: LSP
+
+# Own workflow rather than steps in ci.yml: sanctifier-lsp is a standalone
+# workspace with no z3 dependency, so it builds and tests in well under a
+# minute without the apt install and toolchain setup the main job needs.
+# Keeping it separate means an editor-facing regression is legible as one.
+on:
+  push:
+    branches: ["main"]
+    paths:
+      - "tooling/sanctifier-lsp/**"
+      - "tooling/sanctifier-core/**"
+      - "editors/**"
+      - ".github/workflows/lsp.yml"
+  pull_request:
+    branches: ["main"]
+    paths:
+      - "tooling/sanctifier-lsp/**"
+      - "tooling/sanctifier-core/**"
+      - "editors/**"
+      - ".github/workflows/lsp.yml"
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  lsp:
+    name: Build, lint, and test the language server
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: tooling/sanctifier-lsp
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install pinned Rust toolchain
+        # Same 1.85.0 pin as ci.yml — this crate depends on sanctifier-core and
+        # inherits the ethnum/base64ct constraints documented there.
+        uses: dtolnay/rust-toolchain@1.85.0
+        with:
+          components: rustfmt, clippy
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Cache cargo registry & build artifacts
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry/index/
+            ~/.cargo/registry/cache/
+            ~/.cargo/git/db/
+            tooling/sanctifier-lsp/target/
+          key: ${{ runner.os }}-lsp-${{ hashFiles('tooling/sanctifier-lsp/Cargo.lock') }}
+          restore-keys: ${{ runner.os }}-lsp-
+
+      - name: Check formatting
+        # This crate is outside the root workspace, so `cargo fmt --all` in
+        # ci.yml does not reach it.
+        run: cargo fmt --check
+
+      - name: Run Clippy
+        run: cargo clippy --all-targets -- -D warnings
+
+      - name: Run tests
+        run: cargo test
+
+      - name: Build release binary
+        run: cargo build --release
+
+      - name: Protocol conformance over real stdio
+        # The unit tests drive `serve()` over in-memory buffers. This runs the
+        # actual binary over real pipes, which is the only way to catch a
+        # framing or flushing bug that an in-memory Cursor hides — and it
+        # measures the edit-to-diagnostics latency the issue puts a 500ms
+        # budget on.
+        run: python3 ../../scripts/lsp-conformance.py ./target/release/sanctifier-lsp

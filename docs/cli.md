@@ -20,6 +20,7 @@ This document contains the help content for the `sanctifier` command-line progra
 * [`sanctifier init`↴](#sanctifier-init)
 * [`sanctifier license`↴](#sanctifier-license)
 * [`sanctifier callgraph`↴](#sanctifier-callgraph)
+* [`sanctifier lsp`↴](#sanctifier-lsp)
 * [`sanctifier update`↴](#sanctifier-update)
 * [`sanctifier watch`↴](#sanctifier-watch)
 * [`sanctifier verify`↴](#sanctifier-verify)
@@ -58,6 +59,7 @@ Stellar Soroban Security & Formal Verification Suite
 * `init` — Initialize Sanctifier in a new project
 * `license` — Check dependency licenses (from `cargo metadata`) against an allow/deny list
 * `callgraph` — Generate a Graphviz DOT call graph of cross-contract calls (env.invoke_contract)
+* `lsp` — Run the Language Server Protocol server for real-time editor diagnostics
 * `update` — Check for and download the latest Sanctifier binary
 * `watch` — Watch source files and re-run analysis automatically on change (debounced)
 * `verify` — Verify #[sanctify::invariant] declarations across a contract or workspace
@@ -328,6 +330,18 @@ Generate a Graphviz DOT call graph of cross-contract calls (env.invoke_contract)
 * `-o`, `--output <OUTPUT>` — Output DOT file path
 
   Default value: `callgraph.dot`
+
+
+
+## `sanctifier lsp`
+
+Run the Language Server Protocol server for real-time editor diagnostics
+
+**Usage:** `sanctifier lsp [OPTIONS]`
+
+###### **Options:**
+
+* `--stdio` — Communicate over stdin/stdout. Required, and currently the only transport — editors always pass it, and without it a bare invocation would sit silently waiting on stdin
 
 
 
