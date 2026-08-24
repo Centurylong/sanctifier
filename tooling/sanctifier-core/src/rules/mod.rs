@@ -19,6 +19,7 @@ pub mod missing_ttl;
 pub mod nullifier_growth;
 pub mod panic_detection;
 pub mod proof_length_check;
+pub mod public_input_range;
 pub mod reserve_withdrawal;
 pub mod sanct_unwrap;
 pub mod sep41_allowance_decrement;
@@ -252,6 +253,7 @@ impl RuleRegistry {
         registry.register(nullifier_growth::NullifierGrowthRule::new());
         registry.register(proof_length_check::ProofLengthCheckRule::new());
         registry.register(vk_provenance::VkProvenanceRule::new());
+        registry.register(public_input_range::PublicInputRangeRule::new());
         registry
     }
 }

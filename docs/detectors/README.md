@@ -59,6 +59,7 @@ detector page and to the relevant [Glossary](../glossary.md) term.
 | [`nullifier_growth`](nullifier_growth.md) | [`SANCT_NULLIFIER_GROWTH`](../error-codes.md) | denial_of_service | Warning | ZK nullifier/commitment marked spent in persistent storage with no pruning, TTL extension, or size cap |
 | [`proof_length_check`](proof_length_check.md) | [`SANCT_PROOF_LENGTH_UNVALIDATED`](../error-codes.md) | zk_verification | Warning | Proof/public-input byte array reaches a verifier call with no length check first |
 | [`vk_provenance`](vk_provenance.md) | [`SANCT_VK_PROVENANCE`](../error-codes.md) | cryptography | High | ZK verifying key accepted at runtime and stored with no auth/hash-pin guard |
+| [`public_input_range`](public_input_range.md) | [`SANCT_PUBLIC_INPUT_UNVALIDATED`](../error-codes.md) | zk_verification | Error | Verification consumes public inputs without checking they are canonical field elements in range |
 
 ## Page anatomy
 

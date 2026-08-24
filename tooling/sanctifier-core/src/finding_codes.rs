@@ -39,6 +39,7 @@ pub const SEP41_ALLOWANCE_NOT_DECREMENTED: &str = "SANCT_SEP41_ALLOWANCE_NOT_DEC
 pub const SEP41_APPROVAL_NO_EXPIRATION: &str = "SANCT_SEP41_APPROVAL_NO_EXPIRATION";
 pub const NULLIFIER_GROWTH: &str = "SANCT_NULLIFIER_GROWTH";
 pub const PROOF_LENGTH_UNVALIDATED: &str = "SANCT_PROOF_LENGTH_UNVALIDATED";
+pub const PUBLIC_INPUT_UNVALIDATED: &str = "SANCT_PUBLIC_INPUT_UNVALIDATED";
 
 // ── Source-optional (compiled WASM) checks ────────────────────────────────────
 // Emitted only by `sanctifier wasm`, which analyzes a deployed module directly.
@@ -267,6 +268,12 @@ pub fn all_finding_codes() -> Vec<FindingCode> {
             category: "zk_verification",
             description:
                 "Proof or public-input byte array reaches a verifier call without a length check first",
+        },
+        FindingCode {
+            code: PUBLIC_INPUT_UNVALIDATED,
+            category: "zk_verification",
+            description:
+                "Proof verification consumes public inputs without checking they are canonical field elements in range",
         },
         FindingCode {
             code: WASM_NOT_SOROBAN,
