@@ -7,3 +7,8 @@ expression: findings
   message: "SANCT_ARG_DOS: argument `items` is iterated without a visible length cap"
   location: "sum_all:16"
   suggestion: "Check `items.len()` against a maximum before iterating over `items`"
+- rule_name: SANCT_UNBOUNDED_INPUT
+  severity: Warning
+  message: "SANCT_UNBOUNDED_INPUT: `items: Vec` is caller-sized and its length is never checked"
+  location: "sum_all:items"
+  suggestion: "Cap the length before using it, e.g. `if items.len() > MAX_ITEMS { return Err(Error::InputTooLarge); }` with MAX_ITEMS a named constant"
