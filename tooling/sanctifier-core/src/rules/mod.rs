@@ -2,6 +2,7 @@ pub mod allowance_race;
 pub mod arg_dos;
 pub mod arithmetic_overflow;
 pub mod auth_gap;
+pub mod auth_on_caller;
 pub mod balance_equality;
 pub mod bls_subgroup_check;
 pub mod contracterror_enum;
@@ -216,6 +217,7 @@ impl RuleRegistry {
         let mut registry = Self::new();
         registry.register(auth_gap::AuthGapRule::new());
         registry.register(auth_gap::VisibilityLeakRule::new());
+        registry.register(auth_on_caller::AuthOnCallerRule::new());
         registry.register(ledger_size::LedgerSizeRule::new());
         registry.register(panic_detection::PanicDetectionRule::new());
         registry.register(arithmetic_overflow::ArithmeticOverflowRule::new());

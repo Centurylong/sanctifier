@@ -1,0 +1,14 @@
+---
+source: tooling/sanctifier-core/tests/detector_snapshots.rs
+expression: findings
+---
+- rule_name: SANCT_AUTH_ON_CALLER
+  severity: Error
+  message: "SANCT_AUTH_ON_CALLER: `caller` is authorized but state owned by `owner` is mutated"
+  location: "withdraw:16"
+  suggestion: "Call `owner.require_auth()` — the address whose state changes must be the one that authorizes the change. If `caller` is acting on `owner`'s behalf, check a recorded allowance from `owner` as well."
+- rule_name: SANCT_AUTH_ON_CALLER
+  severity: Error
+  message: "SANCT_AUTH_ON_CALLER: `a` is authorized but state owned by `b` is mutated"
+  location: "sweep:23"
+  suggestion: "Call `b.require_auth()` — the address whose state changes must be the one that authorizes the change. If `a` is acting on `b`'s behalf, check a recorded allowance from `b` as well."
