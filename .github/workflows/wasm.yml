@@ -1,0 +1,114 @@
+name: WASM
+
+# Own workflow rather than steps in ci.yml: sanctifier-wasm is a standalone
+# workspace (like sanctifier-cli), it needs the wasm32 target and a Node
+# toolchain that the main job has no use for, and its build is slow enough
+# that paths filtering is worth having.
+on:
+  push:
+    branches: ["main"]
+    paths:
+      - "tooling/sanctifier-wasm/**"
+      - "tooling/sanctifier-core/**"
+      - ".github/workflows/wasm.yml"
+  pull_request:
+    branches: ["main"]
+    paths:
+      - "tooling/sanctifier-wasm/**"
+      - "tooling/sanctifier-core/**"
+      - ".github/workflows/wasm.yml"
+
+env:
+  CARGO_TERM_COLOR: always
+
+defaults:
+  run:
+    working-directory: tooling/sanctifier-wasm
+
+jobs:
+  wasm:
+    name: Build, lint, and test the wasm package
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install pinned Rust toolchain
+        # Same 1.85.0 pin as ci.yml — sanctifier-wasm depends on
+        # sanctifier-core, so it inherits the ethnum/base64ct constraints
+        # documented there.
+        uses: dtolnay/rust-toolchain@1.85.0
+        with:
+          components: rustfmt, clippy
+          targets: wasm32-unknown-unknown
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Cache cargo registry & build artifacts
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry/index/
+            ~/.cargo/registry/cache/
+            ~/.cargo/git/db/
+            tooling/sanctifier-wasm/target/
+          key: ${{ runner.os }}-wasm-${{ hashFiles('tooling/sanctifier-wasm/Cargo.toml') }}
+          restore-keys: ${{ runner.os }}-wasm-
+
+      - name: Check formatting
+        # This crate sits outside the root workspace, so `cargo fmt --all` in
+        # ci.yml never reached it. It is checked here instead.
+        run: cargo fmt --check
+
+      - name: Run Clippy against the wasm target
+        # Linting for wasm32 rather than the host: this crate only ever runs
+        # there, and cfg-gated code would otherwise go unchecked.
+        run: cargo clippy --target wasm32-unknown-unknown --all-targets -- -D warnings
+
+      - name: Build for wasm32-unknown-unknown
+        run: cargo build --target wasm32-unknown-unknown --release
+
+      - name: Install wasm-pack
+        uses: taiki-e/install-action@v2
+        with:
+          tool: wasm-pack
+
+      - name: Build the npm package
+        run: ./scripts/build-npm.sh
+
+      - name: Package smoke tests
+        # Runs against dist/, i.e. the exact artifacts npm consumers receive —
+        # including the assertion that analysis stays inside the demo's 2s budget.
+        run: npm test
+
+      - name: Verify the publishable tarball
+        # `npm pack` resolves the "files" allowlist, so this fails if the built
+        # wasm or the type declarations were left out of the package.
+        run: |
+          npm pack --dry-run 2>&1 | tee pack.log
+          grep -q "dist/web/sanctifier_wasm_bg.wasm" pack.log \
+            || { echo "::error::web wasm binary missing from the npm tarball"; exit 1; }
+          grep -q "dist/node/sanctifier_wasm.js" pack.log \
+            || { echo "::error::node glue missing from the npm tarball"; exit 1; }
+          grep -q "js/index.d.ts" pack.log \
+            || { echo "::error::TypeScript declarations missing from the npm tarball"; exit 1; }
+
+      - name: Report artifact size
+        # Surfaced on every run because this payload is downloaded before the
+        # page can analyse anything — a regression here is a user-visible one.
+        run: |
+          bytes=$(wc -c < dist/web/sanctifier_wasm_bg.wasm | tr -d ' ')
+          echo "### wasm payload" >> "$GITHUB_STEP_SUMMARY"
+          echo "\`dist/web/sanctifier_wasm_bg.wasm\`: **$(( bytes / 1024 )) KiB**" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload the built package
+        uses: actions/upload-artifact@v4
+        with:
+          name: sanctifier-wasm-package
+          path: |
+            tooling/sanctifier-wasm/dist/
+            tooling/sanctifier-wasm/js/
+            tooling/sanctifier-wasm/package.json
+          retention-days: 7

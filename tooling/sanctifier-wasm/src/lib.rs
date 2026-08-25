@@ -48,11 +48,7 @@ struct RawReport {
     custom_rule_matches: Vec<CustomRuleMatch>,
 }
 
-fn build_report(
-    analyzer: &Analyzer,
-    source: &str,
-    custom_rules: &[CustomRule],
-) -> AnalysisReport {
+fn build_report(analyzer: &Analyzer, source: &str, custom_rules: &[CustomRule]) -> AnalysisReport {
     let size_warnings = analyzer.analyze_ledger_size(source);
     let unsafe_patterns = analyzer.analyze_unsafe_patterns(source);
     let auth_gaps = analyzer.scan_auth_gaps(source);
@@ -204,8 +200,10 @@ fn build_report(
         });
     }
 
-    let mut summary = Summary::default();
-    summary.total = findings.len();
+    let mut summary = Summary {
+        total: findings.len(),
+        ..Default::default()
+    };
     for f in &findings {
         match f.severity {
             "critical" => summary.critical += 1,

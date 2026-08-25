@@ -1,0 +1,171 @@
+:root {
+  color-scheme: dark;
+  --bg: #0b0f17;
+  --surface: #131a26;
+  --border: #223047;
+  --ink: #e8eefc;
+  --muted: #93a4c2;
+  --accent: #5cc8ff;
+
+  /* Status colours are reserved for severity and are never reused for
+     anything else on this page. Every one ships beside its label and count,
+     so meaning is never carried by colour alone. */
+  --critical: #e05561;
+  --high: #e8873a;
+  --medium: #d3a726;
+  --low: #4aa3df;
+  --info: #7f8aa3;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  padding: 28px 20px 48px;
+  background: var(--bg);
+  color: var(--ink);
+  font: 15px/1.6 ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+}
+
+header, main, footer { max-width: 1160px; margin: 0 auto; }
+
+h1 { margin: 0 0 6px; font-size: 1.6rem; letter-spacing: -0.02em; }
+h2 { margin: 0; font-size: 1rem; }
+
+.badge {
+  font-size: 0.66rem;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  padding: 3px 8px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--accent) 16%, transparent);
+  border: 1px solid color-mix(in srgb, var(--accent) 40%, transparent);
+  color: var(--accent);
+  vertical-align: middle;
+}
+
+.lede { margin: 0 0 10px; color: var(--muted); max-width: 68ch; }
+.status { margin: 0 0 20px; font-size: 0.86rem; color: var(--muted); }
+.status.ready { color: #4bbf8a; }
+.status.error { color: var(--critical); }
+
+main {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));
+  gap: 18px;
+  align-items: start;
+}
+
+.pane {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 16px;
+  min-width: 0;
+}
+
+.pane-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 10px;
+}
+.pane-head label { font-weight: 600; font-size: 0.92rem; }
+
+textarea {
+  width: 100%;
+  min-height: 340px;
+  resize: vertical;
+  background: var(--bg);
+  color: var(--ink);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 12px;
+  font: 13px/1.55 ui-monospace, SFMono-Regular, Menlo, monospace;
+  tab-size: 4;
+}
+textarea:focus-visible, button:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+button {
+  margin-top: 12px;
+  padding: 10px 18px;
+  border-radius: 8px;
+  border: 0;
+  background: var(--accent);
+  color: #06121c;
+  font-weight: 650;
+  cursor: pointer;
+}
+button:disabled { opacity: 0.45; cursor: not-allowed; }
+button.ghost {
+  margin: 0;
+  padding: 5px 11px;
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--muted);
+  font-weight: 500;
+  font-size: 0.82rem;
+}
+
+.timing { font-size: 0.8rem; color: var(--muted); font-variant-numeric: tabular-nums; }
+
+.summary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  list-style: none;
+  padding: 0;
+  margin: 0 0 14px;
+}
+.summary li {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  font-size: 0.8rem;
+  font-variant-numeric: tabular-nums;
+}
+.dot { width: 9px; height: 9px; border-radius: 50%; flex-shrink: 0; }
+
+.results { display: flex; flex-direction: column; gap: 10px; }
+.empty { color: var(--muted); margin: 0; }
+
+.finding {
+  border: 1px solid var(--border);
+  border-left-width: 4px;
+  border-radius: 8px;
+  padding: 11px 13px;
+  background: var(--bg);
+}
+.finding-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 8px;
+  margin-bottom: 5px;
+}
+.sev {
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.code {
+  font: 0.76rem ui-monospace, SFMono-Regular, Menlo, monospace;
+  color: var(--muted);
+}
+.finding p { margin: 0 0 4px; }
+.loc { font-size: 0.78rem; color: var(--muted); }
+
+footer { margin-top: 28px; color: var(--muted); font-size: 0.82rem; }
+footer a { color: var(--accent); }
+
+@media (prefers-reduced-motion: reduce) {
+  * { transition: none !important; animation: none !important; }
+}
