@@ -10,6 +10,8 @@
   ],
  "sanctifier_rule_to_code": {
     "auth_gap": "S001",
+    "auth_on_caller": "SANCT_AUTH_ON_CALLER",
+    "SANCT_AUTH_ON_CALLER": "SANCT_AUTH_ON_CALLER",
     "panic_detection": "S002",
     "arithmetic_overflow": "S003",
     "ledger_size": "S004",
@@ -186,11 +188,11 @@
       "title": "Confused-deputy authorization",
       "soroban": { "vulnerable": "confused_deputy_vulnerable.rs", "fixed": "confused_deputy_fixed.rs" },
       "solidity": { "vulnerable": "confused_deputy_vulnerable.sol", "fixed": "confused_deputy_fixed.sol" },
-      "sanctifier": { "ideal_code": "S001", "observed_codes": [], "status": "planned" },
+      "sanctifier": { "ideal_code": "SANCT_AUTH_ON_CALLER", "observed_codes": ["SANCT_AUTH_ON_CALLER"], "status": "flagged" },
       "slither": { "detectors": ["arbitrary-send-eth", "tx-origin"], "expected": true },
       "aderyn": { "detectors": ["arbitrary-from-in-transfer-from"], "expected": true },
-      "overlap": "shared-sanctifier-gap",
-      "notes": "The vulnerable contract authenticates the wrong party (it calls require_auth, just on an attacker-influenced address), so the presence-only auth_gap detector stays silent (empty result). Refining S001 into a confused-deputy / arbitrary-from check is the action item; Aderyn's arbitrary-from-in-transfer-from is the closest analogue."
+      "overlap": "shared-covered",
+      "notes": "The vulnerable contract authenticates the wrong party (it calls require_auth, just on an attacker-influenced address), so the presence-only auth_gap detector stays silent. The refinement named here as the action item now exists: auth_on_caller (SANCT_AUTH_ON_CALLER) flags an entrypoint whose signer owns none of the state it writes, which is this class exactly. Aderyn's arbitrary-from-in-transfer-from is the closest analogue."
     }
   ]
 }

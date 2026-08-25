@@ -56,15 +56,43 @@ impl AuthOnCallerRule {
         }
 
         let authorized = visitor.authorized;
-        let mut reported: BTreeSet<String> = BTreeSet::new();
 
+        // The invariant: whoever signed must have a stake in the state this
+        // function writes. Gather every address named in any storage key, then
+        // ask whether a signer is among them.
+        //
+        // Deciding this per-write does not work, and the corpus fixtures show
+        // why. A transfer credits the recipient - `set(&to, ..)` - and a
+        // recipient never authorizes receiving funds, so a per-write rule
+        // reports every correct transfer. An allowance is keyed by
+        // `(owner, spender)`, where only the owner is the resource holder.
+        // What actually separates the confused-deputy case from both is that
+        // there the signer owns *none* of the state being written: `caller`
+        // signs and only `owner`'s and `to`'s balances move.
+        let all_written: BTreeSet<String> = visitor
+            .written_owners
+            .iter()
+            .flat_map(|write| write.key_addresses.iter().cloned())
+            .collect();
+
+        if !all_written.is_disjoint(&authorized) {
+            return Vec::new();
+        }
+
+        // One finding per function, not per write. The defect is a property of
+        // the entrypoint - its signer has no stake in anything it touches - and
+        // a transfer writes both sides, so reporting each write would emit a
+        // second finding saying the recipient's balance moved, which is what a
+        // transfer is supposed to do. Report the first owner written.
         visitor
             .written_owners
             .into_iter()
-            // Correct owner-auth: the owner whose state changes signed for it.
-            .filter(|write| !authorized.contains(&write.owner))
-            .filter(|write| reported.insert(write.owner.clone()))
-            .map(|write| {
+            .take(1)
+            .filter_map(|write| {
+                let owner = write.key_addresses.iter().next()?.clone();
+                Some((write, owner))
+            })
+            .map(|(write, owner)| {
                 let signer = authorized
                     .iter()
                     .next()
@@ -74,16 +102,14 @@ impl AuthOnCallerRule {
                     FINDING_CODE,
                     Severity::Error,
                     format!(
-                        "{FINDING_CODE}: `{signer}` is authorized but state owned by `{}` is mutated",
-                        write.owner
+                        "{FINDING_CODE}: `{signer}` is authorized but state owned by `{owner}` is mutated"
                     ),
                     format!("{fn_name}:{}", write.line),
                 )
                 .with_suggestion(format!(
-                    "Call `{0}.require_auth()` — the address whose state changes must be the one \
-                     that authorizes the change. If `{signer}` is acting on `{0}`'s behalf, check a \
-                     recorded allowance from `{0}` as well.",
-                    write.owner
+                    "Call `{owner}.require_auth()` — the address whose state changes must be the one \
+                     that authorizes the change. If `{signer}` is acting on `{owner}`'s behalf, check a \
+                     recorded allowance from `{owner}` as well."
                 ))
             })
             .collect()
@@ -124,9 +150,12 @@ impl Rule for AuthOnCallerRule {
     }
 }
 
-/// One storage write, and the address parameter that keys it.
+/// One storage write, and every address parameter appearing in its key.
+///
+/// A set rather than a single name because keys are frequently composite:
+/// `(owner, spender)` for an allowance, `(owner, token)` for a balance.
 struct OwnerWrite {
-    owner: String,
+    key_addresses: BTreeSet<String>,
     line: usize,
 }
 
@@ -186,9 +215,9 @@ impl<'ast> Visit<'ast> for AuthOwnerVisitor<'_> {
                     found: BTreeSet::new(),
                 };
                 idents.visit_expr(key);
-                for owner in idents.found {
+                if !idents.found.is_empty() {
                     self.written_owners.push(OwnerWrite {
-                        owner,
+                        key_addresses: idents.found,
                         line: line_of(node),
                     });
                 }
