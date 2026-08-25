@@ -1948,6 +1948,7 @@ dependencies = [
  "regex",
  "reqwest",
  "sanctifier-core",
+ "sanctifier-lsp",
  "serde",
  "serde_json",
  "sha2",
@@ -1973,6 +1974,15 @@ dependencies = [
  "syn",
  "thiserror",
  "z3",
+]
+
+[[package]]
+name = "sanctifier-lsp"
+version = "0.1.0"
+dependencies = [
+ "sanctifier-core",
+ "serde",
+ "serde_json",
 ]
 
 [[package]]
