@@ -26,7 +26,8 @@ use sanctifier_core::rules::{
     sep41_allowance_decrement::Sep41AllowanceDecrementRule,
     sep41_approval_expiration::Sep41ApprovalExpirationRule, shift_overflow::ShiftOverflowRule,
     state_write_in_view::StateWriteInViewRule, tier_boundary_off_by_one::TierBoundaryOffByOneRule,
-    unbounded_event_emission::UnboundedEventEmissionRule, unbounded_storage::UnboundedStorageRule,
+    unbounded_event_emission::UnboundedEventEmissionRule,
+    unbounded_input_length::UnboundedInputLengthRule, unbounded_storage::UnboundedStorageRule,
     unhandled_result::UnhandledResultRule, unsigned_underflow::UnsignedUnderflowRule,
     unused_variable::UnusedVariableRule, vesting_schedule::VestingScheduleRule,
     view_panic::ViewPanicRule, wrong_auth_args::WrongAuthArgsRule, Rule, RuleRegistry,
@@ -191,6 +192,15 @@ fn snapshot_arg_dos() {
         "arg_dos",
         &ArgDosRule::new(),
         include_str!("fixtures/detectors/arg_dos.rs"),
+    );
+}
+
+#[test]
+fn snapshot_unbounded_input_length() {
+    assert_detector_snapshot(
+        "unbounded_input_length",
+        &UnboundedInputLengthRule::new(),
+        include_str!("fixtures/detectors/unbounded_input_length.rs"),
     );
 }
 
