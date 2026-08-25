@@ -13,6 +13,7 @@
 //! See `tooling/sanctifier-core/tests/README.md` for the full guide.
 
 use sanctifier_core::rules::auth_gap::VisibilityLeakRule;
+use sanctifier_core::rules::auth_on_caller::AuthOnCallerRule;
 use sanctifier_core::rules::{
     allowance_race::AllowanceRaceRule, arg_dos::ArgDosRule,
     arithmetic_overflow::ArithmeticOverflowRule, auth_gap::AuthGapRule,
@@ -47,6 +48,15 @@ fn snapshot_auth_gap() {
         "auth_gap",
         &AuthGapRule::new(),
         include_str!("fixtures/detectors/auth_gap.rs"),
+    );
+}
+
+#[test]
+fn snapshot_auth_on_caller() {
+    assert_detector_snapshot(
+        "auth_on_caller",
+        &AuthOnCallerRule::new(),
+        include_str!("fixtures/detectors/auth_on_caller.rs"),
     );
 }
 
