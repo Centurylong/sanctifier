@@ -1,0 +1,19 @@
+---
+source: tooling/sanctifier-core/tests/detector_snapshots.rs
+expression: findings
+---
+- rule_name: SANCT_UNBOUNDED_INPUT
+  severity: Warning
+  message: "SANCT_UNBOUNDED_INPUT: `blob: Bytes` is caller-sized and its length is never checked"
+  location: "submit_blob:blob"
+  suggestion: "Cap the length before using it, e.g. `if blob.len() > MAX_BLOB { return Err(Error::InputTooLarge); }` with MAX_BLOB a named constant"
+- rule_name: SANCT_UNBOUNDED_INPUT
+  severity: Warning
+  message: "SANCT_UNBOUNDED_INPUT: `members: Vec` is caller-sized and its length is never checked"
+  location: "set_members:members"
+  suggestion: "Cap the length before using it, e.g. `if members.len() > MAX_MEMBERS { return Err(Error::InputTooLarge); }` with MAX_MEMBERS a named constant"
+- rule_name: SANCT_UNBOUNDED_INPUT
+  severity: Warning
+  message: "SANCT_UNBOUNDED_INPUT: `config: Map` is caller-sized and its length is never checked"
+  location: "merge_config:config"
+  suggestion: "Cap the length before using it, e.g. `if config.len() > MAX_CONFIG { return Err(Error::InputTooLarge); }` with MAX_CONFIG a named constant"
