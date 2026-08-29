@@ -1,0 +1,9 @@
+---
+source: tooling/sanctifier-core/tests/detector_snapshots.rs
+expression: findings
+---
+- rule_name: SANCT_AUTH_REPLAY
+  severity: Error
+  message: "SANCT_AUTH_REPLAY: `__check_auth` verifies a signature but never reads/increments a nonce or checks an expiry — a captured signature can be replayed indefinitely"
+  location: "__check_auth:16"
+  suggestion: "Consume a per-signer nonce (read the stored value, require it match the payload, then increment and store it) or bind the signed payload to an expiry/ledger sequence checked against `env.ledger().sequence()` / `env.ledger().timestamp()`."

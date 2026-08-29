@@ -14,6 +14,7 @@
 
 use sanctifier_core::rules::auth_gap::VisibilityLeakRule;
 use sanctifier_core::rules::auth_on_caller::AuthOnCallerRule;
+use sanctifier_core::rules::auth_replay::AuthReplayRule;
 use sanctifier_core::rules::{
     allowance_race::AllowanceRaceRule, arg_dos::ArgDosRule,
     arithmetic_overflow::ArithmeticOverflowRule, auth_gap::AuthGapRule,
@@ -58,6 +59,15 @@ fn snapshot_auth_on_caller() {
         "auth_on_caller",
         &AuthOnCallerRule::new(),
         include_str!("fixtures/detectors/auth_on_caller.rs"),
+    );
+}
+
+#[test]
+fn snapshot_auth_replay() {
+    assert_detector_snapshot(
+        "auth_replay",
+        &AuthReplayRule::new(),
+        include_str!("fixtures/detectors/auth_replay.rs"),
     );
 }
 
