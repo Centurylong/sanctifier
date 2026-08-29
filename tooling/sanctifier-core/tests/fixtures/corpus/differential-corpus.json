@@ -12,6 +12,7 @@
     "auth_gap": "S001",
     "auth_on_caller": "SANCT_AUTH_ON_CALLER",
     "SANCT_AUTH_ON_CALLER": "SANCT_AUTH_ON_CALLER",
+    "auth_replay": "SANCT_AUTH_REPLAY",
     "panic_detection": "S002",
     "arithmetic_overflow": "S003",
     "ledger_size": "S004",
