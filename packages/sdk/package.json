@@ -51,9 +51,9 @@
     "LICENSE"
   ],
   "scripts": {
-    "build:wasm": "bash scripts/build-wasm.sh",
-    "build:ts": "tsup",
-    "build": "npm run build:wasm && npm run build:ts",
+    "build:wasm": "node init && bash scripts/build-wasm.sh",
+    "build:ts": "node init && tsup",
+    "build": "node init && npm run build:wasm && npm run build:ts",
     "test": "npm run build:ts && vitest run",
     "test:watch": "vitest",
     "typecheck": "tsc --noEmit",
