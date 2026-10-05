@@ -20,7 +20,7 @@ pub struct AnalyzeArgs {
     #[arg(default_value = ".")]
     pub path: PathBuf,
 
-    /// Output format (text, json)
+    /// Output format (text, json, md)
     #[arg(short, long, default_value = "text")]
     pub format: String,
 
@@ -53,6 +53,8 @@ pub fn exec(args: AnalyzeArgs) -> anyhow::Result<()> {
     let format = &args.format;
     let _limit = args.limit;
     let is_json = format == "json";
+    let is_markdown = format == "md";
+    let is_structured = is_json || is_markdown;
 
     if !is_soroban_project(path) {
         if is_json {
@@ -71,7 +73,7 @@ pub fn exec(args: AnalyzeArgs) -> anyhow::Result<()> {
         std::process::exit(1);
     }
 
-    if is_json {
+    if is_structured {
         eprintln!(
             "{} Sanctifier: Valid Soroban project found at {:?}",
             "✨".green(),
@@ -108,7 +110,7 @@ pub fn exec(args: AnalyzeArgs) -> anyhow::Result<()> {
     // Load vulnerability database
     let vuln_db = match &args.vuln_db {
         Some(db_path) => {
-            if !is_json {
+            if !is_structured {
                 println!(
                     "{} Loading custom vulnerability database from {:?}",
                     "📦".blue(),
@@ -118,7 +120,7 @@ pub fn exec(args: AnalyzeArgs) -> anyhow::Result<()> {
             VulnDatabase::load(db_path)?
         }
         None => {
-            if !is_json {
+            if !is_structured {
                 println!(
                     "{} Loading built-in vulnerability database (v{})",
                     "📦".blue(),
@@ -205,13 +207,13 @@ pub fn exec(args: AnalyzeArgs) -> anyhow::Result<()> {
                     if let Some((code, justification)) = rest.split_once('-') {
                         let justification = justification.trim();
                         if justification.is_empty() {
-                            if !is_json {
+                            if !is_structured {
                                 eprintln!("{} Warning: Inline suppression missing justification at {}:{}", "⚠️".yellow(), file_path, i + 1);
                             }
                         } else {
                             supps.push((i + 1, code.trim().to_string(), justification.to_string()));
                         }
-                    } else if !is_json {
+                    } else if !is_structured {
                         eprintln!("{} Warning: Inline suppression missing justification at {}:{}", "⚠️".yellow(), file_path, i + 1);
                     }
                 }
@@ -413,7 +415,7 @@ pub fn exec(args: AnalyzeArgs) -> anyhow::Result<()> {
             }
             Ok(None) => (0, vec![]),
             Err(e) => {
-                if !is_json {
+                if !is_structured {
                     eprintln!("{} Could not read baseline: {}", "⚠️".yellow(), e);
                 }
                 (0, vec![])
@@ -484,7 +486,7 @@ pub fn exec(args: AnalyzeArgs) -> anyhow::Result<()> {
     }
 
     // ── Baseline summary (text mode) ─────────────────────────────────────────
-    if !is_json && suppressed_count > 0 {
+    if !is_structured && suppressed_count > 0 {
         println!(
             "{} {} finding{} suppressed by baseline (run {} to see all)",
             "ℹ️".blue(),
@@ -493,7 +495,7 @@ pub fn exec(args: AnalyzeArgs) -> anyhow::Result<()> {
             "sanctifier analyze --no-baseline".bold(),
         );
     }
-    if !is_json && !stale_entries.is_empty() {
+    if !is_structured && !stale_entries.is_empty() {
         println!(
             "{} {} stale baseline entr{} (no longer present in the codebase):",
             "ℹ️".blue(),
@@ -645,6 +647,212 @@ pub fn exec(args: AnalyzeArgs) -> anyhow::Result<()> {
         if has_critical || has_high {
             std::process::exit(1);
         }
+        return Ok(());
+    }
+
+    if is_markdown {
+        let mut rows: Vec<(String, String, String, String)> = Vec::new();
+
+        for collision in &collisions {
+            rows.push((
+                finding_codes::STORAGE_COLLISION.to_string(),
+                "other".to_string(),
+                collision.location.clone(),
+                collision.message.clone(),
+            ));
+        }
+        for warning in &size_warnings {
+            rows.push((
+                finding_codes::LEDGER_SIZE_RISK.to_string(),
+                if warning.level == SizeWarningLevel::ExceedsLimit {
+                    "high".to_string()
+                } else {
+                    "other".to_string()
+                },
+                warning.struct_name.clone(),
+                format!(
+                    "Estimated ledger size: {} bytes (limit: {})",
+                    warning.estimated_size, warning.limit
+                ),
+            ));
+        }
+        for pattern in &unsafe_patterns {
+            rows.push((
+                finding_codes::UNSAFE_PATTERN.to_string(),
+                "other".to_string(),
+                format!("line {}", pattern.line),
+                format!("{:?}: {}", pattern.pattern_type, pattern.snippet),
+            ));
+        }
+        for gap in &auth_gaps {
+            rows.push((
+                finding_codes::AUTH_GAP.to_string(),
+                "critical".to_string(),
+                gap.clone(),
+                "Authentication guard appears to be missing".to_string(),
+            ));
+        }
+        for issue in &panic_issues {
+            rows.push((
+                finding_codes::PANIC_USAGE.to_string(),
+                if issue.issue_type == "panic!" {
+                    "critical".to_string()
+                } else {
+                    "high".to_string()
+                },
+                issue.location.clone(),
+                format!("{} in {}", issue.issue_type, issue.function_name),
+            ));
+        }
+        for issue in &arithmetic_issues {
+            rows.push((
+                finding_codes::ARITHMETIC_OVERFLOW.to_string(),
+                "high".to_string(),
+                issue.location.clone(),
+                format!(
+                    "{} in {} — {}",
+                    issue.operation, issue.function_name, issue.suggestion
+                ),
+            ));
+        }
+        for custom in &custom_matches {
+            rows.push((
+                finding_codes::CUSTOM_RULE_MATCH.to_string(),
+                format!("{:?}", custom.severity).to_lowercase(),
+                format!("line {}", custom.line),
+                format!("{} — {}", custom.rule_name, custom.snippet),
+            ));
+        }
+        for issue in &event_issues {
+            rows.push((
+                finding_codes::EVENT_INCONSISTENCY.to_string(),
+                "other".to_string(),
+                issue.location.clone(),
+                format!("{} — {}", issue.event_name, issue.message),
+            ));
+        }
+        for issue in &unhandled_results {
+            rows.push((
+                finding_codes::UNHANDLED_RESULT.to_string(),
+                "high".to_string(),
+                issue.location.clone(),
+                format!("{} — {}", issue.function_name, issue.message),
+            ));
+        }
+        for report in &upgrade_reports {
+            for finding in &report.findings {
+                rows.push((
+                    finding_codes::UPGRADE_RISK.to_string(),
+                    "other".to_string(),
+                    finding.location.clone(),
+                    format!(
+                        "{:?} — {}",
+                        finding.category,
+                        finding.message
+                    ),
+                ));
+            }
+        }
+        for issue in &smt_issues {
+            rows.push((
+                finding_codes::SMT_INVARIANT_VIOLATION.to_string(),
+                "high".to_string(),
+                issue.location.clone(),
+                format!("{} — {}", issue.function_name, issue.description),
+            ));
+        }
+        for matched in &vuln_matches {
+            rows.push((
+                matched.vuln_id.clone(),
+                matched.severity.clone(),
+                format!("{}:{}", matched.file, matched.line),
+                format!("{} — {}", matched.name, matched.description),
+            ));
+        }
+
+        let critical_count = rows
+            .iter()
+            .filter(|(_, severity, _, _)| severity.eq_ignore_ascii_case("critical"))
+            .count();
+        let high_count = rows
+            .iter()
+            .filter(|(_, severity, _, _)| severity.eq_ignore_ascii_case("high"))
+            .count();
+        let medium_count = rows
+            .iter()
+            .filter(|(_, severity, _, _)| severity.eq_ignore_ascii_case("medium"))
+            .count();
+        let low_count = rows
+            .iter()
+            .filter(|(_, severity, _, _)| severity.eq_ignore_ascii_case("low"))
+            .count();
+        let other_count = rows
+            .len()
+            .saturating_sub(critical_count + high_count + medium_count + low_count);
+
+        let md_cell = |value: &str| {
+            value
+                .replace('\\', "\\\\")
+                .replace('|', "\\|")
+                .replace('\r', " ")
+                .replace('\n', " ")
+        };
+
+        println!("# Sanctifier Security Report");
+        println!();
+        println!("**Project:** {}", md_cell(&path.display().to_string()));
+        println!("**Total findings:** {}", rows.len());
+        println!();
+        println!("## Severity summary");
+        println!();
+        println!("| Severity | Count |");
+        println!("| --- | ---: |");
+        println!("| Critical | {} |", critical_count);
+        println!("| High | {} |", high_count);
+        println!("| Medium | {} |", medium_count);
+        println!("| Low | {} |", low_count);
+        println!("| Other | {} |", other_count);
+        println!();
+        println!("## Findings");
+        println!();
+
+        if rows.is_empty() {
+            println!("No findings.");
+        } else {
+            println!("| Code | Severity | Location | Finding |");
+            println!("| --- | --- | --- | --- |");
+            for (code, severity, location, message) in &rows {
+                println!(
+                    "| {} | {} | {} | {} |",
+                    md_cell(code),
+                    md_cell(severity),
+                    md_cell(location),
+                    md_cell(message)
+                );
+            }
+        }
+
+        if suppressed_count > 0 || !stale_entries.is_empty() {
+            println!();
+            println!("## Baseline");
+            println!();
+            println!("- Suppressed findings: {}", suppressed_count);
+            println!("- Stale baseline entries: {}", stale_entries.len());
+        }
+
+        println!();
+        println!("_Generated by Sanctifier {}._", env!("CARGO_PKG_VERSION"));
+
+        if args.profile {
+            let snap = mem_tracker.sample();
+            eprintln!(
+                "{} Memory (final): {} MB RSS (peak: {} MB)",
+                "📊".blue(),
+                snap.current_rss_kb / 1024,
+                snap.peak_rss_kb / 1024
+            );
+        }
+
         return Ok(());
     }
 

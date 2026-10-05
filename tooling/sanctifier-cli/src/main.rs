@@ -104,7 +104,7 @@ fn main() -> anyhow::Result<()> {
 
     match cli.command {
         Commands::Analyze(args) => {
-            if args.format != "json" {
+            if args.format == "text" {
                 branding::print_logo();
             }
             commands::analyze::exec(args)?;

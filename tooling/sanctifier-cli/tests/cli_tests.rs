@@ -71,6 +71,25 @@ fn test_analyze_json_output() {
 }
 
 #[test]
+fn test_analyze_markdown_output() {
+    let mut cmd = Command::cargo_bin("sanctifier").unwrap();
+    let fixture_path = env::current_dir()
+        .unwrap()
+        .join("tests/fixtures/vulnerable_contract.rs");
+
+    cmd.arg("analyze")
+        .arg(fixture_path)
+        .arg("--format")
+        .arg("md")
+        .assert()
+        .success()
+        .stdout(predicates::str::starts_with("# Sanctifier Security Report"))
+        .stdout(predicates::str::contains("## Severity summary"))
+        .stdout(predicates::str::contains("## Findings"))
+        .stdout(predicates::str::contains("| Code | Severity | Location | Finding |"));
+}
+
+#[test]
 fn test_analyze_empty_macro_heavy() {
     let mut cmd = Command::cargo_bin("sanctifier").unwrap();
     let fixture_path = env::current_dir()

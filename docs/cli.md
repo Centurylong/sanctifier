@@ -88,7 +88,7 @@ Analyze a Soroban contract for vulnerabilities
 
 ###### **Options:**
 
-* `-f`, `--format <FORMAT>` — Output format (text, json)
+* `-f`, `--format <FORMAT>` — Output format (text, json, md)
 
   Default value: `text`
 * `-l`, `--limit <LIMIT>` — Limit for ledger entry size in bytes
