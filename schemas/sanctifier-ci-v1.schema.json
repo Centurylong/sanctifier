@@ -1,0 +1,282 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/Centurylong/sanctifier/blob/main/schemas/sanctifier-ci-v1.schema.json",
+  "title": "Sanctifier CI JSON output v1",
+  "description": "Schema for successful `sanctifier analyze --format json` reports whose metadata.format is sanctifier-ci-v1. Pre-analysis error envelopes are intentionally outside this successful-report schema.",
+  "$defs": {
+    "storageCollisionFinding": {
+      "type": "object",
+      "required": ["code", "key_value", "key_type", "location", "message"],
+      "properties": {
+        "code": { "type": "string" },
+        "key_value": { "type": "string" },
+        "key_type": { "type": "string" },
+        "location": { "type": "string" },
+        "message": { "type": "string" }
+      },
+      "additionalProperties": false
+    },
+    "ledgerSizeFinding": {
+      "type": "object",
+      "required": ["code", "struct_name", "estimated_size", "limit", "level"],
+      "properties": {
+        "code": { "type": "string" },
+        "struct_name": { "type": "string" },
+        "estimated_size": { "type": "integer" },
+        "limit": { "type": "integer" },
+        "level": { "type": "string" }
+      },
+      "additionalProperties": false
+    },
+    "unsafePatternFinding": {
+      "type": "object",
+      "required": ["code", "pattern_type", "line", "snippet"],
+      "properties": {
+        "code": { "type": "string" },
+        "pattern_type": { "type": "string" },
+        "line": { "type": "integer" },
+        "snippet": { "type": "string" }
+      },
+      "additionalProperties": false
+    },
+    "authGapFinding": {
+      "type": "object",
+      "required": ["code", "function"],
+      "properties": {
+        "code": { "type": "string" },
+        "function": { "type": "string" }
+      },
+      "additionalProperties": false
+    },
+    "panicFinding": {
+      "type": "object",
+      "required": ["code", "function_name", "issue_type", "location"],
+      "properties": {
+        "code": { "type": "string" },
+        "function_name": { "type": "string" },
+        "issue_type": { "type": "string" },
+        "location": { "type": "string" }
+      },
+      "additionalProperties": false
+    },
+    "arithmeticFinding": {
+      "type": "object",
+      "required": ["code", "function_name", "operation", "suggestion", "location"],
+      "properties": {
+        "code": { "type": "string" },
+        "function_name": { "type": "string" },
+        "operation": { "type": "string" },
+        "suggestion": { "type": "string" },
+        "location": { "type": "string" }
+      },
+      "additionalProperties": false
+    },
+    "customRuleFinding": {
+      "type": "object",
+      "required": ["code", "rule_name", "line", "snippet", "severity"],
+      "properties": {
+        "code": { "type": "string" },
+        "rule_name": { "type": "string" },
+        "line": { "type": "integer" },
+        "snippet": { "type": "string" },
+        "severity": { "type": "string" }
+      },
+      "additionalProperties": false
+    },
+    "eventFinding": {
+      "type": "object",
+      "required": ["code", "event_name", "issue_type", "location", "message"],
+      "properties": {
+        "code": { "type": "string" },
+        "event_name": { "type": "string" },
+        "issue_type": { "type": "string" },
+        "location": { "type": "string" },
+        "message": { "type": "string" }
+      },
+      "additionalProperties": false
+    },
+    "unhandledResultFinding": {
+      "type": "object",
+      "required": ["code", "function_name", "call_expression", "location", "message"],
+      "properties": {
+        "code": { "type": "string" },
+        "function_name": { "type": "string" },
+        "call_expression": { "type": "string" },
+        "location": { "type": "string" },
+        "message": { "type": "string" }
+      },
+      "additionalProperties": false
+    },
+    "upgradeRiskFinding": {
+      "type": "object",
+      "required": ["code", "category", "function_name", "location", "message", "suggestion"],
+      "properties": {
+        "code": { "type": "string" },
+        "category": { "type": "string" },
+        "function_name": { "type": ["string", "null"] },
+        "location": { "type": "string" },
+        "message": { "type": "string" },
+        "suggestion": { "type": "string" }
+      },
+      "additionalProperties": false
+    },
+    "smtFinding": {
+      "type": "object",
+      "required": ["code", "function_name", "description", "location"],
+      "properties": {
+        "code": { "type": "string" },
+        "function_name": { "type": "string" },
+        "description": { "type": "string" },
+        "location": { "type": "string" }
+      },
+      "additionalProperties": false
+    }
+  },
+  "type": "object",
+  "required": [
+    "storage_collisions",
+    "ledger_size_warnings",
+    "unsafe_patterns",
+    "auth_gaps",
+    "panic_issues",
+    "arithmetic_issues",
+    "custom_rules",
+    "event_issues",
+    "unhandled_results",
+    "upgrade_reports",
+    "smt_issues",
+    "vulnerability_db_matches",
+    "vulnerability_db_version",
+    "metadata",
+    "baseline",
+    "error_codes",
+    "summary",
+    "findings"
+  ],
+  "properties": {
+    "storage_collisions": { "type": "array", "items": { "type": "object" } },
+    "ledger_size_warnings": { "type": "array", "items": { "type": "object" } },
+    "unsafe_patterns": { "type": "array", "items": { "type": "object" } },
+    "auth_gaps": { "type": "array", "items": { "type": "string" } },
+    "panic_issues": { "type": "array", "items": { "type": "object" } },
+    "arithmetic_issues": { "type": "array", "items": { "type": "object" } },
+    "custom_rules": { "type": "array", "items": { "type": "object" } },
+    "event_issues": { "type": "array", "items": { "type": "object" } },
+    "unhandled_results": { "type": "array", "items": { "type": "object" } },
+    "upgrade_reports": { "type": "array", "items": { "type": "object" } },
+    "smt_issues": { "type": "array", "items": { "type": "object" } },
+    "vulnerability_db_matches": { "type": "array", "items": { "type": "object" } },
+    "vulnerability_db_version": { "type": "string" },
+    "metadata": {
+      "type": "object",
+      "required": ["version", "timestamp", "project_path", "format"],
+      "properties": {
+        "version": { "type": "string" },
+        "timestamp": { "type": "string" },
+        "project_path": { "type": "string" },
+        "format": { "type": "string", "const": "sanctifier-ci-v1" }
+      },
+      "additionalProperties": false
+    },
+    "baseline": {
+      "type": "object",
+      "required": ["suppressed_count", "stale_entries"],
+      "properties": {
+        "suppressed_count": { "type": "integer" },
+        "stale_entries": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["fingerprint", "code", "path", "context"],
+            "properties": {
+              "fingerprint": { "type": "string" },
+              "code": { "type": "string" },
+              "path": { "type": "string" },
+              "context": { "type": "string" }
+            },
+            "additionalProperties": false
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "error_codes": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["code", "category", "description"],
+        "properties": {
+          "code": { "type": "string" },
+          "category": { "type": "string" },
+          "description": { "type": "string" }
+        },
+        "additionalProperties": false
+      }
+    },
+    "summary": {
+      "type": "object",
+      "required": [
+        "total_findings",
+        "storage_collisions",
+        "auth_gaps",
+        "panic_issues",
+        "arithmetic_issues",
+        "size_warnings",
+        "unsafe_patterns",
+        "custom_rule_matches",
+        "event_issues",
+        "unhandled_results",
+        "smt_issues",
+        "has_critical",
+        "has_high"
+      ],
+      "properties": {
+        "total_findings": { "type": "integer" },
+        "storage_collisions": { "type": "integer" },
+        "auth_gaps": { "type": "integer" },
+        "panic_issues": { "type": "integer" },
+        "arithmetic_issues": { "type": "integer" },
+        "size_warnings": { "type": "integer" },
+        "unsafe_patterns": { "type": "integer" },
+        "custom_rule_matches": { "type": "integer" },
+        "event_issues": { "type": "integer" },
+        "unhandled_results": { "type": "integer" },
+        "smt_issues": { "type": "integer" },
+        "has_critical": { "type": "boolean" },
+        "has_high": { "type": "boolean" }
+      },
+      "additionalProperties": false
+    },
+    "findings": {
+      "type": "object",
+      "required": [
+        "storage_collisions",
+        "ledger_size_warnings",
+        "unsafe_patterns",
+        "auth_gaps",
+        "panic_issues",
+        "arithmetic_issues",
+        "custom_rules",
+        "event_issues",
+        "unhandled_results",
+        "upgrade_risks",
+        "smt_issues"
+      ],
+      "properties": {
+        "storage_collisions": { "type": "array", "items": { "$ref": "#/$defs/storageCollisionFinding" } },
+        "ledger_size_warnings": { "type": "array", "items": { "$ref": "#/$defs/ledgerSizeFinding" } },
+        "unsafe_patterns": { "type": "array", "items": { "$ref": "#/$defs/unsafePatternFinding" } },
+        "auth_gaps": { "type": "array", "items": { "$ref": "#/$defs/authGapFinding" } },
+        "panic_issues": { "type": "array", "items": { "$ref": "#/$defs/panicFinding" } },
+        "arithmetic_issues": { "type": "array", "items": { "$ref": "#/$defs/arithmeticFinding" } },
+        "custom_rules": { "type": "array", "items": { "$ref": "#/$defs/customRuleFinding" } },
+        "event_issues": { "type": "array", "items": { "$ref": "#/$defs/eventFinding" } },
+        "unhandled_results": { "type": "array", "items": { "$ref": "#/$defs/unhandledResultFinding" } },
+        "upgrade_risks": { "type": "array", "items": { "$ref": "#/$defs/upgradeRiskFinding" } },
+        "smt_issues": { "type": "array", "items": { "$ref": "#/$defs/smtFinding" } }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}
