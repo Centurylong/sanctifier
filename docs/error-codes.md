@@ -30,6 +30,7 @@ the fix, and references.
 | `SANCT_UNBOUNDED_STORAGE` | denial_of_service | Persistent/instance collection grows via append/insert with no removal or length cap | [`unbounded_storage`](detectors/unbounded_storage.md) |
 | `SANCT_UNBOUNDED_INPUT` | denial_of_service | Caller-sized `Bytes`/`Vec`/`Map` argument with no length cap | [`unbounded_input_length`](detectors/unbounded_input_length.md) |
 | `SANCT_UNBOUNDED_RETURN` | scalability | Public entrypoint returning an unbounded collection (`Vec` or `Map`) | [`unbounded_return`](detectors/unbounded_return.md) |
+| `SANCT_STORAGE_READ_IN_LOOP` | gas_efficiency | Loop-invariant Soroban storage read inside a loop; hoist it outside the loop | — |
 | `SANCT_EAGER_UNWRAP_OR` | gas_efficiency | Eagerly-computed expensive fallback in `unwrap_or()` wastes gas | [`eager_unwrap_or`](detectors/eager_unwrap_or.md) |
 | `SANCT_CONTRACTERROR_ENUM` | logic | Public function returns error enum missing `#[contracterror]` or repr | [`contracterror_enum`](detectors/contracterror_enum.md) |
 | `SANCT_PROOF_LENGTH_UNVALIDATED` | zk_verification | Proof/public-input byte array reaches a verifier call with no length check first | [`proof_length_check`](detectors/proof_length_check.md) |

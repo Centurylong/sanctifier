@@ -35,6 +35,7 @@ pub const DIVISION_BY_ZERO: &str = "S018";
 pub const TIER_BOUNDARY_OFF_BY_ONE: &str = "S022";
 pub const MISSING_RESERVE_AUTH: &str = "S023";
 pub const CROSS_CONTRACT_CALL_IN_LOOP: &str = "SANCT_CROSS_CONTRACT_CALL_IN_LOOP";
+pub const STORAGE_READ_IN_LOOP: &str = "SANCT_STORAGE_READ_IN_LOOP";
 pub const UNBOUNDED_EVENT_EMISSION: &str = "SANCT_UNBOUNDED_EVENT_EMISSION";
 pub const SEP41_ALLOWANCE_NOT_DECREMENTED: &str = "SANCT_SEP41_ALLOWANCE_NOT_DECREMENTED";
 pub const SEP41_APPROVAL_NO_EXPIRATION: &str = "SANCT_SEP41_APPROVAL_NO_EXPIRATION";
@@ -249,6 +250,11 @@ pub fn all_finding_codes() -> Vec<FindingCode> {
             code: CROSS_CONTRACT_CALL_IN_LOOP,
             category: "resource_limits",
             description: "Cross-contract call (invoke_contract or a *Client) issued from inside a loop",
+        },
+        FindingCode {
+            code: STORAGE_READ_IN_LOOP,
+            category: "gas_efficiency",
+            description: "Loop-invariant Soroban storage read that can be hoisted outside the loop",
         },
         FindingCode {
             code: UNBOUNDED_EVENT_EMISSION,
