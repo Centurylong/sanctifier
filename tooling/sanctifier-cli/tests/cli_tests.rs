@@ -71,6 +71,172 @@ fn test_analyze_json_output() {
 }
 
 #[test]
+fn test_analyze_rule_enablement_honors_exact_overrides() {
+    let temp_dir = tempdir().unwrap();
+    let contract = temp_dir.path().join("contract.rs");
+    let fixture = env::current_dir()
+        .unwrap()
+        .join("tests/fixtures/vulnerable_contract.rs");
+    fs::copy(&fixture, &contract).unwrap();
+
+    let config = temp_dir.path().join(".sanctify.toml");
+    fs::write(
+        &config,
+        r#"
+enabled_rules = ["auth_gaps", "panics", "arithmetic", "ledger_size", "events"]
+
+[rules.auth_gap]
+enabled = false
+
+[rules.panic_detection]
+enabled = false
+
+[rules.arithmetic_overflow]
+enabled = false
+"#,
+    )
+    .unwrap();
+
+    let disabled = Command::cargo_bin("sanctifier")
+        .unwrap()
+        .arg("analyze")
+        .arg(&contract)
+        .arg("--format")
+        .arg("json")
+        .output()
+        .unwrap();
+    let report: serde_json::Value = serde_json::from_slice(&disabled.stdout).unwrap();
+    assert!(report["auth_gaps"].as_array().unwrap().is_empty());
+    assert!(report["panic_issues"].as_array().unwrap().is_empty());
+    assert!(report["arithmetic_issues"].as_array().unwrap().is_empty());
+
+    fs::write(
+        &config,
+        r#"
+enabled_rules = []
+
+[rules.panic_detection]
+enabled = true
+"#,
+    )
+    .unwrap();
+
+    let reenabled = Command::cargo_bin("sanctifier")
+        .unwrap()
+        .arg("analyze")
+        .arg(&contract)
+        .arg("--format")
+        .arg("json")
+        .output()
+        .unwrap();
+    let report: serde_json::Value = serde_json::from_slice(&reenabled.stdout).unwrap();
+    assert!(!report["panic_issues"].as_array().unwrap().is_empty());
+    assert!(report["auth_gaps"].as_array().unwrap().is_empty());
+    assert!(report["arithmetic_issues"].as_array().unwrap().is_empty());
+}
+
+#[test]
+fn test_analyze_registry_rule_severity_and_disable_flow_into_output() {
+    let temp_dir = tempdir().unwrap();
+    let contract = temp_dir.path().join("contract.rs");
+    fs::write(
+        &contract,
+        r#"
+fn demo() {
+    let unused = 1u64;
+}
+"#,
+    )
+    .unwrap();
+
+    let config = temp_dir.path().join(".sanctify.toml");
+    fs::write(
+        &config,
+        r#"
+[rules.unused_variable]
+severity = "info"
+"#,
+    )
+    .unwrap();
+
+    let info = Command::cargo_bin("sanctifier")
+        .unwrap()
+        .arg("analyze")
+        .arg(&contract)
+        .arg("--format")
+        .arg("json")
+        .output()
+        .unwrap();
+    assert!(
+        info.status.success(),
+        "info-only configured rule should not fail analysis: {}",
+        String::from_utf8_lossy(&info.stderr)
+    );
+    let report: serde_json::Value = serde_json::from_slice(&info.stdout).unwrap();
+    let findings = report["registry_findings"].as_array().unwrap();
+    assert_eq!(findings.len(), 1);
+    assert_eq!(findings[0]["rule_name"], "unused_variable");
+    assert_eq!(findings[0]["severity"], "Info");
+    assert_eq!(report["summary"]["registry_findings"], 1);
+    assert_eq!(report["summary"]["total_findings"], 1);
+
+    fs::write(
+        &config,
+        r#"
+[rules.unused_variable]
+enabled = false
+severity = "info"
+"#,
+    )
+    .unwrap();
+
+    let disabled = Command::cargo_bin("sanctifier")
+        .unwrap()
+        .arg("analyze")
+        .arg(&contract)
+        .arg("--format")
+        .arg("json")
+        .output()
+        .unwrap();
+    assert!(disabled.status.success());
+    let report: serde_json::Value = serde_json::from_slice(&disabled.stdout).unwrap();
+    assert!(report["registry_findings"].as_array().unwrap().is_empty());
+    assert_eq!(report["summary"]["registry_findings"], 0);
+    assert_eq!(report["summary"]["total_findings"], 0);
+}
+
+#[test]
+fn test_analyze_typed_rule_info_override_is_reported() {
+    let temp_dir = tempdir().unwrap();
+    let contract = temp_dir.path().join("contract.rs");
+    fs::write(
+        &contract,
+        "fn add(left: u64, right: u64) -> u64 { left + right }\n",
+    )
+    .unwrap();
+
+    fs::write(
+        temp_dir.path().join(".sanctify.toml"),
+        "[rules.arithmetic_overflow]\nseverity = \"info\"\n",
+    )
+    .unwrap();
+
+    let output = Command::cargo_bin("sanctifier")
+        .unwrap()
+        .arg("analyze")
+        .arg(&contract)
+        .arg("--format")
+        .arg("json")
+        .output()
+        .unwrap();
+    assert!(output.status.success());
+    let report: serde_json::Value = serde_json::from_slice(&output.stdout).unwrap();
+    let findings = report["findings"]["arithmetic_issues"].as_array().unwrap();
+    assert_eq!(findings.len(), 1);
+    assert_eq!(findings[0]["severity"], "Info");
+}
+
+#[test]
 fn test_analyze_empty_macro_heavy() {
     let mut cmd = Command::cargo_bin("sanctifier").unwrap();
     let fixture_path = env::current_dir()

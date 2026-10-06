@@ -6,7 +6,7 @@ use colored::*;
 use sanctifier_core::baseline::{apply_baseline, load_baseline, BaselineEntry};
 use sanctifier_core::finding_codes;
 use sanctifier_core::memory::{MemoryGuard, MemoryTracker};
-use sanctifier_core::{Analyzer, SanctifyConfig, SizeWarningLevel};
+use sanctifier_core::{Analyzer, RuleViolation, SanctifyConfig, Severity, SizeWarningLevel};
 use serde_json;
 use std::fs;
 use std::io::{self, Write};
@@ -141,6 +141,7 @@ pub fn exec(args: AnalyzeArgs) -> anyhow::Result<()> {
     let mut unhandled_results = Vec::new();
     let mut upgrade_reports = Vec::new();
     let mut smt_issues = Vec::new();
+    let mut registry_findings = Vec::new();
 
     if path.is_dir() {
         walk_dir(
@@ -159,23 +160,39 @@ pub fn exec(args: AnalyzeArgs) -> anyhow::Result<()> {
             &mut unhandled_results,
             &mut upgrade_reports,
             &mut smt_issues,
+            &mut registry_findings,
         )?;
     } else if path.extension().and_then(|s| s.to_str()) == Some("rs") {
         if let Ok(content) = fs::read_to_string(path) {
             let file_name = path.display().to_string();
             collisions.extend(analyzer.scan_storage_collisions(&content));
-            size_warnings.extend(analyzer.analyze_ledger_size(&content));
+            if analyzer.config.is_rule_enabled("ledger_size") {
+                size_warnings.extend(analyzer.analyze_ledger_size(&content));
+            }
             unsafe_patterns.extend(analyzer.analyze_unsafe_patterns(&content));
-            auth_gaps.extend(analyzer.scan_auth_gaps(&content));
-            panic_issues.extend(analyzer.scan_panics(&content));
-            arithmetic_issues.extend(analyzer.scan_arithmetic_overflow(&content));
+            if analyzer.config.is_rule_enabled("auth_gap") {
+                auth_gaps.extend(analyzer.scan_auth_gaps(&content));
+            }
+            if analyzer.config.is_rule_enabled("panic_detection") {
+                panic_issues.extend(analyzer.scan_panics(&content));
+            }
+            if analyzer.config.is_rule_enabled("arithmetic_overflow") {
+                arithmetic_issues.extend(analyzer.scan_arithmetic_overflow(&content));
+            }
             custom_matches
                 .extend(analyzer.analyze_custom_rules(&content, &analyzer.config.custom_rules));
             vuln_matches.extend(vuln_db.scan(&content, &file_name));
             event_issues.extend(analyzer.scan_events(&content));
-            unhandled_results.extend(analyzer.scan_unhandled_results(&content));
+            if analyzer.config.is_rule_enabled("unhandled_result") {
+                unhandled_results.extend(analyzer.scan_unhandled_results(&content));
+            }
             upgrade_reports.push(analyzer.analyze_upgrade_patterns(&content));
             smt_issues.extend(analyzer.verify_smt_invariants(&content));
+            registry_findings.extend(configured_registry_findings(
+                &content,
+                &file_name,
+                &analyzer,
+            ));
         }
     }
 
@@ -258,6 +275,10 @@ pub fn exec(args: AnalyzeArgs) -> anyhow::Result<()> {
         rep.findings.retain(|f| !is_inline_suppressed(&f.location, finding_codes::UPGRADE_RISK));
     }
     smt_issues.retain(|s| !is_inline_suppressed(&s.location, finding_codes::SMT_INVARIANT_VIOLATION));
+    registry_findings.retain(|finding| {
+        let code = format!("rule:{}", finding.rule_name);
+        !is_inline_suppressed(&finding.location, &code)
+    });
 
     unsafe_patterns.retain(|u| {
         let file_name = u.snippet.split(':').next().unwrap_or("");
@@ -342,6 +363,10 @@ pub fn exec(args: AnalyzeArgs) -> anyhow::Result<()> {
                     let ctx = format!("{}|{}", s.function_name, s.description);
                     current_flat.push(FlatFinding::new(finding_codes::SMT_INVARIANT_VIOLATION, &s.location, &ctx));
                 }
+                for finding in &registry_findings {
+                    let code = format!("rule:{}", finding.rule_name);
+                    current_flat.push(FlatFinding::new(&code, &finding.location, &finding.message));
+                }
 
                 let (new_flat, stale) = apply_baseline(bl, &current_flat);
                 let new_fps: HashSet<String> = new_flat.iter().map(|f| f.fingerprint()).collect();
@@ -408,6 +433,11 @@ pub fn exec(args: AnalyzeArgs) -> anyhow::Result<()> {
                     let fp = FlatFinding::new(finding_codes::SMT_INVARIANT_VIOLATION, &s.location, &ctx).fingerprint();
                     !suppressed_fps.contains(&fp)
                 });
+                registry_findings.retain(|finding| {
+                    let code = format!("rule:{}", finding.rule_name);
+                    let fp = FlatFinding::new(&code, &finding.location, &finding.message).fingerprint();
+                    !suppressed_fps.contains(&fp)
+                });
 
                 (suppressed_count, stale_entries)
             }
@@ -436,7 +466,8 @@ pub fn exec(args: AnalyzeArgs) -> anyhow::Result<()> {
             .iter()
             .map(|r| r.findings.len())
             .sum::<usize>()
-        + smt_issues.len();
+        + smt_issues.len()
+        + registry_findings.len();
 
     // ── Memory guard check ───────────────────────────────────────────────────
     if let Some(ref guard) = mem_guard {
@@ -457,15 +488,39 @@ pub fn exec(args: AnalyzeArgs) -> anyhow::Result<()> {
         );
     }
 
-    let has_critical =
-        !auth_gaps.is_empty() || panic_issues.iter().any(|p| p.issue_type == "panic!");
-    let has_high = !arithmetic_issues.is_empty()
-        || !panic_issues.is_empty()
+    // Preserve legacy exit behavior when no explicit severity is configured.
+    // Once a typed mirror has an exact severity override, that override controls
+    // whether its findings fail analysis, matching registry-backed rules.
+    let auth_override = analyzer.config.rule_severity("auth_gap");
+    let panic_override = analyzer.config.rule_severity("panic_detection");
+    let arithmetic_override = analyzer.config.rule_severity("arithmetic_overflow");
+    let ledger_override = analyzer.config.rule_severity("ledger_size");
+    let unhandled_override = analyzer.config.rule_severity("unhandled_result");
+
+    let has_critical = (!auth_gaps.is_empty()
+        && severity_override_blocks(auth_override, true))
+        || (!panic_issues.is_empty()
+            && match panic_override {
+                Some(severity) => severity == Severity::Error,
+                None => panic_issues.iter().any(|p| p.issue_type == "panic!"),
+            });
+    let has_high = (!arithmetic_issues.is_empty()
+        && severity_override_blocks(arithmetic_override, true))
+        || (!panic_issues.is_empty()
+            && severity_override_blocks(panic_override, true))
         || !smt_issues.is_empty()
-        || !unhandled_results.is_empty()
-        || size_warnings
+        || (!unhandled_results.is_empty()
+            && severity_override_blocks(unhandled_override, true))
+        || registry_findings
             .iter()
-            .any(|w| w.level == SizeWarningLevel::ExceedsLimit);
+            .any(|finding| finding.severity == Severity::Error)
+        || (!size_warnings.is_empty()
+            && match ledger_override {
+                Some(severity) => severity == Severity::Error,
+                None => size_warnings
+                    .iter()
+                    .any(|w| w.level == SizeWarningLevel::ExceedsLimit),
+            });
     let timestamp = chrono_timestamp();
 
     let webhook_payload = ScanWebhookPayload {
@@ -526,6 +581,7 @@ pub fn exec(args: AnalyzeArgs) -> anyhow::Result<()> {
             "unhandled_results": unhandled_results,
             "upgrade_reports": upgrade_reports,
             "smt_issues": smt_issues,
+            "registry_findings": registry_findings,
             "vulnerability_db_matches": vuln_matches,
             "vulnerability_db_version": vuln_db.version,
             "metadata": {
@@ -551,6 +607,7 @@ pub fn exec(args: AnalyzeArgs) -> anyhow::Result<()> {
                 "event_issues": event_issues.len(),
                 "unhandled_results": unhandled_results.len(),
                 "smt_issues": smt_issues.len(),
+                "registry_findings": registry_findings.len(),
                 "has_critical": has_critical,
                 "has_high": has_high,
             },
@@ -564,6 +621,15 @@ pub fn exec(args: AnalyzeArgs) -> anyhow::Result<()> {
                 })).collect::<Vec<_>>(),
                 "ledger_size_warnings": size_warnings.iter().map(|w| serde_json::json!({
                     "code": finding_codes::LEDGER_SIZE_RISK,
+                    "severity": configured_rule_severity(
+                        &analyzer,
+                        "ledger_size",
+                        if w.level == SizeWarningLevel::ExceedsLimit {
+                            Severity::Error
+                        } else {
+                            Severity::Warning
+                        },
+                    ),
                     "struct_name": w.struct_name,
                     "estimated_size": w.estimated_size,
                     "limit": w.limit,
@@ -577,16 +643,23 @@ pub fn exec(args: AnalyzeArgs) -> anyhow::Result<()> {
                 })).collect::<Vec<_>>(),
                 "auth_gaps": auth_gaps.iter().map(|g| serde_json::json!({
                     "code": finding_codes::AUTH_GAP,
+                    "severity": configured_rule_severity(&analyzer, "auth_gap", Severity::Warning),
                     "function": g,
                 })).collect::<Vec<_>>(),
                 "panic_issues": panic_issues.iter().map(|p| serde_json::json!({
                     "code": finding_codes::PANIC_USAGE,
+                    "severity": configured_rule_severity(
+                        &analyzer,
+                        "panic_detection",
+                        if p.issue_type == "panic!" { Severity::Error } else { Severity::Warning },
+                    ),
                     "function_name": p.function_name,
                     "issue_type": p.issue_type,
                     "location": p.location,
                 })).collect::<Vec<_>>(),
                 "arithmetic_issues": arithmetic_issues.iter().map(|a| serde_json::json!({
                     "code": finding_codes::ARITHMETIC_OVERFLOW,
+                    "severity": configured_rule_severity(&analyzer, "arithmetic_overflow", Severity::Warning),
                     "function_name": a.function_name,
                     "operation": a.operation,
                     "suggestion": a.suggestion,
@@ -608,6 +681,7 @@ pub fn exec(args: AnalyzeArgs) -> anyhow::Result<()> {
                 })).collect::<Vec<_>>(),
                 "unhandled_results": unhandled_results.iter().map(|r| serde_json::json!({
                     "code": finding_codes::UNHANDLED_RESULT,
+                    "severity": configured_rule_severity(&analyzer, "unhandled_result", Severity::Warning),
                     "function_name": r.function_name,
                     "call_expression": r.call_expression,
                     "location": r.location,
@@ -626,6 +700,15 @@ pub fn exec(args: AnalyzeArgs) -> anyhow::Result<()> {
                     "function_name": s.function_name,
                     "description": s.description,
                     "location": s.location,
+                })).collect::<Vec<_>>(),
+                "registry_findings": registry_findings.iter().map(|finding| serde_json::json!({
+                    "code": format!("rule:{}", finding.rule_name),
+                    "rule_name": finding.rule_name,
+                    "severity": finding.severity,
+                    "message": finding.message,
+                    "location": finding.location,
+                    "suggestion": finding.suggestion,
+                    "patches": finding.patches,
                 })).collect::<Vec<_>>(),
             },
         });
@@ -674,9 +757,10 @@ pub fn exec(args: AnalyzeArgs) -> anyhow::Result<()> {
         println!("\n{} Found potential Authentication Gaps!", "⚠️".yellow());
         for gap in auth_gaps {
             println!(
-                "   {} [{}] Function: {}",
+                "   {} [{}] {:?} Function: {}",
                 "->".red(),
                 finding_codes::AUTH_GAP.bold(),
+                configured_rule_severity(&analyzer, "auth_gap", Severity::Warning),
                 gap.bold()
             );
         }
@@ -688,9 +772,14 @@ pub fn exec(args: AnalyzeArgs) -> anyhow::Result<()> {
         println!("\n{} Found explicit Panics/Unwraps!", "⚠️".yellow());
         for issue in panic_issues {
             println!(
-                "   {} [{}] Type: {}",
+                "   {} [{}] {:?} Type: {}",
                 "->".red(),
                 finding_codes::PANIC_USAGE.bold(),
+                configured_rule_severity(
+                    &analyzer,
+                    "panic_detection",
+                    if issue.issue_type == "panic!" { Severity::Error } else { Severity::Warning },
+                ),
                 issue.issue_type.bold()
             );
             println!("      Location: {}", issue.location);
@@ -703,9 +792,10 @@ pub fn exec(args: AnalyzeArgs) -> anyhow::Result<()> {
         println!("\n{} Found unchecked Arithmetic Operations!", "⚠️".yellow());
         for issue in arithmetic_issues {
             println!(
-                "   {} [{}] Op: {}",
+                "   {} [{}] {:?} Op: {}",
                 "->".red(),
                 finding_codes::ARITHMETIC_OVERFLOW.bold(),
+                configured_rule_severity(&analyzer, "arithmetic_overflow", Severity::Warning),
                 issue.operation.bold()
             );
             println!("      Location: {}", issue.location);
@@ -718,9 +808,18 @@ pub fn exec(args: AnalyzeArgs) -> anyhow::Result<()> {
         println!("\n{} Found Ledger Size Warnings!", "⚠️".yellow());
         for warning in size_warnings {
             println!(
-                "   {} [{}] Struct: {}",
+                "   {} [{}] {:?} Struct: {}",
                 "->".red(),
                 finding_codes::LEDGER_SIZE_RISK.bold(),
+                configured_rule_severity(
+                    &analyzer,
+                    "ledger_size",
+                    if warning.level == SizeWarningLevel::ExceedsLimit {
+                        Severity::Error
+                    } else {
+                        Severity::Warning
+                    },
+                ),
                 warning.struct_name.bold()
             );
             println!("      Size: {} bytes", warning.estimated_size);
@@ -749,9 +848,10 @@ pub fn exec(args: AnalyzeArgs) -> anyhow::Result<()> {
         println!("\n{} Found Unhandled Result issues!", "⚠️".yellow());
         for issue in &unhandled_results {
             println!(
-                "   {} [{}] Function: {}",
+                "   {} [{}] {:?} Function: {}",
                 "->".red(),
                 finding_codes::UNHANDLED_RESULT.bold(),
+                configured_rule_severity(&analyzer, "unhandled_result", Severity::Warning),
                 issue.function_name.bold()
             );
             println!("      Call: {}", issue.call_expression);
@@ -792,6 +892,21 @@ pub fn exec(args: AnalyzeArgs) -> anyhow::Result<()> {
             );
             println!("      Description: {}", issue.description);
             println!("      Location: {}", issue.location);
+        }
+    }
+
+    if !registry_findings.is_empty() {
+        println!("\n{} Found configured registry rule issues!", "⚠️".yellow());
+        for finding in &registry_findings {
+            let code = format!("rule:{}", finding.rule_name);
+            println!(
+                "   {} [{}] {:?}: {}",
+                "->".red(),
+                code.bold(),
+                finding.severity,
+                finding.message
+            );
+            println!("      Location: {}", finding.location);
         }
     }
 
@@ -842,6 +957,22 @@ pub fn exec(args: AnalyzeArgs) -> anyhow::Result<()> {
     }
 
     Ok(())
+}
+
+fn configured_rule_severity(
+    analyzer: &Analyzer,
+    rule_name: &str,
+    default: Severity,
+) -> Severity {
+    analyzer.config.rule_severity(rule_name).unwrap_or(default)
+}
+
+fn severity_override_blocks(override_severity: Option<Severity>, legacy_default: bool) -> bool {
+    match override_severity {
+        Some(Severity::Error) => true,
+        Some(Severity::Warning | Severity::Info) => false,
+        None => legacy_default,
+    }
 }
 
 fn chrono_timestamp() -> String {
@@ -895,6 +1026,7 @@ fn walk_dir(
     unhandled_results: &mut Vec<sanctifier_core::UnhandledResultIssue>,
     upgrade_reports: &mut Vec<sanctifier_core::UpgradeReport>,
     smt_issues: &mut Vec<sanctifier_core::smt::SmtInvariantIssue>,
+    registry_findings: &mut Vec<RuleViolation>,
 ) -> anyhow::Result<()> {
     for entry in fs::read_dir(dir)? {
         let entry = entry?;
@@ -926,6 +1058,7 @@ fn walk_dir(
                 unhandled_results,
                 upgrade_reports,
                 smt_issues,
+                registry_findings,
             )?;
         } else if path.extension().and_then(|s| s.to_str()) == Some("rs") {
             if let Ok(content) = fs::read_to_string(&path) {
@@ -937,8 +1070,10 @@ fn walk_dir(
                 }
                 collisions.extend(c);
 
-                let s = analyzer.analyze_ledger_size(&content);
-                size_warnings.extend(s);
+                if analyzer.config.is_rule_enabled("ledger_size") {
+                    let s = analyzer.analyze_ledger_size(&content);
+                    size_warnings.extend(s);
+                }
 
                 let mut u = analyzer.analyze_unsafe_patterns(&content);
                 for i in &mut u {
@@ -946,20 +1081,26 @@ fn walk_dir(
                 }
                 unsafe_patterns.extend(u);
 
-                for g in analyzer.scan_auth_gaps(&content) {
-                    auth_gaps.push(format!("{}:{}", file_name, g));
+                if analyzer.config.is_rule_enabled("auth_gap") {
+                    for g in analyzer.scan_auth_gaps(&content) {
+                        auth_gaps.push(format!("{}:{}", file_name, g));
+                    }
                 }
 
-                let mut p = analyzer.scan_panics(&content);
-                for i in &mut p {
-                    i.location = format!("{}:{}", file_name, i.location);
-                    panic_issues.push(i.clone());
+                if analyzer.config.is_rule_enabled("panic_detection") {
+                    let mut p = analyzer.scan_panics(&content);
+                    for i in &mut p {
+                        i.location = format!("{}:{}", file_name, i.location);
+                        panic_issues.push(i.clone());
+                    }
                 }
 
-                let mut a = analyzer.scan_arithmetic_overflow(&content);
-                for i in &mut a {
-                    i.location = format!("{}:{}", file_name, i.location);
-                    arithmetic_issues.push(i.clone());
+                if analyzer.config.is_rule_enabled("arithmetic_overflow") {
+                    let mut a = analyzer.scan_arithmetic_overflow(&content);
+                    for i in &mut a {
+                        i.location = format!("{}:{}", file_name, i.location);
+                        arithmetic_issues.push(i.clone());
+                    }
                 }
 
                 let mut custom =
@@ -978,11 +1119,13 @@ fn walk_dir(
                 }
                 event_issues.extend(e);
 
-                let mut r = analyzer.scan_unhandled_results(&content);
-                for i in &mut r {
-                    i.location = format!("{}:{}", file_name, i.location);
+                if analyzer.config.is_rule_enabled("unhandled_result") {
+                    let mut r = analyzer.scan_unhandled_results(&content);
+                    for i in &mut r {
+                        i.location = format!("{}:{}", file_name, i.location);
+                    }
+                    unhandled_results.extend(r);
                 }
-                unhandled_results.extend(r);
 
                 let mut up = analyzer.analyze_upgrade_patterns(&content);
                 for f in &mut up.findings {
@@ -995,10 +1138,47 @@ fn walk_dir(
                     i.location = format!("{}:{}", file_name, i.location);
                 }
                 smt_issues.extend(smt);
+
+                registry_findings.extend(configured_registry_findings(
+                    &content,
+                    &file_name,
+                    analyzer,
+                ));
             }
         }
     }
     Ok(())
+}
+
+fn configured_registry_findings(
+    content: &str,
+    file_name: &str,
+    analyzer: &Analyzer,
+) -> Vec<RuleViolation> {
+    const TYPED_RULE_MIRRORS: [&str; 5] = [
+        "auth_gap",
+        "panic_detection",
+        "arithmetic_overflow",
+        "ledger_size",
+        "unhandled_result",
+    ];
+
+    analyzer
+        .run_rules(content)
+        .into_iter()
+        .filter(|finding| {
+            analyzer.config.rules.contains_key(&finding.rule_name)
+                && !TYPED_RULE_MIRRORS.contains(&finding.rule_name.as_str())
+        })
+        .map(|mut finding| {
+            finding.location = if finding.location.is_empty() {
+                file_name.to_string()
+            } else {
+                format!("{}:{}", file_name, finding.location)
+            };
+            finding
+        })
+        .collect()
 }
 
 fn is_soroban_project(path: &Path) -> bool {

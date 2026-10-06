@@ -23,6 +23,7 @@ impl ConfigGenerator {
                 "arithmetic".to_string(),
                 "ledger_size".to_string(),
             ],
+            rules: Default::default(),
             ledger_limit: 64000,
             strict_mode: false,
             custom_rules: vec![

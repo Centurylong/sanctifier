@@ -47,7 +47,8 @@ All keys are optional. Omitted keys fall back to the defaults shown below.
 | Key | Type | Default | Applies to |
 |-----|------|---------|------------|
 | [`ignore_paths`](#ignore_paths) | array of strings | `["target", ".git"]` | `analyze`, `verify`, `callgraph` |
-| [`enabled_rules`](#enabled_rules) | array of strings | `["auth_gaps", "panics", "arithmetic", "ledger_size", "events"]` | `analyze` |
+| [`enabled_rules`](#enabled_rules) | array of strings | `["auth_gaps", "panics", "arithmetic", "ledger_size", "events"]` | registry-backed analysis |
+| [`rules`](#rules) | table of per-rule overrides | `{}` | registry-backed analysis |
 | [`ledger_limit`](#ledger_limit) | integer (bytes) | `64000` | `analyze` |
 | [`approaching_threshold`](#approaching_threshold) | float (0.0–1.0) | `0.8` | `analyze` |
 | [`strict_mode`](#strict_mode) | boolean | `false` | `analyze` |
@@ -87,12 +88,48 @@ identifiers are:
 | `events` | Inconsistent event topic counts / gas patterns | `S008` |
 | `invariants` | Declared `#[sanctify::invariant]` checks (see [`verify`](cli.md#sanctifier-verify)) | `S011` |
 
-> **Behaviour note (read this):** the built-in analyzer currently runs its full
-> detector set regardless of this list — `enabled_rules` is **declarative
-> intent** that [`sanctifier init`](cli.md#sanctifier-init) writes and validates
-> (it must be non-empty), and is reserved for per-rule gating. If you need to
-> *guarantee* a rule runs today, [`custom_rules`](#custom_rules) always execute.
-> Do not rely on removing an entry here to disable a built-in detector.
+The legacy names remain supported for the original registry families:
+`auth_gaps` → `auth_gap` + `sanct_visibility`, `panics` → `panic_detection`,
+`arithmetic` → `arithmetic_overflow`, and `ledger_size` → `ledger_size`.
+Newer registry rules keep their historical enabled-by-default behavior unless
+you set an exact [`rules.<name>`](#rules) override.
+
+An explicit `rules.<name>.enabled` value takes precedence over this legacy
+allow-list.
+
+---
+
+### `rules`
+
+**Type:** table keyed by exact registry rule name · **Default:** empty
+
+Use an exact rule table to enable/disable a detector or replace the severity of
+all findings produced by that detector. Both fields are optional.
+
+```toml
+[rules.panic_detection]
+enabled = false
+
+[rules.auth_gap]
+enabled = true
+severity = "error"
+
+[rules.unused_variable]
+severity = "info"
+```
+
+`severity` accepts `info`, `warning`, or `error`. A severity-only entry
+inherits the enable/disable decision. For the four legacy families above,
+`enabled_rules` supplies that inherited decision; all other registry rules
+inherit enabled-by-default behavior.
+
+**Precedence for a registry rule:**
+
+1. exact `rules.<name>.enabled`, when present;
+2. matching legacy `enabled_rules` alias, for the four legacy families;
+3. enabled by default.
+
+Severity is changed only by an exact `rules.<name>.severity` entry.
 
 ---
 
@@ -195,9 +232,17 @@ need. Every key is shown with its default.
 # Directory name fragments to skip while scanning (substring match).
 ignore_paths = ["target", ".git", "test_snapshots"]
 
-# Detector families you intend to run (see the configuration reference for the
-# current behaviour note — built-in detectors run regardless today).
+# Legacy detector families. Exact `[rules.<name>] enabled = ...` entries
+# override the mapped family decision for registry-backed rules.
 enabled_rules = ["auth_gaps", "panics", "arithmetic", "ledger_size", "events"]
+
+# Exact registry rule overrides take precedence over the legacy allow-list.
+[rules.auth_gap]
+enabled = true
+severity = "error"
+
+[rules.unused_variable]
+severity = "info"
 
 # Ledger entry size budget in bytes. Overridden by `analyze --limit`.
 ledger_limit = 64000
@@ -229,6 +274,9 @@ From highest to lowest priority:
 1. **Command-line flags** for the current run (only `analyze --limit` overrides a
    config key today).
 2. **The nearest `.sanctify.toml`** found by walking up from the scanned path.
+   Within that file, exact `rules.<name>.enabled` overrides the matching legacy
+   `enabled_rules` entry; exact `rules.<name>.severity` overrides emitted
+   registry severity.
 3. **Built-in defaults** (the values in the [key reference](#2-key-reference)).
 
 ---

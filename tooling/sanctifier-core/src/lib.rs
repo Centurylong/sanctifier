@@ -254,6 +254,15 @@ pub enum RuleSeverity {
     Error,
 }
 
+/// Per-rule execution override from `.sanctify.toml`.
+#[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Default)]
+pub struct RuleConfig {
+    #[serde(default)]
+    pub enabled: Option<bool>,
+    #[serde(default)]
+    pub severity: Option<RuleSeverity>,
+}
+
 /// User-defined regex-based rule. Defined in .sanctify.toml under [[custom_rules]].
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct CustomRule {
@@ -278,6 +287,8 @@ pub struct SanctifyConfig {
     pub ignore_paths: Vec<String>,
     #[serde(default = "default_enabled_rules")]
     pub enabled_rules: Vec<String>,
+    #[serde(default)]
+    pub rules: HashMap<String, RuleConfig>,
     #[serde(default = "default_ledger_limit")]
     pub ledger_limit: usize,
     #[serde(default = "default_approaching_threshold")]
@@ -315,11 +326,50 @@ impl Default for SanctifyConfig {
         Self {
             ignore_paths: default_ignore_paths(),
             enabled_rules: default_enabled_rules(),
+            rules: HashMap::new(),
             ledger_limit: default_ledger_limit(),
             approaching_threshold: default_approaching_threshold(),
             strict_mode: false,
             custom_rules: vec![],
         }
+    }
+}
+
+impl SanctifyConfig {
+    fn legacy_rule_alias(rule_name: &str) -> Option<&'static str> {
+        match rule_name {
+            "auth_gap" | "sanct_visibility" => Some("auth_gaps"),
+            "panic_detection" => Some("panics"),
+            "arithmetic_overflow" => Some("arithmetic"),
+            "ledger_size" => Some("ledger_size"),
+            _ => None,
+        }
+    }
+
+    /// Exact `rules.<name>.enabled` wins over a matching legacy family alias.
+    /// Rules without a legacy alias remain enabled by default.
+    pub fn is_rule_enabled(&self, rule_name: &str) -> bool {
+        if let Some(enabled) = self.rules.get(rule_name).and_then(|rule| rule.enabled) {
+            return enabled;
+        }
+        Self::legacy_rule_alias(rule_name)
+            .map(|alias| {
+                self.enabled_rules
+                    .iter()
+                    .any(|configured| configured == alias || configured == rule_name)
+            })
+            .unwrap_or(true)
+    }
+
+    pub fn rule_severity(&self, rule_name: &str) -> Option<Severity> {
+        self.rules
+            .get(rule_name)
+            .and_then(|rule| rule.severity.as_ref())
+            .map(|severity| match severity {
+                RuleSeverity::Info => Severity::Info,
+                RuleSeverity::Warning => Severity::Warning,
+                RuleSeverity::Error => Severity::Error,
+            })
     }
 }
 
@@ -366,19 +416,34 @@ impl Analyzer {
     }
 
     pub fn run_rules(&self, source: &str) -> Vec<RuleViolation> {
-        self.rule_registry.run_all(source)
+        self.rule_registry.run_configured(source, |name| {
+            (
+                self.config.is_rule_enabled(name),
+                self.config.rule_severity(name),
+            )
+        })
     }
 
     pub fn run_fixes(&self, source: &str) -> Vec<rules::Patch> {
         self.rule_registry
             .rules
             .iter()
+            .filter(|rule| self.config.is_rule_enabled(rule.name()))
             .flat_map(|rule| rule.fix(source))
             .collect()
     }
 
     pub fn run_rule(&self, source: &str, name: &str) -> Vec<RuleViolation> {
-        self.rule_registry.run_by_name(source, name)
+        if !self.config.is_rule_enabled(name) {
+            return Vec::new();
+        }
+        let mut violations = self.rule_registry.run_by_name(source, name);
+        if let Some(severity) = self.config.rule_severity(name) {
+            for violation in &mut violations {
+                violation.severity = severity;
+            }
+        }
+        violations
     }
 
     pub fn available_rules(&self) -> Vec<&str> {
@@ -1487,6 +1552,85 @@ impl UnhandledResultVisitor {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    struct ConfigurableRule {
+        name: &'static str,
+        panic_on_check: bool,
+    }
+
+    impl Rule for ConfigurableRule {
+        fn name(&self) -> &str { self.name }
+        fn description(&self) -> &str { "test-only configurable rule" }
+        fn check(&self, _source: &str) -> Vec<RuleViolation> {
+            if self.panic_on_check {
+                panic!("disabled rule was executed");
+            }
+            vec![RuleViolation::new(
+                self.name,
+                Severity::Warning,
+                "configured finding".to_string(),
+                "src/lib.rs:1:1".to_string(),
+            )]
+        }
+        fn as_any(&self) -> &dyn std::any::Any { self }
+    }
+
+    fn configurable_analyzer(
+        config: SanctifyConfig,
+        name: &'static str,
+        panic_on_check: bool,
+    ) -> Analyzer {
+        let mut registry = RuleRegistry::new();
+        registry.register(ConfigurableRule {
+            name,
+            panic_on_check,
+        });
+        Analyzer::with_rules(config, registry)
+    }
+
+    #[test]
+    fn exact_rule_can_be_disabled() {
+        let mut config = SanctifyConfig::default();
+        config.rules.insert(
+            "unused_variable".to_string(),
+            RuleConfig { enabled: Some(false), severity: None },
+        );
+        assert!(configurable_analyzer(config, "unused_variable", true)
+            .run_rules("unused")
+            .is_empty());
+    }
+
+    #[test]
+    fn exact_rule_severity_override_is_applied() {
+        let mut config = SanctifyConfig::default();
+        config.rules.insert(
+            "unused_variable".to_string(),
+            RuleConfig { enabled: None, severity: Some(RuleSeverity::Error) },
+        );
+        let findings = configurable_analyzer(config, "unused_variable", false).run_rules("unused");
+        assert_eq!(findings.len(), 1);
+        assert_eq!(findings[0].severity, Severity::Error);
+    }
+
+    #[test]
+    fn exact_enabled_override_wins_over_legacy_allow_list() {
+        let mut config = SanctifyConfig::default();
+        config.enabled_rules.retain(|name| name != "panics");
+        assert!(configurable_analyzer(config.clone(), "panic_detection", false)
+            .run_rules("unused")
+            .is_empty());
+
+        config.rules.insert(
+            "panic_detection".to_string(),
+            RuleConfig { enabled: Some(true), severity: None },
+        );
+        assert_eq!(
+            configurable_analyzer(config, "panic_detection", false)
+                .run_rules("unused")
+                .len(),
+            1
+        );
+    }
 
     #[test]
     fn test_analyze_with_macros() {

@@ -252,6 +252,28 @@ fn flatten_file_findings(
         ));
     }
 
+    // Registry-backed rules only surface here when the user explicitly
+    // configured the exact rule. Typed mirrors are flattened above.
+    const TYPED_RULE_MIRRORS: [&str; 5] = [
+        "auth_gap",
+        "panic_detection",
+        "arithmetic_overflow",
+        "ledger_size",
+        "unhandled_result",
+    ];
+    for mut finding in analyzer.run_rules(content).into_iter().filter(|finding| {
+        analyzer.config.rules.contains_key(&finding.rule_name)
+            && !TYPED_RULE_MIRRORS.contains(&finding.rule_name.as_str())
+    }) {
+        finding.location = if finding.location.is_empty() {
+            file_name.to_string()
+        } else {
+            format!("{file_name}:{}", finding.location)
+        };
+        let code = format!("rule:{}", finding.rule_name);
+        flat.push(FlatFinding::new(&code, &finding.location, &finding.message));
+    }
+
     // VulnDB matches
     for m in vuln_db.scan(content, file_name) {
         let loc = format!("{file_name}:{}", m.line);

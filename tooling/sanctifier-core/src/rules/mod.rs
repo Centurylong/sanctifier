@@ -133,37 +133,50 @@ impl RuleRegistry {
     }
 
     pub fn run_all(&self, source: &str) -> Vec<RuleViolation> {
-        let mut violations: Vec<RuleViolation> = self
-            .rules
-            .iter()
-            .flat_map(|rule| rule.check(source))
-            .collect();
+        self.run_configured(source, |_| (true, None))
+    }
 
-        // Macro-expansion-aware pass: analyse logic hidden behind simple local
-        // `macro_rules!` wrappers so it isn't a false negative. The expansion is
-        // additive — findings already visible in the original source are
-        // de-duplicated by (rule, message), and code with no expandable macros
-        // is left completely unchanged.
+    pub(crate) fn run_configured<F>(&self, source: &str, configure: F) -> Vec<RuleViolation>
+    where
+        F: Fn(&str) -> (bool, Option<Severity>),
+    {
+        let mut violations = Vec::new();
+
+        for rule in &self.rules {
+            let (enabled, severity_override) = configure(rule.name());
+            if !enabled {
+                continue;
+            }
+            let mut rule_violations = rule.check(source);
+            if let Some(severity) = severity_override {
+                for violation in &mut rule_violations {
+                    violation.severity = severity;
+                }
+            }
+            violations.append(&mut rule_violations);
+        }
+
         if let Some(expanded) = crate::macro_expand::expand_local_macros(source) {
             let mut seen: std::collections::HashSet<(String, String)> = violations
                 .iter()
                 .map(|v| (v.rule_name.clone(), v.message.clone()))
                 .collect();
             for rule in &self.rules {
-                for v in rule.check(&expanded) {
-                    if seen.insert((v.rule_name.clone(), v.message.clone())) {
-                        violations.push(v);
+                let (enabled, severity_override) = configure(rule.name());
+                if !enabled {
+                    continue;
+                }
+                for mut violation in rule.check(&expanded) {
+                    if let Some(severity) = severity_override {
+                        violation.severity = severity;
+                    }
+                    if seen.insert((violation.rule_name.clone(), violation.message.clone())) {
+                        violations.push(violation);
                     }
                 }
             }
         }
 
-        // Ensure a deterministic, run-independent ordering: sort by source
-        // location first, then rule name, then message. This makes output
-        // reproducible regardless of rule registration/iteration order or
-        // any future parallel scheduling (e.g. par_iter or concurrent
-        // multi-file scans), which matters for diffing scan output,
-        // snapshot tests, and CI reproducibility.
         violations.sort_by(|a, b| {
             (&a.location, a.rule_name.as_str(), a.message.as_str()).cmp(&(
                 &b.location,
@@ -171,7 +184,6 @@ impl RuleRegistry {
                 b.message.as_str(),
             ))
         });
-
         violations
     }
 
