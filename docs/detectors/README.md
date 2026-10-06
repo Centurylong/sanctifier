@@ -28,6 +28,7 @@ detector page and to the relevant [Glossary](../glossary.md) term.
 | [`ledger_size`](ledger_size.md) | [`S004`](../error-codes.md) | storage_limits | Medium | `contracttype` layouts approaching the ledger entry size limit |
 | [`missing_ttl`](missing_ttl.md) | [`S006`](../error-codes.md) | storage_durability | Medium | Persistent/instance storage access without a TTL extension |
 | [`unhandled_result`](unhandled_result.md) | [`S009`](../error-codes.md) | logic | Medium | A `Result` that is silently dropped |
+| [`upgrade_auth`](upgrade_auth.md) | [`S010`](../error-codes.md) | upgrades | Error | Contract upgrade path missing required authorization or replay guard |
 | [`hardcoded_addr`](hardcoded_addr.md) | [`S012`](../error-codes.md) | code_hygiene | High | Hardcoded admin address / secret literal in an auth context |
 | [`edge_amount`](edge_amount.md) | [`S013`](../error-codes.md) | code_hygiene | Medium | `transfer`/`mint`/`burn` missing `amount > 0` / `from != to` guards |
 | [`bls_subgroup_check`](bls_subgroup_check.md) | [`SANCT_BLS_SUBGROUP_UNCHECKED`](../error-codes.md) | cryptography | Error | BLS12-381 proof point reaches a pairing call with no subgroup or curve membership check |

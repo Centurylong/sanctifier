@@ -37,6 +37,7 @@ pub mod unbounded_storage;
 pub mod unhandled_result;
 pub mod unsigned_underflow;
 pub mod unused_variable;
+pub mod upgrade_auth;
 pub mod vesting_schedule;
 pub mod view_panic;
 pub mod vk_provenance;
@@ -226,6 +227,7 @@ impl RuleRegistry {
         registry.register(arithmetic_overflow::ArithmeticOverflowRule::new());
         registry.register(unhandled_result::UnhandledResultRule::new());
         registry.register(unused_variable::UnusedVariableRule::new());
+        registry.register(upgrade_auth::UpgradeAuthRule::new());
         // New hygiene rules
         registry.register(hardcoded_addr::HardcodedAddrRule::new());
         registry.register(error_code_collision::ErrorCodeCollisionRule::new());

@@ -16,6 +16,7 @@ the fix, and references.
 | `S006` | storage_durability | Persistent/instance storage access without a TTL extension | [`missing_ttl`](detectors/missing_ttl.md) |
 | `S007` | custom_rule | User-defined custom rule match | — |
 | `S009` | logic | A `Result` that is silently dropped | [`unhandled_result`](detectors/unhandled_result.md) |
+| `S010` | upgrades | Contract upgrade path missing required authorization or replay guard | [`upgrade_auth`](detectors/upgrade_auth.md) |
 | `S012` | code_hygiene | Hardcoded admin address / secret literal in an auth context | [`hardcoded_addr`](detectors/hardcoded_addr.md) |
 | `S013` | code_hygiene | `transfer`/`mint`/`burn` missing `amount > 0` / `from != to` guards | [`edge_amount`](detectors/edge_amount.md) |
 | `S015` | code_hygiene | Unused local binding (dead code) | [`unused_variable`](detectors/unused_variable.md) |
