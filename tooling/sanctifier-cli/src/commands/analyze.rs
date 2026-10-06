@@ -12,6 +12,7 @@ use std::fs;
 use std::io::{self, Write};
 use std::path::{Path, PathBuf};
 
+use crate::ndjson;
 use crate::vulndb::{VulnDatabase, VulnMatch};
 
 #[derive(Args, Debug)]
@@ -20,7 +21,7 @@ pub struct AnalyzeArgs {
     #[arg(default_value = ".")]
     pub path: PathBuf,
 
-    /// Output format (text, json)
+    /// Output format (text, json, ndjson)
     #[arg(short, long, default_value = "text")]
     pub format: String,
 
@@ -53,6 +54,8 @@ pub fn exec(args: AnalyzeArgs) -> anyhow::Result<()> {
     let format = &args.format;
     let _limit = args.limit;
     let is_json = format == "json";
+    let is_ndjson = format == "ndjson";
+    let is_machine_readable = is_json || is_ndjson;
 
     if !is_soroban_project(path) {
         if is_json {
@@ -61,6 +64,18 @@ pub fn exec(args: AnalyzeArgs) -> anyhow::Result<()> {
                 "success": false,
             });
             println!("{}", serde_json::to_string_pretty(&err)?);
+        } else if is_ndjson {
+            let stdout = io::stdout();
+            let mut writer = stdout.lock();
+            ndjson::write_record(
+                &mut writer,
+                "error",
+                None,
+                &serde_json::json!({
+                    "success": false,
+                    "error": format!("{:?} is not a valid Soroban project", path),
+                }),
+            )?;
         } else {
             eprintln!(
                 "{} Error: {:?} is not a valid Soroban project. (Missing Cargo.toml with 'soroban-sdk' dependency)",
@@ -71,7 +86,7 @@ pub fn exec(args: AnalyzeArgs) -> anyhow::Result<()> {
         std::process::exit(1);
     }
 
-    if is_json {
+    if is_machine_readable {
         eprintln!(
             "{} Sanctifier: Valid Soroban project found at {:?}",
             "✨".green(),
@@ -108,7 +123,7 @@ pub fn exec(args: AnalyzeArgs) -> anyhow::Result<()> {
     // Load vulnerability database
     let vuln_db = match &args.vuln_db {
         Some(db_path) => {
-            if !is_json {
+            if !is_machine_readable {
                 println!(
                     "{} Loading custom vulnerability database from {:?}",
                     "📦".blue(),
@@ -118,7 +133,7 @@ pub fn exec(args: AnalyzeArgs) -> anyhow::Result<()> {
             VulnDatabase::load(db_path)?
         }
         None => {
-            if !is_json {
+            if !is_machine_readable {
                 println!(
                     "{} Loading built-in vulnerability database (v{})",
                     "📦".blue(),
@@ -205,13 +220,13 @@ pub fn exec(args: AnalyzeArgs) -> anyhow::Result<()> {
                     if let Some((code, justification)) = rest.split_once('-') {
                         let justification = justification.trim();
                         if justification.is_empty() {
-                            if !is_json {
+                            if !is_machine_readable {
                                 eprintln!("{} Warning: Inline suppression missing justification at {}:{}", "⚠️".yellow(), file_path, i + 1);
                             }
                         } else {
                             supps.push((i + 1, code.trim().to_string(), justification.to_string()));
                         }
-                    } else if !is_json {
+                    } else if !is_machine_readable {
                         eprintln!("{} Warning: Inline suppression missing justification at {}:{}", "⚠️".yellow(), file_path, i + 1);
                     }
                 }
@@ -413,7 +428,7 @@ pub fn exec(args: AnalyzeArgs) -> anyhow::Result<()> {
             }
             Ok(None) => (0, vec![]),
             Err(e) => {
-                if !is_json {
+                if !is_machine_readable {
                     eprintln!("{} Could not read baseline: {}", "⚠️".yellow(), e);
                 }
                 (0, vec![])
@@ -484,7 +499,7 @@ pub fn exec(args: AnalyzeArgs) -> anyhow::Result<()> {
     }
 
     // ── Baseline summary (text mode) ─────────────────────────────────────────
-    if !is_json && suppressed_count > 0 {
+    if !is_machine_readable && suppressed_count > 0 {
         println!(
             "{} {} finding{} suppressed by baseline (run {} to see all)",
             "ℹ️".blue(),
@@ -493,7 +508,7 @@ pub fn exec(args: AnalyzeArgs) -> anyhow::Result<()> {
             "sanctifier analyze --no-baseline".bold(),
         );
     }
-    if !is_json && !stale_entries.is_empty() {
+    if !is_machine_readable && !stale_entries.is_empty() {
         println!(
             "{} {} stale baseline entr{} (no longer present in the codebase):",
             "ℹ️".blue(),
@@ -507,6 +522,105 @@ pub fn exec(args: AnalyzeArgs) -> anyhow::Result<()> {
             "    Run {} to remove them.",
             "sanctifier baseline --update".bold()
         );
+    }
+
+    if is_ndjson {
+        let stdout = io::stdout();
+        let mut writer = stdout.lock();
+
+        ndjson::write_record(
+            &mut writer,
+            "meta",
+            None,
+            &serde_json::json!({
+                "version": env!("CARGO_PKG_VERSION"),
+                "timestamp": timestamp,
+                "project_path": path.display().to_string(),
+                "vulnerability_db_version": vuln_db.version,
+            }),
+        )?;
+
+        macro_rules! emit_findings {
+            ($category:expr, $code:expr, $items:expr) => {
+                for finding in $items {
+                    ndjson::write_record(
+                        &mut writer,
+                        "finding",
+                        Some($category),
+                        &serde_json::json!({
+                            "code": $code,
+                            "finding": finding,
+                        }),
+                    )?;
+                }
+            };
+        }
+
+        emit_findings!("storage_collisions", finding_codes::STORAGE_COLLISION, &collisions);
+        emit_findings!("ledger_size_warnings", finding_codes::LEDGER_SIZE_RISK, &size_warnings);
+        emit_findings!("unsafe_patterns", finding_codes::UNSAFE_PATTERN, &unsafe_patterns);
+        emit_findings!("auth_gaps", finding_codes::AUTH_GAP, &auth_gaps);
+        emit_findings!("panic_issues", finding_codes::PANIC_USAGE, &panic_issues);
+        emit_findings!("arithmetic_issues", finding_codes::ARITHMETIC_OVERFLOW, &arithmetic_issues);
+        emit_findings!("custom_rules", finding_codes::CUSTOM_RULE_MATCH, &custom_matches);
+        emit_findings!("event_issues", finding_codes::EVENT_INCONSISTENCY, &event_issues);
+        emit_findings!("unhandled_results", finding_codes::UNHANDLED_RESULT, &unhandled_results);
+        for report in &upgrade_reports {
+            emit_findings!("upgrade_risks", finding_codes::UPGRADE_RISK, &report.findings);
+        }
+        emit_findings!("smt_issues", finding_codes::SMT_INVARIANT_VIOLATION, &smt_issues);
+        for finding in &vuln_matches {
+            ndjson::write_record(
+                &mut writer,
+                "finding",
+                Some("vulnerability_db_matches"),
+                &serde_json::json!({
+                    "code": finding.vuln_id,
+                    "finding": finding,
+                }),
+            )?;
+        }
+
+        ndjson::write_record(
+            &mut writer,
+            "summary",
+            None,
+            &serde_json::json!({
+                "total_findings": total_findings + vuln_matches.len(),
+                "storage_collisions": collisions.len(),
+                "auth_gaps": auth_gaps.len(),
+                "panic_issues": panic_issues.len(),
+                "arithmetic_issues": arithmetic_issues.len(),
+                "size_warnings": size_warnings.len(),
+                "unsafe_patterns": unsafe_patterns.len(),
+                "custom_rule_matches": custom_matches.len(),
+                "event_issues": event_issues.len(),
+                "unhandled_results": unhandled_results.len(),
+                "smt_issues": smt_issues.len(),
+                "vulnerability_db_matches": vuln_matches.len(),
+                "has_critical": has_critical,
+                "has_high": has_high,
+                "baseline": {
+                    "suppressed_count": suppressed_count,
+                    "stale_count": stale_entries.len(),
+                },
+            }),
+        )?;
+
+        if args.profile {
+            let snap = mem_tracker.sample();
+            eprintln!(
+                "{} Memory (final): {} MB RSS (peak: {} MB)",
+                "📊".blue(),
+                snap.current_rss_kb / 1024,
+                snap.peak_rss_kb / 1024
+            );
+        }
+
+        if has_critical || has_high {
+            std::process::exit(1);
+        }
+        return Ok(());
     }
 
     if is_json {

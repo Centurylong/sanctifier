@@ -71,6 +71,76 @@ fn test_analyze_json_output() {
 }
 
 #[test]
+fn test_analyze_ndjson_stream_is_line_delimited() {
+    let fixture_path = env::current_dir()
+        .unwrap()
+        .join("tests/fixtures/vulnerable_contract.rs");
+
+    let output = Command::cargo_bin("sanctifier")
+        .unwrap()
+        .arg("analyze")
+        .arg(fixture_path)
+        .arg("--format")
+        .arg("ndjson")
+        .output()
+        .unwrap();
+
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    let records: Vec<serde_json::Value> = stdout
+        .lines()
+        .filter(|line| !line.trim().is_empty())
+        .map(|line| serde_json::from_str(line).expect("each NDJSON line must be valid JSON"))
+        .collect();
+
+    assert!(records.len() >= 3, "expected meta, finding(s), summary");
+    assert_eq!(records.first().unwrap()["type"], "meta");
+    assert_eq!(records.last().unwrap()["type"], "summary");
+    assert!(records.iter().all(|record| {
+        record["schema"].as_str() == Some("sanctifier-ndjson-v1")
+    }));
+    let finding_count = records
+        .iter()
+        .filter(|record| record["type"] == "finding")
+        .count();
+    assert!(finding_count > 0);
+    assert_eq!(
+        records.last().unwrap()["data"]["total_findings"].as_u64(),
+        Some(finding_count as u64),
+        "summary total must match emitted finding records"
+    );
+    assert!(records
+        .iter()
+        .filter(|record| record["type"] == "finding")
+        .all(|record| {
+            record["data"]["code"].is_string() && !record["data"]["finding"].is_null()
+        }));
+}
+
+#[test]
+fn test_analyze_ndjson_invalid_project_is_single_error_record() {
+    let temp_dir = tempdir().unwrap();
+
+    let output = Command::cargo_bin("sanctifier")
+        .unwrap()
+        .arg("analyze")
+        .arg(temp_dir.path())
+        .arg("--format")
+        .arg("ndjson")
+        .output()
+        .unwrap();
+
+    assert!(!output.status.success());
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    let lines: Vec<&str> = stdout.lines().filter(|line| !line.trim().is_empty()).collect();
+    assert_eq!(lines.len(), 1);
+
+    let record: serde_json::Value = serde_json::from_str(lines[0]).unwrap();
+    assert_eq!(record["schema"], "sanctifier-ndjson-v1");
+    assert_eq!(record["type"], "error");
+    assert_eq!(record["data"]["success"], false);
+}
+
+#[test]
 fn test_analyze_empty_macro_heavy() {
     let mut cmd = Command::cargo_bin("sanctifier").unwrap();
     let fixture_path = env::current_dir()

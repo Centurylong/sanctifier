@@ -20,7 +20,7 @@ pub struct WatchArgs {
     #[arg(short, long, default_value = "300")]
     pub debounce: u64,
 
-    /// Output format passed through to `analyze` (text | json)
+    /// Output format passed through to `analyze` (text | json | ndjson)
     #[arg(short, long, default_value = "text")]
     pub format: String,
 }
@@ -85,7 +85,7 @@ pub fn exec(args: WatchArgs) -> anyhow::Result<()> {
         }
     }
 
-    println!("\n{} Watch stopped.", "✓".green());
+    eprintln!("\n{} Watch stopped.", "✓".green());
     Ok(())
 }
 
@@ -114,13 +114,26 @@ fn debounce(rx: &Receiver<WatchEvent>, debounce_ms: u64, shutdown: &AtomicBool) 
     }
 }
 
+/// Build the child invocation using analyze's positional project path.
+fn analysis_command(exe: &Path, args: &WatchArgs) -> Command {
+    let mut command = Command::new(exe);
+    command
+        .arg("analyze")
+        .arg(&args.path)
+        .arg("--format")
+        .arg(&args.format);
+    command
+}
+
 /// Clear the screen and re-run `sanctifier analyze` as a child process.
 ///
 /// Running analysis in a subprocess keeps the watcher alive: `analyze` calls
 /// `std::process::exit` on findings / invalid projects, which would otherwise
 /// terminate the whole watch session.
 fn run_analysis(args: &WatchArgs) {
-    clear_screen();
+    if args.format != "json" && args.format != "ndjson" {
+        clear_screen();
+    }
 
     let exe = match std::env::current_exe() {
         Ok(exe) => exe,
@@ -130,13 +143,7 @@ fn run_analysis(args: &WatchArgs) {
         }
     };
 
-    let status = Command::new(exe)
-        .arg("analyze")
-        .arg("--path")
-        .arg(&args.path)
-        .arg("--format")
-        .arg(&args.format)
-        .status();
+    let status = analysis_command(&exe, args).status();
 
     if let Err(e) = status {
         eprintln!("{} failed to run analysis: {e}", "❌".red());
@@ -145,12 +152,12 @@ fn run_analysis(args: &WatchArgs) {
 
 fn clear_screen() {
     // ANSI: clear screen + move cursor to home.
-    print!("\x1B[2J\x1B[1;1H");
-    let _ = std::io::stdout().flush();
+    eprint!("\x1B[2J\x1B[1;1H");
+    let _ = std::io::stderr().flush();
 }
 
 fn print_watching(path: &Path) {
-    println!(
+    eprintln!(
         "\n👀 Watching {} for .rs changes — press Ctrl-C to stop.",
         path.display().to_string().cyan()
     );
@@ -160,6 +167,27 @@ fn print_watching(path: &Path) {
 mod tests {
     use super::*;
     use notify::event::{AccessKind, Event, EventKind, ModifyKind};
+
+    #[test]
+    fn watch_child_command_accepts_positional_path_and_ndjson_format() {
+        use clap::Parser;
+
+        let args = WatchArgs {
+            path: PathBuf::from("contract project"),
+            debounce: 300,
+            format: "ndjson".to_string(),
+        };
+        let command = analysis_command(Path::new("sanctifier"), &args);
+        let parsed = crate::Cli::try_parse_from(
+            std::iter::once(command.get_program()).chain(command.get_args()),
+        )
+        .expect("watch must invoke the real analyze parser successfully");
+        let crate::Commands::Analyze(parsed) = parsed.command else {
+            panic!("watch must invoke analyze");
+        };
+        assert_eq!(parsed.path, args.path);
+        assert_eq!(parsed.format, args.format);
+    }
 
     #[test]
     fn detects_rs_modifications() {

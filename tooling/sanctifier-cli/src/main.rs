@@ -6,6 +6,7 @@ use std::path::{Path, PathBuf};
 
 mod branding;
 mod commands;
+mod ndjson;
 mod score;
 pub mod vulndb;
 pub mod zk;
@@ -104,7 +105,7 @@ fn main() -> anyhow::Result<()> {
 
     match cli.command {
         Commands::Analyze(args) => {
-            if args.format != "json" {
+            if args.format != "json" && args.format != "ndjson" {
                 branding::print_logo();
             }
             commands::analyze::exec(args)?;
