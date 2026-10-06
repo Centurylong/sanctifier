@@ -1,0 +1,35 @@
+---
+source: tooling/sanctifier-core/tests/detector_snapshots.rs
+assertion_line: 123
+expression: findings
+---
+- rule_name: SANCT_LOOP_ACCUMULATOR
+  severity: Warning
+  message: "Unchecked addition updates loop-carried accumulator `total` and may overflow"
+  location: "sum_for:20"
+  suggestion: "Use `total.checked_add(value)` with explicit overflow handling, or `total.saturating_add(value)` if clamping is intended"
+- rule_name: SANCT_LOOP_ACCUMULATOR
+  severity: Warning
+  message: "Unchecked addition updates loop-carried accumulator `total` and may overflow"
+  location: "sum_while:29"
+  suggestion: "Use `total.checked_add(value)` with explicit overflow handling, or `total.saturating_add(value)` if clamping is intended"
+- rule_name: SANCT_LOOP_ACCUMULATOR
+  severity: Warning
+  message: "Unchecked addition updates loop-carried accumulator `total` and may overflow"
+  location: "sum_loop:41"
+  suggestion: "Use `total.checked_add(value)` with explicit overflow handling, or `total.saturating_add(value)` if clamping is intended"
+- rule_name: SANCT_LOOP_ACCUMULATOR
+  severity: Warning
+  message: "Unchecked addition updates loop-carried accumulator `subtotal` and may overflow"
+  location: "sum_groups:52"
+  suggestion: "Use `subtotal.checked_add(value)` with explicit overflow handling, or `subtotal.saturating_add(value)` if clamping is intended"
+- rule_name: SANCT_LOOP_ACCUMULATOR
+  severity: Warning
+  message: "Unchecked addition updates loop-carried accumulator `total` and may overflow"
+  location: "sum_with_fee:63"
+  suggestion: "Use `total.checked_add(value)` with explicit overflow handling, or `total.saturating_add(value)` if clamping is intended"
+- rule_name: SANCT_LOOP_ACCUMULATOR
+  severity: Warning
+  message: "Unchecked addition updates loop-carried accumulator `total` and may overflow"
+  location: "sum_in_condition:71"
+  suggestion: "Use `total.checked_add(value)` with explicit overflow handling, or `total.saturating_add(value)` if clamping is intended"

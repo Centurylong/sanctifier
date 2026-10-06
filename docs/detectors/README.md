@@ -25,6 +25,7 @@ detector page and to the relevant [Glossary](../glossary.md) term.
 | [`auth_replay`](auth_replay.md) | [`SANCT_AUTH_REPLAY`](../error-codes.md) | authentication | High | Custom-account `__check_auth` with no nonce or expiry check, allowing signature replay |
 | [`panic_detection`](panic_detection.md) | [`S002`](../error-codes.md) | panic_handling | High | `panic!` / `unwrap` / `expect` that trap the invocation |
 | [`arithmetic_overflow`](arithmetic_overflow.md) | [`S003`](../error-codes.md) | arithmetic | High | Unchecked `+` `-` `*` that can overflow or underflow |
+| [`loop_accumulator`](loop_accumulator.md) | [`SANCT_LOOP_ACCUMULATOR`](../error-codes.md) | arithmetic | Warning | Unchecked `+=` or self-addition to a binding that survives loop iterations |
 | [`ledger_size`](ledger_size.md) | [`S004`](../error-codes.md) | storage_limits | Medium | `contracttype` layouts approaching the ledger entry size limit |
 | [`missing_ttl`](missing_ttl.md) | [`S006`](../error-codes.md) | storage_durability | Medium | Persistent/instance storage access without a TTL extension |
 | [`unhandled_result`](unhandled_result.md) | [`S009`](../error-codes.md) | logic | Medium | A `Result` that is silently dropped |

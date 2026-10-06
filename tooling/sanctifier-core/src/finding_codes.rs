@@ -3,6 +3,7 @@ use serde::Serialize;
 pub const AUTH_GAP: &str = "S001";
 pub const PANIC_USAGE: &str = "S002";
 pub const ARITHMETIC_OVERFLOW: &str = "S003";
+pub const LOOP_ACCUMULATOR: &str = "SANCT_LOOP_ACCUMULATOR";
 pub const LEDGER_SIZE_RISK: &str = "S004";
 pub const STORAGE_COLLISION: &str = "S005";
 pub const UNSAFE_PATTERN: &str = "S006";
@@ -73,6 +74,11 @@ pub fn all_finding_codes() -> Vec<FindingCode> {
             code: ARITHMETIC_OVERFLOW,
             category: "arithmetic",
             description: "Unchecked arithmetic operation with overflow/underflow risk",
+        },
+        FindingCode {
+            code: LOOP_ACCUMULATOR,
+            category: "arithmetic",
+            description: "Unchecked addition updates an accumulator across loop iterations",
         },
         FindingCode {
             code: LEDGER_SIZE_RISK,

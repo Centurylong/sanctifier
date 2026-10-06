@@ -11,6 +11,7 @@ the fix, and references.
 | `S001` | authentication | Missing authentication guard in a state-mutating function | [`auth_gap`](detectors/auth_gap.md) |
 | `S002` | panic_handling | `panic!` / `unwrap` / `expect` usage that may abort execution | [`panic_detection`](detectors/panic_detection.md) |
 | `S003` | arithmetic | Unchecked arithmetic with overflow/underflow risk | [`arithmetic_overflow`](detectors/arithmetic_overflow.md) |
+| `SANCT_LOOP_ACCUMULATOR` | arithmetic | Unchecked addition to an accumulator across loop iterations | [`loop_accumulator`](detectors/loop_accumulator.md) |
 | `S004` | storage_limits | Ledger entry size exceeds or approaches configured limits | [`ledger_size`](detectors/ledger_size.md) |
 | `S005` | storage_keys | Potential storage key collision | — |
 | `S006` | storage_durability | Persistent/instance storage access without a TTL extension | [`missing_ttl`](detectors/missing_ttl.md) |

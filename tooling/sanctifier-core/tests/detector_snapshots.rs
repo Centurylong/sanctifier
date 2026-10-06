@@ -23,7 +23,8 @@ use sanctifier_core::rules::{
     edge_amount::EdgeAmountRule, error_code_collision::ErrorCodeCollisionRule,
     excessive_clone::ExcessiveCloneRule, fee_rounding::FeeRoundingRule,
     hardcoded_addr::HardcodedAddrRule, init_hardcoded_admin::InitHardcodedAdminRule,
-    ledger_seconds::LedgerSecondsRule, ledger_size::LedgerSizeRule, missing_ttl::MissingTtlRule,
+    ledger_seconds::LedgerSecondsRule, ledger_size::LedgerSizeRule,
+    loop_accumulator::LoopAccumulatorRule, missing_ttl::MissingTtlRule,
     panic_detection::PanicDetectionRule, sanct_unwrap::SanctUnwrapRule,
     sep41_allowance_decrement::Sep41AllowanceDecrementRule,
     sep41_approval_expiration::Sep41ApprovalExpirationRule, shift_overflow::ShiftOverflowRule,
@@ -87,6 +88,39 @@ fn snapshot_arithmetic_overflow() {
         &ArithmeticOverflowRule::new(),
         include_str!("fixtures/detectors/arithmetic_overflow.rs"),
     );
+}
+
+#[test]
+fn snapshot_loop_accumulator() {
+    let fixture = include_str!("fixtures/detectors/loop_accumulator.rs");
+    let findings = LoopAccumulatorRule::new().check(fixture);
+
+    assert_eq!(
+        findings
+            .iter()
+            .map(|finding| finding.location.split(':').next().unwrap())
+            .collect::<Vec<_>>(),
+        [
+            "sum_for",
+            "sum_while",
+            "sum_loop",
+            "sum_groups",
+            "sum_with_fee",
+            "sum_in_condition",
+        ],
+        "{findings:#?}",
+    );
+    assert!(findings
+        .iter()
+        .all(|finding| finding.rule_name == "SANCT_LOOP_ACCUMULATOR"));
+    assert_eq!(
+        serde_json::to_value(&findings).unwrap(),
+        serde_json::to_value(
+            RuleRegistry::with_default_rules().run_by_name(fixture, "loop_accumulator")
+        )
+        .unwrap(),
+    );
+    insta::assert_yaml_snapshot!("loop_accumulator", findings);
 }
 
 #[test]
