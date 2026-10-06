@@ -12,6 +12,9 @@
 //!
 //! See `tooling/sanctifier-core/tests/README.md` for the full guide.
 
+mod support;
+
+use support::rule_fixture_snapshot;
 use sanctifier_core::rules::auth_gap::VisibilityLeakRule;
 use sanctifier_core::rules::auth_on_caller::AuthOnCallerRule;
 use sanctifier_core::rules::auth_replay::AuthReplayRule;
@@ -62,14 +65,12 @@ fn snapshot_auth_on_caller() {
     );
 }
 
-#[test]
-fn snapshot_auth_replay() {
-    assert_detector_snapshot(
-        "auth_replay",
-        &AuthReplayRule::new(),
-        include_str!("fixtures/detectors/auth_replay.rs"),
-    );
-}
+rule_fixture_snapshot!(
+    snapshot_auth_replay,
+    "auth_replay",
+    AuthReplayRule::new(),
+    include_str!("fixtures/detectors/auth_replay.rs"),
+);
 
 #[test]
 fn snapshot_sanct_visibility() {
