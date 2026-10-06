@@ -16,6 +16,8 @@
     "panic_detection": "S002",
     "arithmetic_overflow": "S003",
     "ledger_size": "S004",
+    "map_iteration_order": "SANCT_MAP_ITERATION_ORDER",
+    "SANCT_MAP_ITERATION_ORDER": "SANCT_MAP_ITERATION_ORDER",
     "unhandled_result": "S009",
     "hardcoded_addr": "S012",
     "edge_amount": "S013",

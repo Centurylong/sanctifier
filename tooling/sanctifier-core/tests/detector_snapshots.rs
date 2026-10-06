@@ -23,7 +23,8 @@ use sanctifier_core::rules::{
     edge_amount::EdgeAmountRule, error_code_collision::ErrorCodeCollisionRule,
     excessive_clone::ExcessiveCloneRule, fee_rounding::FeeRoundingRule,
     hardcoded_addr::HardcodedAddrRule, init_hardcoded_admin::InitHardcodedAdminRule,
-    ledger_seconds::LedgerSecondsRule, ledger_size::LedgerSizeRule, missing_ttl::MissingTtlRule,
+    ledger_seconds::LedgerSecondsRule, ledger_size::LedgerSizeRule,
+    map_iteration_order::MapIterationOrderRule, missing_ttl::MissingTtlRule,
     panic_detection::PanicDetectionRule, sanct_unwrap::SanctUnwrapRule,
     sep41_allowance_decrement::Sep41AllowanceDecrementRule,
     sep41_approval_expiration::Sep41ApprovalExpirationRule, shift_overflow::ShiftOverflowRule,
@@ -122,6 +123,15 @@ fn snapshot_ledger_size() {
         "ledger_size",
         &LedgerSizeRule::new(),
         include_str!("fixtures/detectors/ledger_size.rs"),
+    );
+}
+
+#[test]
+fn snapshot_map_iteration_order() {
+    assert_detector_snapshot(
+        "map_iteration_order",
+        &MapIterationOrderRule::new(),
+        include_str!("fixtures/detectors/map_iteration_order.rs"),
     );
 }
 

@@ -1,0 +1,34 @@
+---
+source: tooling/sanctifier-core/tests/detector_snapshots.rs
+expression: findings
+---
+- rule_name: SANCT_MAP_ITERATION_ORDER
+  severity: Warning
+  message: "SANCT_MAP_ITERATION_ORDER: `first_entry` selects from `entries.iter()` with `next`, so the outcome depends on Map iteration order"
+  location: "first_entry:11"
+  suggestion: "Select by an explicit stable key/order, or use a keyed lookup or order-independent aggregation"
+- rule_name: SANCT_MAP_ITERATION_ORDER
+  severity: Warning
+  message: "SANCT_MAP_ITERATION_ORDER: `last_entry` selects from `entries.iter()` with `last`, so the outcome depends on Map iteration order"
+  location: "last_entry:16"
+  suggestion: "Select by an explicit stable key/order, or use a keyed lookup or order-independent aggregation"
+- rule_name: SANCT_MAP_ITERATION_ORDER
+  severity: Warning
+  message: "SANCT_MAP_ITERATION_ORDER: `second_entry` selects from `entries.iter()` with `nth`, so the outcome depends on Map iteration order"
+  location: "second_entry:21"
+  suggestion: "Select by an explicit stable key/order, or use a keyed lookup or order-independent aggregation"
+- rule_name: SANCT_MAP_ITERATION_ORDER
+  severity: Warning
+  message: "SANCT_MAP_ITERATION_ORDER: `first_positive` selects from `entries.iter()` with `find`, so the outcome depends on Map iteration order"
+  location: "first_positive:26"
+  suggestion: "Select by an explicit stable key/order, or use a keyed lookup or order-independent aggregation"
+- rule_name: SANCT_MAP_ITERATION_ORDER
+  severity: Warning
+  message: "SANCT_MAP_ITERATION_ORDER: `pick_large` short-circuits `entries.iter()` after consuming a Map item, so which item determines the outcome depends on iteration order"
+  location: "pick_large:31"
+  suggestion: "Sort by an explicit stable key before selecting an item, or traverse the full Map with order-independent logic"
+- rule_name: SANCT_MAP_ITERATION_ORDER
+  severity: Warning
+  message: "SANCT_MAP_ITERATION_ORDER: `pick_with_break` short-circuits `entries.iter()` after consuming a Map item, so which item determines the outcome depends on iteration order"
+  location: "pick_with_break:42"
+  suggestion: "Sort by an explicit stable key before selecting an item, or traverse the full Map with order-independent logic"

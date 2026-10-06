@@ -18,6 +18,7 @@ pub mod hardcoded_addr;
 pub mod init_hardcoded_admin;
 pub mod ledger_seconds;
 pub mod ledger_size;
+pub mod map_iteration_order;
 pub mod missing_ttl;
 pub mod nullifier_growth;
 pub mod panic_detection;
@@ -222,6 +223,7 @@ impl RuleRegistry {
         registry.register(auth_on_caller::AuthOnCallerRule::new());
         registry.register(auth_replay::AuthReplayRule::new());
         registry.register(ledger_size::LedgerSizeRule::new());
+        registry.register(map_iteration_order::MapIterationOrderRule::new());
         registry.register(panic_detection::PanicDetectionRule::new());
         registry.register(arithmetic_overflow::ArithmeticOverflowRule::new());
         registry.register(unhandled_result::UnhandledResultRule::new());

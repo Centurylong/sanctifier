@@ -12,6 +12,7 @@ the fix, and references.
 | `S002` | panic_handling | `panic!` / `unwrap` / `expect` usage that may abort execution | [`panic_detection`](detectors/panic_detection.md) |
 | `S003` | arithmetic | Unchecked arithmetic with overflow/underflow risk | [`arithmetic_overflow`](detectors/arithmetic_overflow.md) |
 | `S004` | storage_limits | Ledger entry size exceeds or approaches configured limits | [`ledger_size`](detectors/ledger_size.md) |
+| `SANCT_MAP_ITERATION_ORDER` | determinism | Observable outcome depends on Soroban Map iteration order | [`map_iteration_order`](detectors/map_iteration_order.md) |
 | `S005` | storage_keys | Potential storage key collision | — |
 | `S006` | storage_durability | Persistent/instance storage access without a TTL extension | [`missing_ttl`](detectors/missing_ttl.md) |
 | `S007` | custom_rule | User-defined custom rule match | — |

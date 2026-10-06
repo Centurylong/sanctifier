@@ -26,6 +26,7 @@ detector page and to the relevant [Glossary](../glossary.md) term.
 | [`panic_detection`](panic_detection.md) | [`S002`](../error-codes.md) | panic_handling | High | `panic!` / `unwrap` / `expect` that trap the invocation |
 | [`arithmetic_overflow`](arithmetic_overflow.md) | [`S003`](../error-codes.md) | arithmetic | High | Unchecked `+` `-` `*` that can overflow or underflow |
 | [`ledger_size`](ledger_size.md) | [`S004`](../error-codes.md) | storage_limits | Medium | `contracttype` layouts approaching the ledger entry size limit |
+| [`map_iteration_order`](map_iteration_order.md) | [`SANCT_MAP_ITERATION_ORDER`](../error-codes.md) | determinism | Warning | Map iteration selects an observable result without an explicit stable order |
 | [`missing_ttl`](missing_ttl.md) | [`S006`](../error-codes.md) | storage_durability | Medium | Persistent/instance storage access without a TTL extension |
 | [`unhandled_result`](unhandled_result.md) | [`S009`](../error-codes.md) | logic | Medium | A `Result` that is silently dropped |
 | [`hardcoded_addr`](hardcoded_addr.md) | [`S012`](../error-codes.md) | code_hygiene | High | Hardcoded admin address / secret literal in an auth context |

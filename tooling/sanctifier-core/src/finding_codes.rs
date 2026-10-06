@@ -4,6 +4,7 @@ pub const AUTH_GAP: &str = "S001";
 pub const PANIC_USAGE: &str = "S002";
 pub const ARITHMETIC_OVERFLOW: &str = "S003";
 pub const LEDGER_SIZE_RISK: &str = "S004";
+pub const MAP_ITERATION_ORDER: &str = "SANCT_MAP_ITERATION_ORDER";
 pub const STORAGE_COLLISION: &str = "S005";
 pub const UNSAFE_PATTERN: &str = "S006";
 pub const CUSTOM_RULE_MATCH: &str = "S007";
@@ -78,6 +79,11 @@ pub fn all_finding_codes() -> Vec<FindingCode> {
             code: LEDGER_SIZE_RISK,
             category: "storage_limits",
             description: "Ledger entry size is exceeding or approaching configured threshold",
+        },
+        FindingCode {
+            code: MAP_ITERATION_ORDER,
+            category: "determinism",
+            description: "Outcome depends on iteration order of a Soroban Map",
         },
         FindingCode {
             code: STORAGE_COLLISION,
