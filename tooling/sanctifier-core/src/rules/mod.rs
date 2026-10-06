@@ -34,6 +34,7 @@ pub mod unbounded_event_emission;
 pub mod unbounded_input_length;
 pub mod unbounded_return;
 pub mod unbounded_storage;
+pub mod unbounded_storage_iteration;
 pub mod unhandled_result;
 pub mod unsigned_underflow;
 pub mod unused_variable;
@@ -241,6 +242,7 @@ impl RuleRegistry {
         registry.register(init_hardcoded_admin::InitHardcodedAdminRule::new());
         registry.register(shift_overflow::ShiftOverflowRule::new());
         registry.register(unbounded_storage::UnboundedStorageRule::new());
+        registry.register(unbounded_storage_iteration::UnboundedStorageIterationRule::new());
         registry.register(view_panic::ViewPanicRule::new());
         registry.register(allowance_race::AllowanceRaceRule::new());
         registry.register(state_write_in_view::StateWriteInViewRule::new());
