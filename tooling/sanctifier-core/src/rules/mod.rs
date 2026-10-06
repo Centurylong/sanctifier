@@ -19,6 +19,7 @@ pub mod init_hardcoded_admin;
 pub mod ledger_seconds;
 pub mod ledger_size;
 pub mod missing_ttl;
+pub mod nonce_monotonicity;
 pub mod nullifier_growth;
 pub mod panic_detection;
 pub mod proof_length_check;
@@ -221,6 +222,7 @@ impl RuleRegistry {
         registry.register(auth_gap::VisibilityLeakRule::new());
         registry.register(auth_on_caller::AuthOnCallerRule::new());
         registry.register(auth_replay::AuthReplayRule::new());
+        registry.register(nonce_monotonicity::NonceMonotonicityRule::new());
         registry.register(ledger_size::LedgerSizeRule::new());
         registry.register(panic_detection::PanicDetectionRule::new());
         registry.register(arithmetic_overflow::ArithmeticOverflowRule::new());
