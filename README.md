@@ -64,6 +64,8 @@ For full installation details (apt, manual download, verification) see [docs/ins
 
 ## 🛠 Usage
 
+For scripting and CI, see the [CLI exit-code and summary contract](docs/cli-exit-codes.md).
+
 ### Analyze a Project
 Run the analysis suite on your Soroban project:
 
