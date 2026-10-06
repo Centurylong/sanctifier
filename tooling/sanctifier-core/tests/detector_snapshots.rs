@@ -23,7 +23,8 @@ use sanctifier_core::rules::{
     edge_amount::EdgeAmountRule, error_code_collision::ErrorCodeCollisionRule,
     excessive_clone::ExcessiveCloneRule, fee_rounding::FeeRoundingRule,
     hardcoded_addr::HardcodedAddrRule, init_hardcoded_admin::InitHardcodedAdminRule,
-    ledger_seconds::LedgerSecondsRule, ledger_size::LedgerSizeRule, missing_ttl::MissingTtlRule,
+    ledger_seconds::LedgerSecondsRule, ledger_size::LedgerSizeRule, migrate_auth::MigrateAuthRule,
+    missing_ttl::MissingTtlRule,
     panic_detection::PanicDetectionRule, sanct_unwrap::SanctUnwrapRule,
     sep41_allowance_decrement::Sep41AllowanceDecrementRule,
     sep41_approval_expiration::Sep41ApprovalExpirationRule, shift_overflow::ShiftOverflowRule,
@@ -203,6 +204,15 @@ fn snapshot_missing_ttl() {
         "missing_ttl",
         &MissingTtlRule::new(),
         include_str!("fixtures/detectors/missing_ttl.rs"),
+    );
+}
+
+#[test]
+fn snapshot_migrate_auth() {
+    assert_detector_snapshot(
+        "migrate_auth",
+        &MigrateAuthRule::new(),
+        include_str!("fixtures/detectors/migrate_auth.rs"),
     );
 }
 

@@ -1,0 +1,9 @@
+---
+source: tooling/sanctifier-core/tests/detector_snapshots.rs
+expression: findings
+---
+- rule_name: SANCT_MIGRATE_AUTH
+  severity: Error
+  message: "SANCT_MIGRATE_AUTH: public `migrate` entrypoint has no authorization guard"
+  location: "migrate:9"
+  suggestion: "Authenticate the migration administrator with `require_auth()` or `require_auth_for_args()` before changing schema or contract state."

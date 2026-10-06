@@ -42,6 +42,7 @@ pub const NULLIFIER_GROWTH: &str = "SANCT_NULLIFIER_GROWTH";
 pub const PROOF_LENGTH_UNVALIDATED: &str = "SANCT_PROOF_LENGTH_UNVALIDATED";
 pub const PUBLIC_INPUT_UNVALIDATED: &str = "SANCT_PUBLIC_INPUT_UNVALIDATED";
 pub const AUTH_REPLAY: &str = "SANCT_AUTH_REPLAY";
+pub const MIGRATE_AUTH: &str = "SANCT_MIGRATE_AUTH";
 
 // ── Source-optional (compiled WASM) checks ────────────────────────────────────
 // Emitted only by `sanctifier wasm`, which analyzes a deployed module directly.
@@ -63,6 +64,11 @@ pub fn all_finding_codes() -> Vec<FindingCode> {
             code: AUTH_GAP,
             category: "authentication",
             description: "Missing authentication guard in a state-mutating function",
+        },
+        FindingCode {
+            code: MIGRATE_AUTH,
+            category: "authentication",
+            description: "Public migrate entrypoint is missing an authorization guard",
         },
         FindingCode {
             code: PANIC_USAGE,
@@ -325,6 +331,7 @@ mod tests {
     fn includes_expected_codes() {
         let codes = all_finding_codes();
         assert!(codes.iter().any(|c| c.code == AUTH_GAP));
+        assert!(codes.iter().any(|c| c.code == MIGRATE_AUTH));
         assert!(codes.iter().any(|c| c.code == PANIC_USAGE));
         assert!(codes.iter().any(|c| c.code == ARITHMETIC_OVERFLOW));
         assert!(codes.iter().any(|c| c.code == LEDGER_SIZE_RISK));
