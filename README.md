@@ -102,6 +102,8 @@ When you run an analysis, Sanctifier displays security findings and recommendati
 
 For detailed explanations of each finding type and how to fix them, see [docs/getting-started.md](docs/getting-started.md#5-example-output--what-developers-see).
 
+Color and plain-log behavior is documented in [docs/color-output.md](docs/color-output.md).
+
 ### Notify Webhooks on Scan Completion
 Send scan completion notifications to one or more webhook endpoints:
 

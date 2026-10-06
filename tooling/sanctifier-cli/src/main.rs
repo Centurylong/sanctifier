@@ -6,6 +6,7 @@ use std::path::{Path, PathBuf};
 
 mod branding;
 mod commands;
+mod output;
 mod score;
 pub mod vulndb;
 pub mod zk;
@@ -100,6 +101,7 @@ pub enum Commands {
 }
 
 fn main() -> anyhow::Result<()> {
+    output::configure_from_env();
     let cli = Cli::parse();
 
     match cli.command {
