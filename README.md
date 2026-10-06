@@ -125,7 +125,7 @@ sanctifier badge --report sanctifier-report.json --svg-output badges/sanctifier-
 ```
 
 ## 🤝 Contributing
-We welcome contributions from the Stellar community! Please see our [Contributing Guide](CONTRIBUTING.md) for details.
+We welcome contributions from the Stellar community! Please see our [Contributing Guide](CONTRIBUTING.md) for details. Community-authored detector contributions and their review status are documented in the [Community Rule Registry](docs/community-rule-registry.md).
 
 ## 🔎 Finding Codes
 Unified finding codes (`S001`...`S007`) are documented in [docs/error-codes.md](docs/error-codes.md).

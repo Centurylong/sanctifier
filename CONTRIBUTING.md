@@ -15,6 +15,8 @@ We have a dedicated guide outlining the pipeline, implementation patterns, and t
 
 👉 **[Detector Cookbook](docs/detector-cookbook.md)**
 
+Community-authored detectors are tracked in the **[Community Rule Registry](docs/community-rule-registry.md)**, which also defines the required registry metadata and maintainer review process.
+
 Please review the cookbook before writing any detectors. It provides three complete examples ranging from syntactic rules to data-flow tracking.
 
 ## Testing Guidelines
