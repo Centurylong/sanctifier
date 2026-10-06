@@ -1,0 +1,14 @@
+---
+source: tooling/sanctifier-core/tests/detector_snapshots.rs
+expression: findings
+---
+- rule_name: SANCT_SIGNED_QUANTITY
+  severity: Info
+  message: "SANCT_SIGNED_QUANTITY: signed integer `balance: i128` represents a non-negative balance/amount without an explicit non-negative guard"
+  location: "VaultState:7"
+  suggestion: "Prefer an unsigned integer when `balance` cannot be negative, or reject `balance < 0` before using the value"
+- rule_name: SANCT_SIGNED_QUANTITY
+  severity: Info
+  message: "SANCT_SIGNED_QUANTITY: signed integer `amount: i128` represents a non-negative balance/amount without an explicit non-negative guard"
+  location: "withdraw:12"
+  suggestion: "Prefer an unsigned integer when `amount` cannot be negative, or reject `amount < 0` before using the value"

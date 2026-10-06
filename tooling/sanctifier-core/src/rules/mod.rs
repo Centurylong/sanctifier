@@ -28,6 +28,7 @@ pub mod sanct_unwrap;
 pub mod sep41_allowance_decrement;
 pub mod sep41_approval_expiration;
 pub mod shift_overflow;
+pub mod signed_nonnegative_quantity;
 pub mod state_write_in_view;
 pub mod tier_boundary_off_by_one;
 pub mod unbounded_event_emission;
@@ -240,6 +241,7 @@ impl RuleRegistry {
         registry.register(sanct_unwrap::SanctUnwrapRule::new());
         registry.register(init_hardcoded_admin::InitHardcodedAdminRule::new());
         registry.register(shift_overflow::ShiftOverflowRule::new());
+        registry.register(signed_nonnegative_quantity::SignedNonnegativeQuantityRule::new());
         registry.register(unbounded_storage::UnboundedStorageRule::new());
         registry.register(view_panic::ViewPanicRule::new());
         registry.register(allowance_race::AllowanceRaceRule::new());

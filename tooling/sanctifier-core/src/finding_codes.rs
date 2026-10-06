@@ -23,6 +23,7 @@ pub const LEDGER_SECONDS: &str = "S021";
 pub const EXCESSIVE_CLONE: &str = "S020";
 pub const ARG_DOS: &str = "SANCT_ARG_DOS";
 pub const BALANCE_EQUALITY: &str = "SANCT_BALANCE_EQ";
+pub const SIGNED_QUANTITY: &str = "SANCT_SIGNED_QUANTITY";
 pub const BLS_SUBGROUP_UNCHECKED: &str = "SANCT_BLS_SUBGROUP_UNCHECKED";
 pub const SANCT_UNWRAP: &str = "SANCT_UNWRAP";
 pub const INIT_HARDCODED_ADMIN: &str = "SANCT_INIT_HARDCODED_ADMIN";
@@ -129,6 +130,12 @@ pub fn all_finding_codes() -> Vec<FindingCode> {
             category: "logic",
             description:
                 "Balance gated against an amount with `==`/`!=` where `>=`/`<=` was likely intended",
+        },
+        FindingCode {
+            code: SIGNED_QUANTITY,
+            category: "arithmetic",
+            description:
+                "Signed integer used for a balance or amount whose domain is non-negative without an explicit guard",
         },
         FindingCode {
             code: BLS_SUBGROUP_UNCHECKED,

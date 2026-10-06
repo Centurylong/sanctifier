@@ -153,6 +153,15 @@ fn snapshot_edge_amount() {
 }
 
 #[test]
+fn snapshot_signed_nonnegative_quantity() {
+    assert_detector_snapshot(
+        "signed_nonnegative_quantity",
+        &sanctifier_core::rules::signed_nonnegative_quantity::SignedNonnegativeQuantityRule::new(),
+        include_str!("fixtures/detectors/signed_nonnegative_quantity.rs"),
+    );
+}
+
+#[test]
 fn snapshot_wrong_auth_args() {
     assert_detector_snapshot(
         "wrong_auth_args",
