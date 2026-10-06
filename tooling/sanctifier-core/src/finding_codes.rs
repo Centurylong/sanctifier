@@ -13,6 +13,7 @@ pub const UPGRADE_RISK: &str = "S010";
 pub const SMT_INVARIANT_VIOLATION: &str = "S011";
 pub const HARDCODED_ADDR: &str = "S012";
 pub const EDGE_AMOUNT: &str = "S013";
+pub const SELF_FLOW_GUARD: &str = "SANCT_SELF_FLOW_GUARD";
 pub const DEPRECATED_SDK: &str = "S014";
 pub const DEAD_CODE: &str = "S015";
 pub const ERROR_CODE_COLLISION: &str = "S016";
@@ -123,6 +124,12 @@ pub fn all_finding_codes() -> Vec<FindingCode> {
             code: EDGE_AMOUNT,
             category: "code_hygiene",
             description: "Transfer/mint/burn missing amount>0 or from!=to validation guards",
+        },
+        FindingCode {
+            code: SELF_FLOW_GUARD,
+            category: "logic",
+            description:
+                "Transfer/referral endpoint pair is not explicitly compared before value-flow state changes",
         },
         FindingCode {
             code: BALANCE_EQUALITY,
@@ -339,5 +346,6 @@ mod tests {
         assert!(codes.iter().any(|c| c.code == ALLOWANCE_RACE));
         assert!(codes.iter().any(|c| c.code == DIVISION_BY_ZERO));
         assert!(codes.iter().any(|c| c.code == MISSING_RESERVE_AUTH));
+        assert!(codes.iter().any(|c| c.code == SELF_FLOW_GUARD));
     }
 }

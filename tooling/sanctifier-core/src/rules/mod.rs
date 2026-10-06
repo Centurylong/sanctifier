@@ -27,6 +27,7 @@ pub mod reserve_withdrawal;
 pub mod sanct_unwrap;
 pub mod sep41_allowance_decrement;
 pub mod sep41_approval_expiration;
+pub mod self_flow_guard;
 pub mod shift_overflow;
 pub mod state_write_in_view;
 pub mod tier_boundary_off_by_one;
@@ -258,6 +259,7 @@ impl RuleRegistry {
         registry.register(unbounded_input_length::UnboundedInputLengthRule::new());
         registry.register(sep41_allowance_decrement::Sep41AllowanceDecrementRule::new());
         registry.register(sep41_approval_expiration::Sep41ApprovalExpirationRule::new());
+        registry.register(self_flow_guard::SelfFlowGuardRule::new());
         registry.register(nullifier_growth::NullifierGrowthRule::new());
         registry.register(proof_length_check::ProofLengthCheckRule::new());
         registry.register(vk_provenance::VkProvenanceRule::new());
