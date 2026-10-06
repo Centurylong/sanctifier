@@ -100,6 +100,13 @@ vim.api.nvim_create_autocmd("FileType", {
 })
 ```
 
+### Zed
+
+The Zed integration in [`editors/zed-sanctifier-lsp/`](../../editors/zed-sanctifier-lsp/)
+uses Zed's Rust extension API to find the installed `sanctifier` executable
+and launch `sanctifier lsp --stdio` for Rust buffers. It reuses this server;
+no second analyzer or bundled language-server binary is introduced.
+
 ### IntelliJ
 
 Skeleton at [`editors/intellij/`](../../editors/intellij/).

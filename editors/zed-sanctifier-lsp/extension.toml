@@ -1,0 +1,11 @@
+id = "sanctifier-lsp"
+name = "Sanctifier LSP"
+version = "0.1.0"
+schema_version = 1
+authors = ["Sanctifier contributors"]
+description = "Sanctifier diagnostics and hover information for Rust and Soroban projects in Zed."
+repository = "https://github.com/Centurylong/sanctifier"
+
+[language_servers.sanctifier-lsp]
+name = "Sanctifier LSP"
+languages = ["Rust"]
