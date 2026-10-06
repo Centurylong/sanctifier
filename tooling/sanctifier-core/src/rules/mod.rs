@@ -25,6 +25,7 @@ pub mod proof_length_check;
 pub mod public_input_range;
 pub mod reserve_withdrawal;
 pub mod sanct_unwrap;
+pub mod sensitive_getter;
 pub mod sep41_allowance_decrement;
 pub mod sep41_approval_expiration;
 pub mod shift_overflow;
@@ -238,6 +239,7 @@ impl RuleRegistry {
         registry.register(missing_ttl::MissingTtlRule::new());
         registry.register(arg_dos::ArgDosRule::new());
         registry.register(sanct_unwrap::SanctUnwrapRule::new());
+        registry.register(sensitive_getter::SensitiveGetterRule::new());
         registry.register(init_hardcoded_admin::InitHardcodedAdminRule::new());
         registry.register(shift_overflow::ShiftOverflowRule::new());
         registry.register(unbounded_storage::UnboundedStorageRule::new());

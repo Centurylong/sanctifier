@@ -27,6 +27,7 @@ the fix, and references.
 | `SANCT_BLS_SUBGROUP_UNCHECKED` | cryptography | BLS12-381 proof point reaches a pairing call with no subgroup or curve membership check | [`bls_subgroup_check`](detectors/bls_subgroup_check.md) |
 | `SANCT_UNWRAP` | panic_handling | `unwrap` / `expect` / risky `unwrap_or_default` inside `#[contractimpl]` entrypoints; replace with typed errors or explicit domain defaults | [`sanct_unwrap`](detectors/sanct_unwrap.md) |
 | `SANCT_VISIBILITY` | authentication | Helper-shaped state mutator exposed through `#[contractimpl]` without authorization | [`sanct_visibility`](detectors/sanct_visibility.md) |
+| `SANCT_SENSITIVE_GETTER` | information_exposure | Public getter exposes secret, credential, or signing-key-shaped data from contract storage | [`sensitive_getter`](detectors/sensitive_getter.md) |
 | `SANCT_UNBOUNDED_STORAGE` | denial_of_service | Persistent/instance collection grows via append/insert with no removal or length cap | [`unbounded_storage`](detectors/unbounded_storage.md) |
 | `SANCT_UNBOUNDED_INPUT` | denial_of_service | Caller-sized `Bytes`/`Vec`/`Map` argument with no length cap | [`unbounded_input_length`](detectors/unbounded_input_length.md) |
 | `SANCT_UNBOUNDED_RETURN` | scalability | Public entrypoint returning an unbounded collection (`Vec` or `Map`) | [`unbounded_return`](detectors/unbounded_return.md) |

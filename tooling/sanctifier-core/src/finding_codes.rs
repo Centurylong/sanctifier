@@ -27,6 +27,7 @@ pub const BLS_SUBGROUP_UNCHECKED: &str = "SANCT_BLS_SUBGROUP_UNCHECKED";
 pub const SANCT_UNWRAP: &str = "SANCT_UNWRAP";
 pub const INIT_HARDCODED_ADMIN: &str = "SANCT_INIT_HARDCODED_ADMIN";
 pub const SANCT_VISIBILITY: &str = "SANCT_VISIBILITY";
+pub const SENSITIVE_GETTER: &str = "SANCT_SENSITIVE_GETTER";
 pub const UNBOUNDED_STORAGE: &str = "SANCT_UNBOUNDED_STORAGE";
 pub const SANCT_VIEW_PANIC: &str = "SANCT_VIEW_PANIC";
 pub const ALLOWANCE_RACE: &str = "SANCT_ALLOWANCE_RACE";
@@ -203,6 +204,12 @@ pub fn all_finding_codes() -> Vec<FindingCode> {
             code: SANCT_VISIBILITY,
             category: "authentication",
             description: "Helper-shaped state mutator is publicly exposed without authorization",
+        },
+        FindingCode {
+            code: SENSITIVE_GETTER,
+            category: "information_exposure",
+            description:
+                "Public getter exposes secret, credential, or signing-key-shaped data from contract storage",
         },
         FindingCode {
             code: UNBOUNDED_STORAGE,

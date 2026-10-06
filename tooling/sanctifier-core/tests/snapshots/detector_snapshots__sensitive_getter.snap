@@ -1,0 +1,15 @@
+---
+source: tooling/sanctifier-core/tests/detector_snapshots.rs
+assertion_line: 44
+expression: findings
+---
+- rule_name: SANCT_SENSITIVE_GETTER
+  severity: Info
+  message: "SANCT_SENSITIVE_GETTER: public getter `get_signing_key` returns `DataKey :: SigningKey` whose name indicates sensitive internal data"
+  location: "get_signing_key:10"
+  suggestion: "Do not return secrets, credentials, signing material, or admin-only keys from a public entrypoint. Keep them private/off-chain or expose only non-sensitive derived metadata."
+- rule_name: SANCT_SENSITIVE_GETTER
+  severity: Info
+  message: "SANCT_SENSITIVE_GETTER: public getter `get_profile` returns `DataKey :: Credentials` whose name indicates sensitive internal data"
+  location: "get_profile:14"
+  suggestion: "Do not return secrets, credentials, signing material, or admin-only keys from a public entrypoint. Keep them private/off-chain or expose only non-sensitive derived metadata."

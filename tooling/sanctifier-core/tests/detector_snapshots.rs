@@ -25,6 +25,7 @@ use sanctifier_core::rules::{
     hardcoded_addr::HardcodedAddrRule, init_hardcoded_admin::InitHardcodedAdminRule,
     ledger_seconds::LedgerSecondsRule, ledger_size::LedgerSizeRule, missing_ttl::MissingTtlRule,
     panic_detection::PanicDetectionRule, sanct_unwrap::SanctUnwrapRule,
+    sensitive_getter::SensitiveGetterRule,
     sep41_allowance_decrement::Sep41AllowanceDecrementRule,
     sep41_approval_expiration::Sep41ApprovalExpirationRule, shift_overflow::ShiftOverflowRule,
     state_write_in_view::StateWriteInViewRule, tier_boundary_off_by_one::TierBoundaryOffByOneRule,
@@ -573,4 +574,13 @@ fn nullifier_growth_detector_flags_only_unbounded_nullifier_writes() {
     assert!(findings
         .iter()
         .any(|finding| finding.location.contains("verify_and_claim")));
+}
+
+#[test]
+fn snapshot_sensitive_getter() {
+    assert_detector_snapshot(
+        "sensitive_getter",
+        &SensitiveGetterRule::new(),
+        include_str!("fixtures/detectors/sensitive_getter.rs"),
+    );
 }
