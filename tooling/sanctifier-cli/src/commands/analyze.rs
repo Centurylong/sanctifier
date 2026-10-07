@@ -11,6 +11,7 @@ use serde_json;
 use std::fs;
 use std::io::{self, Write};
 use std::path::{Path, PathBuf};
+use std::time::Instant;
 
 use crate::vulndb::{VulnDatabase, VulnMatch};
 
@@ -70,6 +71,8 @@ pub fn exec(args: AnalyzeArgs) -> anyhow::Result<()> {
         }
         std::process::exit(1);
     }
+
+    let total_started = Instant::now();
 
     if is_json {
         eprintln!(
@@ -142,7 +145,14 @@ pub fn exec(args: AnalyzeArgs) -> anyhow::Result<()> {
     let mut upgrade_reports = Vec::new();
     let mut smt_issues = Vec::new();
 
-    if path.is_dir() {
+    let mut discovery_ms = 0u128;
+    let analysis_ms = if path.is_dir() {
+        let discovery_started = Instant::now();
+        let total_files = count_rs_files(path, &analyzer.config)?;
+        discovery_ms = discovery_started.elapsed().as_millis();
+
+        let analysis_started = Instant::now();
+        let mut scanned_files = 0usize;
         walk_dir(
             path,
             &analyzer,
@@ -159,8 +169,12 @@ pub fn exec(args: AnalyzeArgs) -> anyhow::Result<()> {
             &mut unhandled_results,
             &mut upgrade_reports,
             &mut smt_issues,
+            total_files,
+            &mut scanned_files,
         )?;
+        analysis_started.elapsed().as_millis()
     } else if path.extension().and_then(|s| s.to_str()) == Some("rs") {
+        let analysis_started = Instant::now();
         if let Ok(content) = fs::read_to_string(path) {
             let file_name = path.display().to_string();
             collisions.extend(analyzer.scan_storage_collisions(&content));
@@ -177,7 +191,10 @@ pub fn exec(args: AnalyzeArgs) -> anyhow::Result<()> {
             upgrade_reports.push(analyzer.analyze_upgrade_patterns(&content));
             smt_issues.extend(analyzer.verify_smt_invariants(&content));
         }
-    }
+        analysis_started.elapsed().as_millis()
+    } else {
+        0
+    };
 
     // ── Memory profiling: after file collection ─────────────────────────────
     if args.profile {
@@ -642,6 +659,13 @@ pub fn exec(args: AnalyzeArgs) -> anyhow::Result<()> {
             );
         }
 
+        eprintln!(
+            "Timing: discovery={} ms, analysis={} ms, total={} ms",
+            discovery_ms,
+            analysis_ms,
+            total_started.elapsed().as_millis()
+        );
+
         if has_critical || has_high {
             std::process::exit(1);
         }
@@ -841,6 +865,13 @@ pub fn exec(args: AnalyzeArgs) -> anyhow::Result<()> {
         );
     }
 
+    eprintln!(
+        "Timing: discovery={} ms, analysis={} ms, total={} ms",
+        discovery_ms,
+        analysis_ms,
+        total_started.elapsed().as_millis()
+    );
+
     Ok(())
 }
 
@@ -878,6 +909,23 @@ fn load_config(path: &Path) -> SanctifyConfig {
     SanctifyConfig::default()
 }
 
+fn count_rs_files(dir: &Path, config: &SanctifyConfig) -> anyhow::Result<usize> {
+    let mut count = 0usize;
+    for entry in fs::read_dir(dir)? {
+        let entry = entry?;
+        let path = entry.path();
+        if path.is_dir() {
+            if config.ignore_paths.iter().any(|p| path.ends_with(p)) {
+                continue;
+            }
+            count += count_rs_files(&path, config)?;
+        } else if path.extension().and_then(|s| s.to_str()) == Some("rs") {
+            count += 1;
+        }
+    }
+    Ok(count)
+}
+
 #[allow(clippy::too_many_arguments)]
 fn walk_dir(
     dir: &Path,
@@ -895,6 +943,8 @@ fn walk_dir(
     unhandled_results: &mut Vec<sanctifier_core::UnhandledResultIssue>,
     upgrade_reports: &mut Vec<sanctifier_core::UpgradeReport>,
     smt_issues: &mut Vec<sanctifier_core::smt::SmtInvariantIssue>,
+    total_files: usize,
+    scanned_files: &mut usize,
 ) -> anyhow::Result<()> {
     for entry in fs::read_dir(dir)? {
         let entry = entry?;
@@ -926,8 +976,19 @@ fn walk_dir(
                 unhandled_results,
                 upgrade_reports,
                 smt_issues,
+                total_files,
+                scanned_files,
             )?;
         } else if path.extension().and_then(|s| s.to_str()) == Some("rs") {
+            *scanned_files += 1;
+            if total_files > 1 {
+                eprintln!(
+                    "Scan progress [{}/{}] {}",
+                    *scanned_files,
+                    total_files,
+                    path.display()
+                );
+            }
             if let Ok(content) = fs::read_to_string(&path) {
                 let file_name = path.display().to_string();
 

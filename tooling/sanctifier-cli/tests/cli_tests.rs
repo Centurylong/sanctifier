@@ -71,6 +71,58 @@ fn test_analyze_json_output() {
 }
 
 #[test]
+fn test_analyze_reports_progress_and_timing_for_multi_file_scan() {
+    let temp_dir = tempdir().unwrap();
+    fs::write(temp_dir.path().join("Cargo.toml"), "[package]\nname = \"progress-fixture\"\nversion = \"0.1.0\"\n").unwrap();
+
+    let src = temp_dir.path().join("src");
+    fs::create_dir(&src).unwrap();
+    fs::write(src.join("lib.rs"), "pub fn first() {}\n").unwrap();
+    fs::write(src.join("helper.rs"), "pub fn second() {}\n").unwrap();
+
+    Command::cargo_bin("sanctifier")
+        .unwrap()
+        .arg("analyze")
+        .arg(temp_dir.path())
+        .assert()
+        .success()
+        .stderr(predicates::str::contains("Scan progress [1/2]"))
+        .stderr(predicates::str::contains("Scan progress [2/2]"))
+        .stderr(predicates::str::contains("Timing: discovery="))
+        .stderr(predicates::str::contains("analysis="))
+        .stderr(predicates::str::contains("total="));
+}
+
+#[test]
+fn test_analyze_json_reports_progress_and_timing_without_polluting_stdout() {
+    let temp_dir = tempdir().unwrap();
+    fs::write(temp_dir.path().join("Cargo.toml"), "[package]\nname = \"progress-fixture\"\nversion = \"0.1.0\"\n").unwrap();
+
+    let src = temp_dir.path().join("src");
+    fs::create_dir(&src).unwrap();
+    fs::write(src.join("lib.rs"), "pub fn first() {}\n").unwrap();
+    fs::write(src.join("helper.rs"), "pub fn second() {}\n").unwrap();
+
+    let output = Command::cargo_bin("sanctifier")
+        .unwrap()
+        .arg("analyze")
+        .arg(temp_dir.path())
+        .arg("--format")
+        .arg("json")
+        .output()
+        .unwrap();
+
+    assert!(output.status.success());
+    serde_json::from_slice::<serde_json::Value>(&output.stdout).unwrap();
+    let stderr = std::str::from_utf8(&output.stderr).unwrap();
+    assert!(stderr.contains("Scan progress [1/2]"));
+    assert!(stderr.contains("Scan progress [2/2]"));
+    assert!(stderr.contains("Timing: discovery="));
+    assert!(stderr.contains("analysis="));
+    assert!(stderr.contains("total="));
+}
+
+#[test]
 fn test_analyze_empty_macro_heavy() {
     let mut cmd = Command::cargo_bin("sanctifier").unwrap();
     let fixture_path = env::current_dir()
