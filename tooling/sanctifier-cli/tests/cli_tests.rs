@@ -388,6 +388,52 @@ fn test_analyze_json_includes_baseline_section() {
     );
 }
 
+#[test]
+fn test_analyze_junit_outputs_machine_readable_xml() {
+    let fixture_path = env::current_dir()
+        .unwrap()
+        .join("tests/fixtures/vulnerable_contract.rs");
+
+    let output = Command::cargo_bin("sanctifier")
+        .unwrap()
+        .arg("analyze")
+        .arg("--format")
+        .arg("junit")
+        .arg(fixture_path)
+        .output()
+        .unwrap();
+
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    assert!(stdout.starts_with("<?xml version=\"1.0\" encoding=\"UTF-8\"?>"));
+    assert!(stdout.contains("<testsuite name=\"sanctifier\""));
+    assert!(stdout.contains("<failure "));
+    assert!(!stdout.contains("Sanctifier: Valid Soroban project"));
+}
+
+#[test]
+fn test_analyze_junit_clean_scan_has_passing_case() {
+    let temp_dir = tempdir().unwrap();
+    let fixture_path = temp_dir.path().join("clean_contract.rs");
+    fs::write(&fixture_path, "pub fn clean() {}\n").unwrap();
+
+    let output = Command::cargo_bin("sanctifier")
+        .unwrap()
+        .arg("analyze")
+        .arg("--format")
+        .arg("junit")
+        .arg(fixture_path)
+        .output()
+        .unwrap();
+
+    assert!(output.status.success());
+
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    assert!(stdout.starts_with("<?xml version=\"1.0\" encoding=\"UTF-8\"?>"));
+    assert!(stdout.contains("failures=\"0\""));
+    assert!(stdout.contains("<testcase classname=\"sanctifier\" name=\"scan\" />"));
+    assert!(!stdout.contains("Sanctifier: Valid Soroban project"));
+}
+
 // ── Memory profiling tests ────────────────────────────────────────────────────
 
 #[test]

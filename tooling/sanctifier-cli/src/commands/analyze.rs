@@ -20,7 +20,7 @@ pub struct AnalyzeArgs {
     #[arg(default_value = ".")]
     pub path: PathBuf,
 
-    /// Output format (text, json)
+    /// Output format (text, json, junit)
     #[arg(short, long, default_value = "text")]
     pub format: String,
 
@@ -53,14 +53,28 @@ pub fn exec(args: AnalyzeArgs) -> anyhow::Result<()> {
     let format = &args.format;
     let _limit = args.limit;
     let is_json = format == "json";
+    let is_junit = format == "junit";
+    let is_machine = is_json || is_junit;
 
     if !is_soroban_project(path) {
+        let message = format!("{:?} is not a valid Soroban project", path);
         if is_json {
             let err = serde_json::json!({
-                "error": format!("{:?} is not a valid Soroban project", path),
+                "error": message,
                 "success": false,
             });
             println!("{}", serde_json::to_string_pretty(&err)?);
+        } else if is_junit {
+            let report = serde_json::json!({
+                "findings": {
+                    "invalid_project": [{
+                        "code": "INVALID_PROJECT",
+                        "message": message,
+                    }]
+                },
+                "vulnerability_db_matches": [],
+            });
+            write_junit_report(io::stdout().lock(), &report)?;
         } else {
             eprintln!(
                 "{} Error: {:?} is not a valid Soroban project. (Missing Cargo.toml with 'soroban-sdk' dependency)",
@@ -71,7 +85,7 @@ pub fn exec(args: AnalyzeArgs) -> anyhow::Result<()> {
         std::process::exit(1);
     }
 
-    if is_json {
+    if is_machine {
         eprintln!(
             "{} Sanctifier: Valid Soroban project found at {:?}",
             "✨".green(),
@@ -108,7 +122,7 @@ pub fn exec(args: AnalyzeArgs) -> anyhow::Result<()> {
     // Load vulnerability database
     let vuln_db = match &args.vuln_db {
         Some(db_path) => {
-            if !is_json {
+            if !is_machine {
                 println!(
                     "{} Loading custom vulnerability database from {:?}",
                     "📦".blue(),
@@ -118,7 +132,7 @@ pub fn exec(args: AnalyzeArgs) -> anyhow::Result<()> {
             VulnDatabase::load(db_path)?
         }
         None => {
-            if !is_json {
+            if !is_machine {
                 println!(
                     "{} Loading built-in vulnerability database (v{})",
                     "📦".blue(),
@@ -205,13 +219,13 @@ pub fn exec(args: AnalyzeArgs) -> anyhow::Result<()> {
                     if let Some((code, justification)) = rest.split_once('-') {
                         let justification = justification.trim();
                         if justification.is_empty() {
-                            if !is_json {
+                            if !is_machine {
                                 eprintln!("{} Warning: Inline suppression missing justification at {}:{}", "⚠️".yellow(), file_path, i + 1);
                             }
                         } else {
                             supps.push((i + 1, code.trim().to_string(), justification.to_string()));
                         }
-                    } else if !is_json {
+                    } else if !is_machine {
                         eprintln!("{} Warning: Inline suppression missing justification at {}:{}", "⚠️".yellow(), file_path, i + 1);
                     }
                 }
@@ -413,7 +427,7 @@ pub fn exec(args: AnalyzeArgs) -> anyhow::Result<()> {
             }
             Ok(None) => (0, vec![]),
             Err(e) => {
-                if !is_json {
+                if !is_machine {
                     eprintln!("{} Could not read baseline: {}", "⚠️".yellow(), e);
                 }
                 (0, vec![])
@@ -484,7 +498,7 @@ pub fn exec(args: AnalyzeArgs) -> anyhow::Result<()> {
     }
 
     // ── Baseline summary (text mode) ─────────────────────────────────────────
-    if !is_json && suppressed_count > 0 {
+    if !is_machine && suppressed_count > 0 {
         println!(
             "{} {} finding{} suppressed by baseline (run {} to see all)",
             "ℹ️".blue(),
@@ -493,7 +507,7 @@ pub fn exec(args: AnalyzeArgs) -> anyhow::Result<()> {
             "sanctifier analyze --no-baseline".bold(),
         );
     }
-    if !is_json && !stale_entries.is_empty() {
+    if !is_machine && !stale_entries.is_empty() {
         println!(
             "{} {} stale baseline entr{} (no longer present in the codebase):",
             "ℹ️".blue(),
@@ -509,7 +523,7 @@ pub fn exec(args: AnalyzeArgs) -> anyhow::Result<()> {
         );
     }
 
-    if is_json {
+    if is_machine {
         let stale_json: Vec<serde_json::Value> = stale_entries
             .iter()
             .map(|e| serde_json::json!({ "fingerprint": e.fingerprint, "code": e.code, "path": e.path, "context": e.context }))
@@ -629,8 +643,12 @@ pub fn exec(args: AnalyzeArgs) -> anyhow::Result<()> {
                 })).collect::<Vec<_>>(),
             },
         });
-        serde_json::to_writer_pretty(io::stdout().lock(), &report)?;
-        println!();
+        if is_json {
+            serde_json::to_writer_pretty(io::stdout().lock(), &report)?;
+            println!();
+        } else {
+            write_junit_report(io::stdout().lock(), &report)?;
+        }
 
         if args.profile {
             let snap = mem_tracker.sample();
@@ -876,6 +894,132 @@ fn load_config(path: &Path) -> SanctifyConfig {
         }
     }
     SanctifyConfig::default()
+}
+
+fn write_junit_report<W: Write>(mut writer: W, report: &serde_json::Value) -> io::Result<()> {
+    let mut cases: Vec<(String, String, String, String)> = Vec::new();
+
+    if let Some(groups) = report.get("findings").and_then(serde_json::Value::as_object) {
+        for (kind, values) in groups {
+            let Some(items) = values.as_array() else {
+                continue;
+            };
+            for (index, item) in items.iter().enumerate() {
+                let code = item
+                    .get("code")
+                    .and_then(serde_json::Value::as_str)
+                    .unwrap_or(kind)
+                    .to_string();
+                let name = junit_case_name(kind, item, index);
+                let details = serde_json::to_string(item).unwrap_or_else(|_| item.to_string());
+                cases.push((kind.clone(), code, name, details));
+            }
+        }
+    }
+
+    if let Some(items) = report
+        .get("vulnerability_db_matches")
+        .and_then(serde_json::Value::as_array)
+    {
+        for (index, item) in items.iter().enumerate() {
+            let code = item
+                .get("vuln_id")
+                .and_then(serde_json::Value::as_str)
+                .unwrap_or("VULNERABILITY_DB")
+                .to_string();
+            let name = junit_case_name("vulnerability_db_matches", item, index);
+            let details = serde_json::to_string(item).unwrap_or_else(|_| item.to_string());
+            cases.push((
+                "vulnerability_db_matches".to_string(),
+                code,
+                name,
+                details,
+            ));
+        }
+    }
+
+    let failures = cases.len();
+    let tests = failures.max(1);
+    writeln!(writer, "<?xml version=\"1.0\" encoding=\"UTF-8\"?>")?;
+    writeln!(
+        writer,
+        "<testsuites tests=\"{tests}\" failures=\"{failures}\" errors=\"0\">"
+    )?;
+    writeln!(
+        writer,
+        "  <testsuite name=\"sanctifier\" tests=\"{tests}\" failures=\"{failures}\" errors=\"0\">"
+    )?;
+
+    if cases.is_empty() {
+        writeln!(
+            writer,
+            "    <testcase classname=\"sanctifier\" name=\"scan\" />"
+        )?;
+    } else {
+        for (kind, code, name, details) in cases {
+            writeln!(
+                writer,
+                "    <testcase classname=\"sanctifier.{}\" name=\"{}\">",
+                xml_escape(&kind),
+                xml_escape(&name),
+            )?;
+            writeln!(
+                writer,
+                "      <failure type=\"{}\" message=\"{}\">{}</failure>",
+                xml_escape(&code),
+                xml_escape(&code),
+                xml_escape(&details),
+            )?;
+            writeln!(writer, "    </testcase>")?;
+        }
+    }
+
+    writeln!(writer, "  </testsuite>")?;
+    writeln!(writer, "</testsuites>")?;
+    Ok(())
+}
+
+fn junit_case_name(kind: &str, item: &serde_json::Value, index: usize) -> String {
+    for key in [
+        "location",
+        "function_name",
+        "function",
+        "struct_name",
+        "event_name",
+        "rule_name",
+    ] {
+        if let Some(value) = item.get(key).and_then(serde_json::Value::as_str) {
+            return format!("{kind}: {value}");
+        }
+    }
+
+    if let Some(file) = item.get("file").and_then(serde_json::Value::as_str) {
+        if let Some(line) = item.get("line").and_then(serde_json::Value::as_u64) {
+            return format!("{kind}: {file}:{line}");
+        }
+        return format!("{kind}: {file}");
+    }
+
+    format!("{kind} #{}", index + 1)
+}
+
+fn xml_escape(value: &str) -> String {
+    let mut escaped = String::with_capacity(value.len());
+    for ch in value.chars() {
+        match ch {
+            '&' => escaped.push_str("&amp;"),
+            '<' => escaped.push_str("&lt;"),
+            '>' => escaped.push_str("&gt;"),
+            '"' => escaped.push_str("&quot;"),
+            '\'' => escaped.push_str("&apos;"),
+            '\t' | '\n' | '\r' => escaped.push(ch),
+            '\u{20}'..='\u{D7FF}'
+            | '\u{E000}'..='\u{FFFD}'
+            | '\u{10000}'..='\u{10FFFF}' => escaped.push(ch),
+            _ => escaped.push('\u{FFFD}'),
+        }
+    }
+    escaped
 }
 
 #[allow(clippy::too_many_arguments)]
