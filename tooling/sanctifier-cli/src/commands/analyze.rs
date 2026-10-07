@@ -342,6 +342,11 @@ pub fn exec(args: AnalyzeArgs) -> anyhow::Result<()> {
                     let ctx = format!("{}|{}", s.function_name, s.description);
                     current_flat.push(FlatFinding::new(finding_codes::SMT_INVARIANT_VIOLATION, &s.location, &ctx));
                 }
+                for m in &vuln_matches {
+                    let location = format!("{}:{}", m.file, m.line);
+                    let context = format!("{}|{}", m.vuln_id, m.name);
+                    current_flat.push(FlatFinding::new("VULN", &location, &context));
+                }
 
                 let (new_flat, stale) = apply_baseline(bl, &current_flat);
                 let new_fps: HashSet<String> = new_flat.iter().map(|f| f.fingerprint()).collect();
@@ -406,6 +411,12 @@ pub fn exec(args: AnalyzeArgs) -> anyhow::Result<()> {
                 smt_issues.retain(|s| {
                     let ctx = format!("{}|{}", s.function_name, s.description);
                     let fp = FlatFinding::new(finding_codes::SMT_INVARIANT_VIOLATION, &s.location, &ctx).fingerprint();
+                    !suppressed_fps.contains(&fp)
+                });
+                vuln_matches.retain(|m| {
+                    let location = format!("{}:{}", m.file, m.line);
+                    let context = format!("{}|{}", m.vuln_id, m.name);
+                    let fp = FlatFinding::new("VULN", &location, &context).fingerprint();
                     !suppressed_fps.contains(&fp)
                 });
 

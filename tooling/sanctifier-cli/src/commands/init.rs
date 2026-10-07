@@ -1,8 +1,12 @@
 use clap::Args;
 use colored::Colorize;
-use sanctifier_core::{CustomRule, SanctifyConfig};
+use sanctifier_core::baseline::{save_baseline, BaselineEntry, BASELINE_FILE};
+use sanctifier_core::{Analyzer, CustomRule, SanctifyConfig};
 use std::fs;
 use std::path::{Path, PathBuf};
+
+use crate::commands::baseline::collect_flat_findings;
+use crate::vulndb::VulnDatabase;
 
 #[derive(Args, Debug)]
 pub struct InitArgs {
@@ -42,6 +46,26 @@ impl ConfigGenerator {
     }
 }
 
+pub const CI_WORKFLOW_PATH: &str = ".github/workflows/sanctifier.yml";
+
+const CI_WORKFLOW: &str = r#"name: Sanctifier
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  scan:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Sanctifier
+        run: cargo install --git https://github.com/Centurylong/sanctifier sanctifier-cli
+      - name: Analyze
+        run: sanctifier analyze .
+"#;
+
 pub struct FileWriter;
 
 impl FileWriter {
@@ -55,59 +79,106 @@ impl FileWriter {
         fs::write(&config_path, toml_string)?;
         Ok(config_path)
     }
+
+    pub fn write_ci_workflow(path: &Path) -> anyhow::Result<PathBuf> {
+        let workflow_path = path.join(CI_WORKFLOW_PATH);
+        if let Some(parent) = workflow_path.parent() {
+            fs::create_dir_all(parent)?;
+        }
+        fs::write(&workflow_path, CI_WORKFLOW)?;
+        Ok(workflow_path)
+    }
+
+    pub fn write_baseline(config: &SanctifyConfig, path: &Path) -> anyhow::Result<PathBuf> {
+        let analyzer = Analyzer::new(config.clone());
+        let vuln_db = VulnDatabase::load_default();
+        let flat = collect_flat_findings(path, &analyzer, &vuln_db, config)?;
+        let entries: Vec<BaselineEntry> = flat.iter().map(BaselineEntry::from_flat).collect();
+        save_baseline(path, entries)?;
+        Ok(path.join(BASELINE_FILE))
+    }
 }
 
 pub struct OutputFormatter;
 
 impl OutputFormatter {
-    pub fn display_success(config_path: &Path) {
-        println!("{} Configuration file created successfully!", "✓".green());
-        println!("   Location: {}", config_path.display());
-    }
-
-    pub fn display_existing_file_warning() {
-        eprintln!(
-            "{} Configuration file already exists: .sanctify.toml",
-            "⚠".yellow()
-        );
-        eprintln!("   Use --force to overwrite the existing configuration");
+    pub fn display_artifact(label: &str, path: &Path, written: bool) {
+        if written {
+            println!("{} {}: {}", "✓".green(), label, path.display());
+        } else {
+            println!("{} {} already exists; leaving it unchanged", "•".yellow(), label);
+        }
     }
 
     pub fn display_error(error: &anyhow::Error) {
-        eprintln!("{} Failed to create configuration file", "✗".red());
+        eprintln!("{} Failed to initialize Sanctifier", "✗".red());
         eprintln!("   Error: {}", error);
     }
 }
 
-pub fn exec(args: InitArgs, path: Option<PathBuf>) -> anyhow::Result<()> {
-    use std::env;
+fn read_effective_config(target_dir: &Path) -> SanctifyConfig {
+    let config_path = target_dir.join(".sanctify.toml");
+    fs::read_to_string(config_path)
+        .ok()
+        .and_then(|content| toml::from_str(&content).ok())
+        .unwrap_or_default()
+}
 
-    // Get target directory
+pub fn exec(args: InitArgs, path: Option<PathBuf>) -> anyhow::Result<()> {
     let target_dir = match path {
         Some(p) => p,
-        None => env::current_dir()?,
+        // Match the relative finding paths used by the generated analyze . workflow.
+        None => PathBuf::from("."),
     };
 
-    // Check for existing config file
-    if FileWriter::config_exists(&target_dir) && !args.force {
-        OutputFormatter::display_existing_file_warning();
-        anyhow::bail!("configuration file already exists");
-    }
+    let result = (|| -> anyhow::Result<()> {
+        let generated_config = ConfigGenerator::generate_default_config();
+        let config_path = target_dir.join(".sanctify.toml");
+        let workflow_path = target_dir.join(CI_WORKFLOW_PATH);
+        let baseline_path = target_dir.join(BASELINE_FILE);
 
-    // Generate default configuration
-    let config = ConfigGenerator::generate_default_config();
+        // A fully initialized project is idempotent. Any partial scaffold is
+        // ambiguous and must be repaired explicitly so stale artifacts are not
+        // silently combined with newly generated ones.
+        let config_exists = config_path.exists();
+        let workflow_exists = workflow_path.exists();
+        let baseline_exists = baseline_path.exists();
+        let scaffold_complete = config_exists && workflow_exists && baseline_exists;
+        let scaffold_partial = (config_exists || workflow_exists || baseline_exists) && !scaffold_complete;
+        if scaffold_partial && !args.force {
+            anyhow::bail!(
+                "partial Sanctifier scaffold exists; use --force to repair or refresh it"
+            );
+        }
 
-    // Write configuration to file
-    match FileWriter::write_config(&config, &target_dir) {
-        Ok(config_path) => {
-            OutputFormatter::display_success(&config_path);
-            Ok(())
+        let config_written = args.force || !config_path.exists();
+        if config_written {
+            FileWriter::write_config(&generated_config, &target_dir)?;
         }
-        Err(e) => {
-            OutputFormatter::display_error(&e);
-            Err(e)
+
+        let workflow_written = args.force || !workflow_path.exists();
+        if workflow_written {
+            FileWriter::write_ci_workflow(&target_dir)?;
         }
+
+        let baseline_written = args.force || !baseline_path.exists();
+        if baseline_written {
+            // Match subsequent analyze runs: use the config that is actually on disk.
+            let effective_config = read_effective_config(&target_dir);
+            FileWriter::write_baseline(&effective_config, &target_dir)?;
+        }
+
+        OutputFormatter::display_artifact("Configuration", &config_path, config_written);
+        OutputFormatter::display_artifact("CI workflow", &workflow_path, workflow_written);
+        OutputFormatter::display_artifact("Baseline", &baseline_path, baseline_written);
+
+        Ok(())
+    })();
+
+    if let Err(error) = &result {
+        OutputFormatter::display_error(error);
     }
+    result
 }
 
 #[cfg(test)]
@@ -260,74 +331,103 @@ mod tests {
     }
 
     #[test]
-    fn test_exec_creates_config_in_temp_dir() {
+    fn test_exec_scaffolds_config_ci_and_baseline() {
         let temp_dir = TempDir::new().unwrap();
         let args = InitArgs { force: false };
 
-        // Execute init command
         let result = exec(args, Some(temp_dir.path().to_path_buf()));
-
-        // Verify success
         assert!(result.is_ok(), "exec should succeed in empty directory");
 
-        // Verify file was created
         let config_path = temp_dir.path().join(".sanctify.toml");
+        let workflow_path = temp_dir.path().join(CI_WORKFLOW_PATH);
+        let baseline_path = temp_dir.path().join(BASELINE_FILE);
+
         assert!(config_path.exists(), "Config file should be created");
+        assert!(workflow_path.exists(), "CI workflow should be created");
+        assert!(baseline_path.exists(), "Baseline should be created");
 
-        // Verify content is valid TOML
-        let content = fs::read_to_string(&config_path).unwrap();
-        let parsed: Result<SanctifyConfig, _> = toml::from_str(&content);
+        let config_content = fs::read_to_string(&config_path).unwrap();
+        let parsed: Result<SanctifyConfig, _> = toml::from_str(&config_content);
         assert!(parsed.is_ok(), "Generated TOML should be parseable");
+
+        let workflow = fs::read_to_string(&workflow_path).unwrap();
+        assert!(workflow.contains("sanctifier analyze ."));
+
+        let baseline: serde_json::Value =
+            serde_json::from_str(&fs::read_to_string(&baseline_path).unwrap()).unwrap();
+        assert_eq!(baseline["version"], 1);
     }
 
     #[test]
-    fn test_exec_with_existing_file_without_force() {
+    fn test_exec_is_idempotent_without_force() {
         let temp_dir = TempDir::new().unwrap();
+
+        exec(InitArgs { force: false }, Some(temp_dir.path().to_path_buf())).unwrap();
+
         let config_path = temp_dir.path().join(".sanctify.toml");
+        let workflow_path = temp_dir.path().join(CI_WORKFLOW_PATH);
+        let baseline_path = temp_dir.path().join(BASELINE_FILE);
+        let before = (
+            fs::read(&config_path).unwrap(),
+            fs::read(&workflow_path).unwrap(),
+            fs::read(&baseline_path).unwrap(),
+        );
 
-        // Create existing file
-        fs::write(&config_path, "existing content").unwrap();
+        exec(InitArgs { force: false }, Some(temp_dir.path().to_path_buf())).unwrap();
 
-        let args = InitArgs { force: false };
-
-        // Change to temp directory
-        let original_dir = std::env::current_dir().unwrap();
-        std::env::set_current_dir(temp_dir.path()).unwrap();
-
-        // Execute init command
-        let result = exec(args, Some(temp_dir.path().to_path_buf()));
-
-        // Restore original directory
-        std::env::set_current_dir(original_dir).unwrap();
-
-        // Verify command failed and file was not modified
-        assert!(result.is_err(), "exec should fail without --force");
-        let content = fs::read_to_string(&config_path).unwrap();
-        assert_eq!(content, "existing content", "File should not be modified");
+        assert_eq!(fs::read(&config_path).unwrap(), before.0);
+        assert_eq!(fs::read(&workflow_path).unwrap(), before.1);
+        assert_eq!(fs::read(&baseline_path).unwrap(), before.2);
     }
 
     #[test]
-    fn test_exec_with_force_overwrites_existing_file() {
+    fn test_exec_rejects_partial_scaffold_without_force() {
+        let temp_dir = TempDir::new().unwrap();
+        let baseline_path = temp_dir.path().join(BASELINE_FILE);
+        let stale_baseline = br#"{"version":1,"findings":[]}"#;
+        fs::write(&baseline_path, stale_baseline).unwrap();
+
+        let result = exec(
+            InitArgs { force: false },
+            Some(temp_dir.path().to_path_buf()),
+        );
+
+        assert!(result.is_err(), "partial scaffold should require --force");
+        assert!(
+            !temp_dir.path().join(".sanctify.toml").exists(),
+            "config must not be created during a rejected partial repair"
+        );
+        assert!(
+            !temp_dir.path().join(CI_WORKFLOW_PATH).exists(),
+            "workflow must not be created during a rejected partial repair"
+        );
+        assert_eq!(
+            fs::read(&baseline_path).unwrap(),
+            stale_baseline,
+            "existing partial artifact must remain unchanged"
+        );
+    }
+
+    #[test]
+    fn test_exec_with_force_refreshes_scaffold() {
         let temp_dir = TempDir::new().unwrap();
         let config_path = temp_dir.path().join(".sanctify.toml");
-
-        // Create existing file
+        let workflow_path = temp_dir.path().join(CI_WORKFLOW_PATH);
+        let baseline_path = temp_dir.path().join(BASELINE_FILE);
+        fs::create_dir_all(workflow_path.parent().unwrap()).unwrap();
         fs::write(&config_path, "existing content").unwrap();
+        fs::write(&workflow_path, "existing workflow").unwrap();
+        fs::write(&baseline_path, "existing baseline").unwrap();
 
-        let args = InitArgs { force: true };
-
-        // Execute init command
-        let result = exec(args, Some(temp_dir.path().to_path_buf()));
-
-        // Verify success
+        let result = exec(InitArgs { force: true }, Some(temp_dir.path().to_path_buf()));
         assert!(result.is_ok(), "exec should succeed with force flag");
 
-        // Verify file was overwritten
-        let content = fs::read_to_string(&config_path).unwrap();
-        assert_ne!(content, "existing content", "File should be overwritten");
-        assert!(
-            content.contains("ignore_paths"),
-            "Should contain default config"
-        );
+        assert!(fs::read_to_string(&config_path).unwrap().contains("ignore_paths"));
+        assert!(fs::read_to_string(&workflow_path)
+            .unwrap()
+            .contains("sanctifier analyze ."));
+        let baseline: serde_json::Value =
+            serde_json::from_str(&fs::read_to_string(&baseline_path).unwrap()).unwrap();
+        assert_eq!(baseline["version"], 1);
     }
 }

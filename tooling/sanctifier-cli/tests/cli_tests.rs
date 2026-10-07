@@ -144,6 +144,47 @@ fn test_update_help() {
 }
 
 #[test]
+fn test_init_baseline_matches_relative_analyze_paths() {
+    let project = tempdir().unwrap();
+    fs::create_dir(project.path().join("src")).unwrap();
+    fs::write(
+        project.path().join("Cargo.toml"),
+        "[package]\nname = \"init-baseline-fixture\"\nversion = \"0.1.0\"\nedition = \"2021\"\n[dependencies]\nsoroban-sdk = \"22.0.0\"\n",
+    ).unwrap();
+    fs::write(
+        project.path().join("src/lib.rs"),
+        include_str!("fixtures/vulnerable_contract.rs"),
+    ).unwrap();
+
+    Command::cargo_bin("sanctifier").unwrap()
+        .current_dir(project.path()).arg("init").assert().success();
+    let baseline: serde_json::Value = serde_json::from_slice(
+        &fs::read(project.path().join(".sanctify-baseline.json")).unwrap(),
+    ).unwrap();
+    let entry_count = baseline["entries"].as_array().unwrap().len();
+    assert!(entry_count > 0);
+
+    let output = Command::cargo_bin("sanctifier").unwrap()
+        .current_dir(project.path()).args(["analyze", ".", "--format", "json"])
+        .output().unwrap();
+    let report: serde_json::Value = serde_json::from_slice(&output.stdout).unwrap();
+    assert_eq!(output.status.code(), Some(0));
+    assert_eq!(report["baseline"]["suppressed_count"].as_u64().unwrap() as usize, entry_count);
+    assert!(report["baseline"]["stale_entries"].as_array().unwrap().is_empty());
+    assert!(report["vulnerability_db_matches"].as_array().unwrap().is_empty());
+    assert!(report["findings"].as_object().unwrap().values()
+        .all(|findings| findings.as_array().unwrap().is_empty()));
+
+    let output = Command::cargo_bin("sanctifier").unwrap()
+        .current_dir(project.path()).args(["analyze", ".", "--format", "json", "--no-baseline"])
+        .output().unwrap();
+    let report: serde_json::Value = serde_json::from_slice(&output.stdout).unwrap();
+    assert_eq!(output.status.code(), Some(1));
+    assert_eq!(report["baseline"]["suppressed_count"], 0);
+    assert!(!report["vulnerability_db_matches"].as_array().unwrap().is_empty());
+}
+
+#[test]
 fn test_init_creates_sanctify_toml_in_current_directory() {
     let temp_dir = tempdir().unwrap();
     let mut cmd = Command::cargo_bin("sanctifier").unwrap();
