@@ -99,6 +99,11 @@ Analyze a Soroban contract for vulnerabilities
 * `--no-baseline` — Ignore .sanctify-baseline.json and report all findings
 * `--profile` — Profile peak memory usage and report it at the end of the scan
 * `--max-memory <MAX_MEMORY>` — Abort the scan if peak RSS exceeds this limit (in MB)
+* `--fail-on <FAIL_ON>` — Minimum finding severity that causes a non-zero exit
+
+  Default value: `high`
+
+  Possible values: `low`, `medium`, `high`, `critical`
 
 
 

@@ -41,7 +41,7 @@ fn test_analyze_vulnerable_contract() {
     cmd.arg("analyze")
         .arg(fixture_path)
         .assert()
-        .success()
+        .failure()
         .stdout(predicates::str::contains(
             "Found potential Authentication Gaps!",
         ))
@@ -344,7 +344,7 @@ fn test_analyze_no_baseline_flag_ignores_baseline() {
         .arg("--no-baseline")
         .arg(contract.to_str().unwrap())
         .assert()
-        .success()
+        .failure()
         .stdout(predicates::str::contains(
             "Found potential Authentication Gaps!",
         ));
@@ -401,7 +401,7 @@ fn test_analyze_profile_flag_produces_memory_stats() {
         .arg(fixture_path)
         .arg("--profile")
         .assert()
-        .success()
+        .failure()
         .stderr(predicates::str::contains("Memory (start):"))
         .stderr(predicates::str::contains("Memory (final):"));
 }

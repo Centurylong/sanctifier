@@ -1,18 +1,57 @@
 use crate::commands::webhook::{
     send_scan_completed_webhooks, ScanWebhookPayload, ScanWebhookSummary,
 };
-use clap::Args;
+use clap::{Args, ValueEnum};
 use colored::*;
 use sanctifier_core::baseline::{apply_baseline, load_baseline, BaselineEntry};
 use sanctifier_core::finding_codes;
 use sanctifier_core::memory::{MemoryGuard, MemoryTracker};
-use sanctifier_core::{Analyzer, SanctifyConfig, SizeWarningLevel};
+use sanctifier_core::{Analyzer, RuleSeverity, SanctifyConfig, SizeWarningLevel};
 use serde_json;
 use std::fs;
 use std::io::{self, Write};
 use std::path::{Path, PathBuf};
 
 use crate::vulndb::{VulnDatabase, VulnMatch};
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq, ValueEnum)]
+pub enum FailOnSeverity {
+    Low,
+    Medium,
+    High,
+    Critical,
+}
+
+fn fail_on_rank(severity: FailOnSeverity) -> u8 {
+    match severity {
+        FailOnSeverity::Low => 1,
+        FailOnSeverity::Medium => 2,
+        FailOnSeverity::High => 3,
+        FailOnSeverity::Critical => 4,
+    }
+}
+
+fn severity_string_rank(severity: &str) -> u8 {
+    match severity.to_ascii_lowercase().as_str() {
+        "critical" => 4,
+        "high" => 3,
+        "medium" => 2,
+        "low" => 1,
+        _ => 2,
+    }
+}
+
+fn rule_severity_rank(severity: &RuleSeverity) -> u8 {
+    match severity {
+        RuleSeverity::Error => 3,
+        RuleSeverity::Warning => 2,
+        RuleSeverity::Info => 1,
+    }
+}
+
+fn should_fail_for_threshold(highest: u8, threshold: FailOnSeverity) -> bool {
+    highest >= fail_on_rank(threshold)
+}
 
 #[derive(Args, Debug)]
 pub struct AnalyzeArgs {
@@ -46,6 +85,10 @@ pub struct AnalyzeArgs {
     /// Abort the scan if peak RSS exceeds this limit (in MB).
     #[arg(long)]
     pub max_memory: Option<u64>,
+
+    /// Minimum finding severity that causes a non-zero exit.
+    #[arg(long, value_enum, default_value = "high")]
+    pub fail_on: FailOnSeverity,
 }
 
 pub fn exec(args: AnalyzeArgs) -> anyhow::Result<()> {
@@ -466,6 +509,34 @@ pub fn exec(args: AnalyzeArgs) -> anyhow::Result<()> {
         || size_warnings
             .iter()
             .any(|w| w.level == SizeWarningLevel::ExceedsLimit);
+    let has_medium = !collisions.is_empty()
+        || !unsafe_patterns.is_empty()
+        || !event_issues.is_empty()
+        || upgrade_reports.iter().any(|report| !report.findings.is_empty())
+        || size_warnings
+            .iter()
+            .any(|w| w.level == SizeWarningLevel::ApproachingLimit);
+
+    let mut highest_severity_rank = 0u8;
+    if has_medium {
+        highest_severity_rank = highest_severity_rank.max(2);
+    }
+    if has_high {
+        highest_severity_rank = highest_severity_rank.max(3);
+    }
+    if has_critical {
+        highest_severity_rank = highest_severity_rank.max(4);
+    }
+    for custom in &custom_matches {
+        highest_severity_rank = highest_severity_rank.max(rule_severity_rank(&custom.severity));
+    }
+    for vuln in &vuln_matches {
+        highest_severity_rank =
+            highest_severity_rank.max(severity_string_rank(&vuln.severity));
+    }
+    let fail_threshold_reached =
+        should_fail_for_threshold(highest_severity_rank, args.fail_on);
+
     let timestamp = chrono_timestamp();
 
     let webhook_payload = ScanWebhookPayload {
@@ -642,7 +713,7 @@ pub fn exec(args: AnalyzeArgs) -> anyhow::Result<()> {
             );
         }
 
-        if has_critical || has_high {
+        if fail_threshold_reached {
             std::process::exit(1);
         }
         return Ok(());
@@ -841,7 +912,39 @@ pub fn exec(args: AnalyzeArgs) -> anyhow::Result<()> {
         );
     }
 
+    if fail_threshold_reached {
+        std::process::exit(1);
+    }
+
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn fail_on_threshold_is_monotonic() {
+        assert!(should_fail_for_threshold(4, FailOnSeverity::Critical));
+        assert!(should_fail_for_threshold(4, FailOnSeverity::High));
+        assert!(should_fail_for_threshold(3, FailOnSeverity::High));
+        assert!(should_fail_for_threshold(2, FailOnSeverity::Medium));
+        assert!(should_fail_for_threshold(1, FailOnSeverity::Low));
+
+        assert!(!should_fail_for_threshold(3, FailOnSeverity::Critical));
+        assert!(!should_fail_for_threshold(2, FailOnSeverity::High));
+        assert!(!should_fail_for_threshold(1, FailOnSeverity::Medium));
+        assert!(!should_fail_for_threshold(0, FailOnSeverity::Low));
+    }
+
+    #[test]
+    fn severity_string_rank_matches_policy() {
+        assert_eq!(severity_string_rank("critical"), 4);
+        assert_eq!(severity_string_rank("HIGH"), 3);
+        assert_eq!(severity_string_rank("medium"), 2);
+        assert_eq!(severity_string_rank("low"), 1);
+        assert_eq!(severity_string_rank("unknown"), 2);
+    }
 }
 
 fn chrono_timestamp() -> String {

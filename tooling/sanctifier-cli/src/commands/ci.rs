@@ -1,4 +1,4 @@
-use crate::commands::analyze::{self, AnalyzeArgs};
+use crate::commands::analyze::{self, AnalyzeArgs, FailOnSeverity};
 use clap::Args;
 use std::path::PathBuf;
 
@@ -26,6 +26,7 @@ pub fn exec(args: CiArgs) -> anyhow::Result<()> {
         no_baseline: false,
         max_memory: Some(1024),
         profile: false,
+        fail_on: FailOnSeverity::High,
     };
 
     analyze::exec(analyze_args)
