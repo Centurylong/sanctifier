@@ -8,6 +8,7 @@ pub mod balance_equality;
 pub mod bls_subgroup_check;
 pub mod contracterror_enum;
 pub mod cross_contract_call_in_loop;
+pub mod deprecated_sdk;
 pub mod division_by_zero;
 pub mod eager_unwrap_or;
 pub mod edge_amount;
@@ -221,6 +222,7 @@ impl RuleRegistry {
         registry.register(auth_gap::VisibilityLeakRule::new());
         registry.register(auth_on_caller::AuthOnCallerRule::new());
         registry.register(auth_replay::AuthReplayRule::new());
+        registry.register(deprecated_sdk::DeprecatedSdkRule::new());
         registry.register(ledger_size::LedgerSizeRule::new());
         registry.register(panic_detection::PanicDetectionRule::new());
         registry.register(arithmetic_overflow::ArithmeticOverflowRule::new());

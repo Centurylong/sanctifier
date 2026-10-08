@@ -18,6 +18,7 @@ the fix, and references.
 | `S009` | logic | A `Result` that is silently dropped | [`unhandled_result`](detectors/unhandled_result.md) |
 | `S012` | code_hygiene | Hardcoded admin address / secret literal in an auth context | [`hardcoded_addr`](detectors/hardcoded_addr.md) |
 | `S013` | code_hygiene | `transfer`/`mint`/`burn` missing `amount > 0` / `from != to` guards | [`edge_amount`](detectors/edge_amount.md) |
+| `S014` | code_hygiene | Known-deprecated `soroban_sdk` API call with migration guidance | [`deprecated_sdk`](detectors/deprecated_sdk.md) |
 | `S015` | code_hygiene | Unused local binding (dead code) | [`unused_variable`](detectors/unused_variable.md) |
 | `S016` | code_hygiene | Duplicate/inconsistent `#[contracterror]` discriminants | [`error_code_collision`](detectors/error_code_collision.md) |
 | `S017` | arithmetic | Fee/interest integer division that rounds to zero for micro-amounts | [`fee_rounding`](detectors/fee_rounding.md) |

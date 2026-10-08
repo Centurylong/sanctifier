@@ -1,0 +1,39 @@
+---
+source: tooling/sanctifier-core/tests/detector_snapshots.rs
+expression: findings
+---
+- rule_name: S014
+  severity: Warning
+  message: "S014: deprecated soroban_sdk API 'Env::logger()' is still in use"
+  location: "legacy:6"
+  suggestion: "Use Env::logs() instead."
+- rule_name: S014
+  severity: Warning
+  message: "S014: deprecated soroban_sdk API 'Logs::log(..)' is still in use"
+  location: "legacy:7"
+  suggestion: "Use Logs::add(..) (or the log! macro) instead."
+- rule_name: S014
+  severity: Warning
+  message: "S014: deprecated soroban_sdk API 'Prng::u64_in_range(..)' is still in use"
+  location: "legacy:8"
+  suggestion: "Use Prng::gen_range(..) instead."
+- rule_name: S014
+  severity: Warning
+  message: "S014: deprecated soroban_sdk API 'Symbol::short(..)' is still in use"
+  location: "legacy:9"
+  suggestion: Use the symbol_short! macro instead.
+- rule_name: S014
+  severity: Warning
+  message: "S014: deprecated soroban_sdk API 'String::from_slice(..)' is still in use"
+  location: "legacy:10"
+  suggestion: "Use String::from_str(..) instead."
+- rule_name: S014
+  severity: Warning
+  message: "S014: deprecated soroban_sdk API 'panic_error!(..)' is still in use"
+  location: "legacy:11"
+  suggestion: Use panic_with_error!(..) instead.
+- rule_name: S014
+  severity: Warning
+  message: "S014: deprecated soroban_sdk API 'Env::logger()' is still in use"
+  location: "renamed_ctx:15"
+  suggestion: "Use Env::logs() instead."

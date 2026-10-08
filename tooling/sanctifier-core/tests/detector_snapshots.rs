@@ -19,7 +19,7 @@ use sanctifier_core::rules::{
     allowance_race::AllowanceRaceRule, arg_dos::ArgDosRule,
     arithmetic_overflow::ArithmeticOverflowRule, auth_gap::AuthGapRule,
     balance_equality::BalanceEqualityRule, contracterror_enum::ContracterrorEnumRule,
-    cross_contract_call_in_loop::CrossContractCallInLoopRule, division_by_zero::DivisionByZeroRule,
+    cross_contract_call_in_loop::CrossContractCallInLoopRule, deprecated_sdk::DeprecatedSdkRule, division_by_zero::DivisionByZeroRule,
     edge_amount::EdgeAmountRule, error_code_collision::ErrorCodeCollisionRule,
     excessive_clone::ExcessiveCloneRule, fee_rounding::FeeRoundingRule,
     hardcoded_addr::HardcodedAddrRule, init_hardcoded_admin::InitHardcodedAdminRule,
@@ -68,6 +68,15 @@ fn snapshot_auth_replay() {
         "auth_replay",
         &AuthReplayRule::new(),
         include_str!("fixtures/detectors/auth_replay.rs"),
+    );
+}
+
+#[test]
+fn snapshot_deprecated_sdk() {
+    assert_detector_snapshot(
+        "deprecated_sdk",
+        &DeprecatedSdkRule::new(),
+        include_str!("fixtures/detectors/deprecated_sdk.rs"),
     );
 }
 
