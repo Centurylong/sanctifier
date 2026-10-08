@@ -36,6 +36,8 @@ the fix, and references.
 | `SANCT_VK_PROVENANCE` | cryptography | ZK verifying key accepted at runtime and stored with no auth/hash-pin guard | [`vk_provenance`](detectors/vk_provenance.md) |
 | `SANCT_PUBLIC_INPUT_UNVALIDATED` | zk_verification | Verification consumes public inputs without checking they are canonical field elements in range | [`public_input_range`](detectors/public_input_range.md) |
 
+| `SANCT_EVENT_EMISSION_GAP` | events | State-mutating entrypoint omits an event in a contract that already uses events | [`event_emission_completeness`](detectors/event_emission_completeness.md) |
+
 > **Full catalog:** [Detector Catalog →](detectors/README.md)
 
 ### Source-optional (compiled WASM) codes

@@ -36,6 +36,7 @@ pub const TIER_BOUNDARY_OFF_BY_ONE: &str = "S022";
 pub const MISSING_RESERVE_AUTH: &str = "S023";
 pub const CROSS_CONTRACT_CALL_IN_LOOP: &str = "SANCT_CROSS_CONTRACT_CALL_IN_LOOP";
 pub const UNBOUNDED_EVENT_EMISSION: &str = "SANCT_UNBOUNDED_EVENT_EMISSION";
+pub const EVENT_EMISSION_GAP: &str = "SANCT_EVENT_EMISSION_GAP";
 pub const SEP41_ALLOWANCE_NOT_DECREMENTED: &str = "SANCT_SEP41_ALLOWANCE_NOT_DECREMENTED";
 pub const SEP41_APPROVAL_NO_EXPIRATION: &str = "SANCT_SEP41_APPROVAL_NO_EXPIRATION";
 pub const NULLIFIER_GROWTH: &str = "SANCT_NULLIFIER_GROWTH";
@@ -254,6 +255,11 @@ pub fn all_finding_codes() -> Vec<FindingCode> {
             code: UNBOUNDED_EVENT_EMISSION,
             category: "resource_limits",
             description: "env.events().publish(..) issued from inside a loop with no iteration bound",
+        },
+        FindingCode {
+            code: EVENT_EMISSION_GAP,
+            category: "events",
+            description: "State-mutating entrypoint omits an event in a contract with an established event surface",
         },
         FindingCode {
             code: SEP41_ALLOWANCE_NOT_DECREMENTED,

@@ -1,0 +1,14 @@
+---
+source: tooling/sanctifier-core/tests/detector_snapshots.rs
+expression: findings
+---
+- rule_name: SANCT_EVENT_EMISSION_GAP
+  severity: Warning
+  message: "SANCT_EVENT_EMISSION_GAP: state-mutating entrypoint `set_balance` performs a storage `set` write but publishes no event, while sibling entrypoints establish an event surface for this contract"
+  location: "set_balance:10"
+  suggestion: "Publish a compact event for the externally observable state transition so off-chain indexers see it consistently with the contract's existing event surface."
+- rule_name: SANCT_EVENT_EMISSION_GAP
+  severity: Warning
+  message: "SANCT_EVENT_EMISSION_GAP: state-mutating entrypoint `revoke` performs a storage `remove` write but publishes no event, while sibling entrypoints establish an event surface for this contract"
+  location: "revoke:14"
+  suggestion: "Publish a compact event for the externally observable state transition so off-chain indexers see it consistently with the contract's existing event surface."

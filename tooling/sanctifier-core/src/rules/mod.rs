@@ -12,6 +12,7 @@ pub mod division_by_zero;
 pub mod eager_unwrap_or;
 pub mod edge_amount;
 pub mod error_code_collision;
+pub mod event_emission_completeness;
 pub mod excessive_clone;
 pub mod fee_rounding;
 pub mod hardcoded_addr;
@@ -255,6 +256,7 @@ impl RuleRegistry {
         registry.register(vesting_schedule::VestingScheduleRule::new());
         registry.register(cross_contract_call_in_loop::CrossContractCallInLoopRule::new());
         registry.register(unbounded_event_emission::UnboundedEventEmissionRule::new());
+        registry.register(event_emission_completeness::EventEmissionCompletenessRule::new());
         registry.register(unbounded_input_length::UnboundedInputLengthRule::new());
         registry.register(sep41_allowance_decrement::Sep41AllowanceDecrementRule::new());
         registry.register(sep41_approval_expiration::Sep41ApprovalExpirationRule::new());

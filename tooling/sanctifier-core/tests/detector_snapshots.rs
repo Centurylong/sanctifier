@@ -21,6 +21,7 @@ use sanctifier_core::rules::{
     balance_equality::BalanceEqualityRule, contracterror_enum::ContracterrorEnumRule,
     cross_contract_call_in_loop::CrossContractCallInLoopRule, division_by_zero::DivisionByZeroRule,
     edge_amount::EdgeAmountRule, error_code_collision::ErrorCodeCollisionRule,
+    event_emission_completeness::EventEmissionCompletenessRule,
     excessive_clone::ExcessiveCloneRule, fee_rounding::FeeRoundingRule,
     hardcoded_addr::HardcodedAddrRule, init_hardcoded_admin::InitHardcodedAdminRule,
     ledger_seconds::LedgerSecondsRule, ledger_size::LedgerSizeRule, missing_ttl::MissingTtlRule,
@@ -573,4 +574,14 @@ fn nullifier_growth_detector_flags_only_unbounded_nullifier_writes() {
     assert!(findings
         .iter()
         .any(|finding| finding.location.contains("verify_and_claim")));
+}
+
+
+#[test]
+fn snapshot_event_emission_completeness() {
+    assert_detector_snapshot(
+        "event_emission_completeness",
+        &EventEmissionCompletenessRule::new(),
+        include_str!("fixtures/detectors/event_emission_completeness.rs"),
+    );
 }
