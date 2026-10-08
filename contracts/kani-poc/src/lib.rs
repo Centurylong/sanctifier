@@ -6,7 +6,7 @@
 //! logic into functions that can be verified with Kani, while the contract layer that uses
 //! `Env`, `Address`, `Symbol`, etc. remains unverified due to Host type limitations.
 
-use soroban_sdk::{contract, contractimpl, symbol_short, Env, Symbol};
+use soroban_sdk::{contract, contractimpl, symbol_short, Address, Env, Symbol};
 
 // ── Token initialisation pure logic (verified with Kani) ─────────────────────
 //
@@ -26,6 +26,56 @@ pub fn initialize_pure(is_initialized: bool) -> Result<(), &'static str> {
         return Err("already initialized");
     }
     Ok(())
+}
+
+
+ // ── Pure admin authorization transition (Kani-verifiable) ─────────────────
+ //
+ // auth_succeeded models the Soroban Host require_auth verdict:
+ // an unsuccessful require_auth traps BEFORE a storage write. It is a symbolic
+ // input in the proof, not an assumption that every caller is authorized.
+
+/// Predicate shared by the pure transition and the on-chain entrypoint.
+pub fn admin_write_allowed(caller_is_admin: bool, auth_succeeded: bool) -> bool {
+    caller_is_admin && auth_succeeded
+}
+
+/// The modeled observable storage effect of attempting to replace an admin.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct AdminWriteOutcome {
+    pub admin: u64,
+    pub wrote: bool,
+}
+
+/// Pure model: arbitrary administrator/caller identities, authentication
+/// verdict, and replacement address (represented as opaque u64 identifiers).
+/// Rejected calls leave storage unchanged and must not reach a write.
+pub fn admin_write_pure(
+    admin: u64,
+    caller: u64,
+    auth_succeeded: bool,
+    replacement: u64,
+) -> AdminWriteOutcome {
+    let wrote = admin_write_allowed(caller == admin, auth_succeeded);
+    AdminWriteOutcome {
+        admin: if wrote { replacement } else { admin },
+        wrote,
+    }
+}
+
+/// Intentionally vulnerable negative control: trusting a caller-provided
+/// admin identity without the Host require_auth check allows impersonation.
+#[cfg(any(kani, test))]
+fn admin_write_missing_auth_bug(
+    admin: u64,
+    caller: u64,
+    replacement: u64,
+) -> AdminWriteOutcome {
+    let wrote = caller == admin; // BUG: no authentication check.
+    AdminWriteOutcome {
+        admin: if wrote { replacement } else { admin },
+        wrote,
+    }
 }
 
 // ── Pure logic (verified with Kani) ─────────────────────────────────────────────
@@ -117,19 +167,36 @@ impl TokenContract {
     /// Reads the flag from instance storage, delegates to `initialize_pure`, and
     /// persists the flag on success.  Kani verifies the pure guard; the Host layer
     /// here is intentionally thin and untouched by the proof.
-    pub fn initialize(env: Env, _name: Symbol) {
+    pub fn initialize(env: Env, _name: Symbol, admin: Address) {
+        // The initializer must control the key for the first administrator.
+        // A rejected require_auth aborts before either storage write.
+        admin.require_auth();
         let already: bool = env
             .storage()
             .instance()
             .get(&symbol_short!("init"))
             .unwrap_or(false);
         initialize_pure(already).expect("already initialized");
+        env.storage().instance().set(&symbol_short!("admin"), &admin);
         env.storage().instance().set(&symbol_short!("init"), &true);
     }
 
-    /// A function that interacts with Env (Host types).
-    /// Kani cannot verify this: Env, Symbol, and storage operations require host FFI.
-    pub fn set_admin(env: Env, new_admin: Symbol) {
+    /// Update the stored admin only after identity comparison AND a successful
+    /// Soroban Host require_auth. These Host calls cannot be executed by Kani;
+    /// admin_write_pure verifies the matching authorization/state transition.
+    ///
+    /// API change in this PoC: current_admin and new_admin are Address values,
+    /// and initialize now requires an initial authorized Address.
+    pub fn set_admin(env: Env, current_admin: Address, new_admin: Address) {
+        let stored_admin: Address = env
+            .storage()
+            .instance()
+            .get(&symbol_short!("admin"))
+            .expect("admin not initialized");
+        let caller_is_admin = current_admin == stored_admin;
+        assert!(caller_is_admin, "caller is not the current admin");
+        current_admin.require_auth(); // Host traps on a missing signature.
+        assert!(admin_write_allowed(caller_is_admin, true));
         env.storage()
             .instance()
             .set(&symbol_short!("admin"), &new_admin);
@@ -141,6 +208,64 @@ impl TokenContract {
 #[cfg(kani)]
 mod verification {
     use super::*;
+
+
+    // ── Access control invariant (#341) ──────────────────────────────────
+
+    /// Exhaust all admin/caller identities and both authentication verdicts.
+    /// This proof does NOT assume a permitted call: rejected states must not
+    /// write storage, even when the proposed admin differs from the prior one.
+    #[kani::proof]
+    fn verify_admin_write_requires_current_authenticated_admin() {
+        let admin: u64 = kani::any();
+        let caller: u64 = kani::any();
+        let auth_succeeded: bool = kani::any();
+        let replacement: u64 = kani::any();
+
+        let after = admin_write_pure(admin, caller, auth_succeeded, replacement);
+        if caller != admin || !auth_succeeded {
+            assert!(!after.wrote, "unauthorized path performed an admin write");
+            assert_eq!(after.admin, admin, "unauthorized path changed admin storage");
+        } else {
+            assert!(after.wrote, "authorized path should reach the write");
+            assert_eq!(after.admin, replacement);
+        }
+        assert!(!after.wrote || (caller == admin && auth_succeeded));
+    }
+
+    /// A rejected Host authorization with a caller-supplied admin identity is
+    /// a reachable witness against code which omits require_auth.
+    /// Kani must find the failing assertion for this negative control.
+    /// Once a legitimate rotation succeeds, the former admin's signature
+    /// alone must not authorize a subsequent write, even when the Host
+    /// authenticates that former principal.
+    #[kani::proof]
+    fn verify_old_admin_is_revoked_after_rotation() {
+        let original: u64 = kani::any();
+        let replacement: u64 = kani::any();
+        let attempted_next: u64 = kani::any();
+        kani::assume(original != replacement);
+
+        let first = admin_write_pure(original, original, true, replacement);
+        assert!(first.wrote);
+        assert_eq!(first.admin, replacement);
+
+        let replay = admin_write_pure(first.admin, original, true, attempted_next);
+        assert!(!replay.wrote, "the former admin unexpectedly reached a write");
+        assert_eq!(replay.admin, replacement);
+    }
+
+    #[kani::proof]
+    #[kani::should_panic]
+    fn verify_missing_require_auth_is_caught() {
+        let admin: u64 = kani::any();
+        let caller: u64 = kani::any();
+        let replacement: u64 = kani::any();
+        let auth_succeeded: bool = kani::any();
+        kani::assume(caller == admin && !auth_succeeded);
+        let after = admin_write_missing_auth_bug(admin, caller, replacement);
+        assert!(!after.wrote, "unauthenticated caller was allowed to write");
+    }
 
     #[kani::proof]
     fn verify_transfer_pure_conservation() {
@@ -351,6 +476,25 @@ mod verification {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn admin_write_requires_matching_admin_and_host_auth() {
+        let unchanged_identity = admin_write_pure(17, 42, true, 99);
+        let missing_signature = admin_write_pure(17, 17, false, 99);
+        assert_eq!(unchanged_identity, AdminWriteOutcome { admin: 17, wrote: false });
+        assert_eq!(missing_signature, AdminWriteOutcome { admin: 17, wrote: false });
+        assert_eq!(
+            admin_write_pure(17, 17, true, 99),
+            AdminWriteOutcome { admin: 99, wrote: true }
+        );
+        assert!(admin_write_missing_auth_bug(17, 17, 99).wrote);
+        // A valid signature from an administrator who has been replaced must
+        // not be enough to write the new administrator's storage.
+        let rotation = admin_write_pure(17, 17, true, 99);
+        let old_admin_replay = admin_write_pure(rotation.admin, 17, true, 23);
+        assert_eq!(old_admin_replay, AdminWriteOutcome { admin: 99, wrote: false });
+    }
+
 
     /// The correct transfer conserves the two-account total (concrete witness of
     /// the property `verify_transfer_pure_conservation` proves for all inputs).
