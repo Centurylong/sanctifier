@@ -1,0 +1,46 @@
+{
+  "metadata": {
+    "format": "sanctifier-ci-v1",
+    "version": "0.1",
+    "project_path": "."
+  },
+  "summary": {
+    "total_findings": 3,
+    "has_high": true,
+    "has_critical": false
+  },
+  "findings": {
+    "panic_issues": [
+      {
+        "code": "PANIC_USAGE",
+        "function_name": "dangerous",
+        "issue_type": "unwrap",
+        "location": "./contracts/example/src/lib.rs:42",
+        "message": "Unwrap may panic"
+      }
+    ],
+    "custom_rules": [
+      {
+        "code": "CUSTOM_RULE_MATCH",
+        "rule_name": "warn-only",
+        "severity": "medium",
+        "snippet": "demo",
+        "line": 12
+      }
+    ],
+    "ledger_size_warnings": []
+  },
+  "vulnerability_db_matches": [
+    {
+      "vuln_id": "EXAMPLE-VULN",
+      "name": "Example pattern",
+      "description": "Example check",
+      "severity": "low",
+      "file": "contracts/example/src/lib.rs",
+      "line": 47
+    }
+  ],
+  "baseline": {
+    "suppressed_count": 1
+  }
+}
