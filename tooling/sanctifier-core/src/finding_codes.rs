@@ -42,6 +42,7 @@ pub const NULLIFIER_GROWTH: &str = "SANCT_NULLIFIER_GROWTH";
 pub const PROOF_LENGTH_UNVALIDATED: &str = "SANCT_PROOF_LENGTH_UNVALIDATED";
 pub const PUBLIC_INPUT_UNVALIDATED: &str = "SANCT_PUBLIC_INPUT_UNVALIDATED";
 pub const AUTH_REPLAY: &str = "SANCT_AUTH_REPLAY";
+pub const DUPLICATE_STORAGE_WRITE: &str = "SANCT_DUPLICATE_STORAGE_WRITE";
 
 // ── Source-optional (compiled WASM) checks ────────────────────────────────────
 // Emitted only by `sanctifier wasm`, which analyzes a deployed module directly.
@@ -180,6 +181,12 @@ pub fn all_finding_codes() -> Vec<FindingCode> {
             category: "gas_efficiency",
             description:
                 "Gas-wasting clone of the Soroban Env handle where a reference (&env) would suffice",
+        },
+        FindingCode {
+            code: DUPLICATE_STORAGE_WRITE,
+            category: "gas_efficiency",
+            description:
+                "Redundant repeated write of the same stable value to the same Soroban storage key",
         },
         FindingCode {
             code: ARG_DOS,

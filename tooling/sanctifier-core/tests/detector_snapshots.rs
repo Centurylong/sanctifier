@@ -20,6 +20,7 @@ use sanctifier_core::rules::{
     arithmetic_overflow::ArithmeticOverflowRule, auth_gap::AuthGapRule,
     balance_equality::BalanceEqualityRule, contracterror_enum::ContracterrorEnumRule,
     cross_contract_call_in_loop::CrossContractCallInLoopRule, division_by_zero::DivisionByZeroRule,
+    duplicate_storage_write::DuplicateStorageWriteRule,
     edge_amount::EdgeAmountRule, error_code_collision::ErrorCodeCollisionRule,
     excessive_clone::ExcessiveCloneRule, fee_rounding::FeeRoundingRule,
     hardcoded_addr::HardcodedAddrRule, init_hardcoded_admin::InitHardcodedAdminRule,
@@ -516,6 +517,15 @@ fn snapshot_cross_contract_call_in_loop() {
         "cross_contract_call_in_loop",
         &CrossContractCallInLoopRule::new(),
         include_str!("fixtures/detectors/cross_contract_call_in_loop.rs"),
+    );
+}
+
+#[test]
+fn snapshot_duplicate_storage_write() {
+    assert_detector_snapshot(
+        "duplicate_storage_write",
+        &DuplicateStorageWriteRule::new(),
+        include_str!("fixtures/detectors/duplicate_storage_write.rs"),
     );
 }
 

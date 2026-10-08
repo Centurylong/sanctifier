@@ -1,0 +1,9 @@
+---
+source: tooling/sanctifier-core/tests/detector_snapshots.rs
+expression: findings
+---
+- rule_name: SANCT_DUPLICATE_STORAGE_WRITE
+  severity: Warning
+  message: "SANCT_DUPLICATE_STORAGE_WRITE: `persist` writes the same value to storage key `key` more than once without an intervening state/value change"
+  location: "persist:7"
+  suggestion: "Keep one write when the key/value pair is unchanged. If the second write is an intentional update, compute or mutate the new value before writing it."
