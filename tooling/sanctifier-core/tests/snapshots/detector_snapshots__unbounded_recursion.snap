@@ -1,0 +1,9 @@
+---
+source: tooling/sanctifier-core/tests/detector_snapshots.rs
+expression: findings
+---
+- rule_name: SANCT_UNBOUNDED_RECURSION
+  severity: Error
+  message: "SANCT_UNBOUNDED_RECURSION: `recurse_forever` directly recurses without an explicit depth bound carried through the recursive call"
+  location: "recurse_forever:7"
+  suggestion: "Add a depth/remaining parameter, stop at an explicit bound, and change that parameter monotonically on every recursive call (for example depth + 1 toward MAX_DEPTH or remaining - 1 toward zero)."

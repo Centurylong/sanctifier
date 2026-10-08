@@ -33,6 +33,7 @@ pub mod tier_boundary_off_by_one;
 pub mod unbounded_event_emission;
 pub mod unbounded_input_length;
 pub mod unbounded_return;
+pub mod unbounded_recursion;
 pub mod unbounded_storage;
 pub mod unhandled_result;
 pub mod unsigned_underflow;
@@ -250,6 +251,7 @@ impl RuleRegistry {
         registry.register(ledger_seconds::LedgerSecondsRule::new());
         registry.register(tier_boundary_off_by_one::TierBoundaryOffByOneRule::new());
         registry.register(unbounded_return::UnboundedReturnRule::new());
+        registry.register(unbounded_recursion::UnboundedRecursionRule::new());
         registry.register(reserve_withdrawal::ReserveWithdrawalRule::new());
         registry.register(contracterror_enum::ContracterrorEnumRule::new());
         registry.register(vesting_schedule::VestingScheduleRule::new());

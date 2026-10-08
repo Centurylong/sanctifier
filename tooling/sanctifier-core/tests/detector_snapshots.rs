@@ -29,7 +29,8 @@ use sanctifier_core::rules::{
     sep41_approval_expiration::Sep41ApprovalExpirationRule, shift_overflow::ShiftOverflowRule,
     state_write_in_view::StateWriteInViewRule, tier_boundary_off_by_one::TierBoundaryOffByOneRule,
     unbounded_event_emission::UnboundedEventEmissionRule,
-    unbounded_input_length::UnboundedInputLengthRule, unbounded_storage::UnboundedStorageRule,
+    unbounded_input_length::UnboundedInputLengthRule, unbounded_recursion::UnboundedRecursionRule,
+    unbounded_storage::UnboundedStorageRule,
     unhandled_result::UnhandledResultRule, unsigned_underflow::UnsignedUnderflowRule,
     unused_variable::UnusedVariableRule, vesting_schedule::VestingScheduleRule,
     view_panic::ViewPanicRule, wrong_auth_args::WrongAuthArgsRule, Rule, RuleRegistry,
@@ -525,6 +526,15 @@ fn snapshot_nullifier_growth() {
         "nullifier_growth",
         &sanctifier_core::rules::nullifier_growth::NullifierGrowthRule::new(),
         include_str!("fixtures/detectors/nullifier_growth.rs"),
+    );
+}
+
+#[test]
+fn snapshot_unbounded_recursion() {
+    assert_detector_snapshot(
+        "unbounded_recursion",
+        &UnboundedRecursionRule::new(),
+        include_str!("fixtures/detectors/unbounded_recursion.rs"),
     );
 }
 

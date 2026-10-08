@@ -28,6 +28,7 @@ the fix, and references.
 | `SANCT_UNWRAP` | panic_handling | `unwrap` / `expect` / risky `unwrap_or_default` inside `#[contractimpl]` entrypoints; replace with typed errors or explicit domain defaults | [`sanct_unwrap`](detectors/sanct_unwrap.md) |
 | `SANCT_VISIBILITY` | authentication | Helper-shaped state mutator exposed through `#[contractimpl]` without authorization | [`sanct_visibility`](detectors/sanct_visibility.md) |
 | `SANCT_UNBOUNDED_STORAGE` | denial_of_service | Persistent/instance collection grows via append/insert with no removal or length cap | [`unbounded_storage`](detectors/unbounded_storage.md) |
+| `SANCT_UNBOUNDED_RECURSION` | resource_limits | Direct self-recursion without an explicit monotonic depth bound | [`unbounded_recursion`](detectors/unbounded_recursion.md) |
 | `SANCT_UNBOUNDED_INPUT` | denial_of_service | Caller-sized `Bytes`/`Vec`/`Map` argument with no length cap | [`unbounded_input_length`](detectors/unbounded_input_length.md) |
 | `SANCT_UNBOUNDED_RETURN` | scalability | Public entrypoint returning an unbounded collection (`Vec` or `Map`) | [`unbounded_return`](detectors/unbounded_return.md) |
 | `SANCT_EAGER_UNWRAP_OR` | gas_efficiency | Eagerly-computed expensive fallback in `unwrap_or()` wastes gas | [`eager_unwrap_or`](detectors/eager_unwrap_or.md) |
