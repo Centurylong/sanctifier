@@ -20,7 +20,7 @@ pub struct AnalyzeArgs {
     #[arg(default_value = ".")]
     pub path: PathBuf,
 
-    /// Output format (text, json)
+    /// Output format (text, json, csv)
     #[arg(short, long, default_value = "text")]
     pub format: String,
 
@@ -53,6 +53,8 @@ pub fn exec(args: AnalyzeArgs) -> anyhow::Result<()> {
     let format = &args.format;
     let _limit = args.limit;
     let is_json = format == "json";
+    let is_csv = format == "csv";
+    let is_machine = is_json || is_csv;
 
     if !is_soroban_project(path) {
         if is_json {
@@ -71,7 +73,7 @@ pub fn exec(args: AnalyzeArgs) -> anyhow::Result<()> {
         std::process::exit(1);
     }
 
-    if is_json {
+    if is_machine {
         eprintln!(
             "{} Sanctifier: Valid Soroban project found at {:?}",
             "✨".green(),
@@ -108,7 +110,7 @@ pub fn exec(args: AnalyzeArgs) -> anyhow::Result<()> {
     // Load vulnerability database
     let vuln_db = match &args.vuln_db {
         Some(db_path) => {
-            if !is_json {
+            if !is_machine {
                 println!(
                     "{} Loading custom vulnerability database from {:?}",
                     "📦".blue(),
@@ -118,7 +120,7 @@ pub fn exec(args: AnalyzeArgs) -> anyhow::Result<()> {
             VulnDatabase::load(db_path)?
         }
         None => {
-            if !is_json {
+            if !is_machine {
                 println!(
                     "{} Loading built-in vulnerability database (v{})",
                     "📦".blue(),
@@ -484,7 +486,7 @@ pub fn exec(args: AnalyzeArgs) -> anyhow::Result<()> {
     }
 
     // ── Baseline summary (text mode) ─────────────────────────────────────────
-    if !is_json && suppressed_count > 0 {
+    if !is_machine && suppressed_count > 0 {
         println!(
             "{} {} finding{} suppressed by baseline (run {} to see all)",
             "ℹ️".blue(),
@@ -493,7 +495,7 @@ pub fn exec(args: AnalyzeArgs) -> anyhow::Result<()> {
             "sanctifier analyze --no-baseline".bold(),
         );
     }
-    if !is_json && !stale_entries.is_empty() {
+    if !is_machine && !stale_entries.is_empty() {
         println!(
             "{} {} stale baseline entr{} (no longer present in the codebase):",
             "ℹ️".blue(),
@@ -507,6 +509,168 @@ pub fn exec(args: AnalyzeArgs) -> anyhow::Result<()> {
             "    Run {} to remove them.",
             "sanctifier baseline --update".bold()
         );
+    }
+
+    if is_csv {
+        let stdout = io::stdout();
+        let mut writer = io::BufWriter::new(stdout.lock());
+
+        write_csv_fields(
+            &mut writer,
+            &[
+                "schema_version",
+                "category",
+                "code",
+                "location",
+                "summary",
+                "details_json",
+            ],
+        )?;
+
+        for finding in &collisions {
+            write_csv_finding(
+                &mut writer,
+                "storage_collisions",
+                finding_codes::STORAGE_COLLISION,
+                &finding.location,
+                &finding.message,
+                finding,
+            )?;
+        }
+        for finding in &size_warnings {
+            write_csv_finding(
+                &mut writer,
+                "ledger_size_warnings",
+                finding_codes::LEDGER_SIZE_RISK,
+                "",
+                &finding.struct_name,
+                finding,
+            )?;
+        }
+        for finding in &unsafe_patterns {
+            let location = format!("line {}", finding.line);
+            let summary = format!("{:?}", finding.pattern_type);
+            write_csv_finding(
+                &mut writer,
+                "unsafe_patterns",
+                finding_codes::UNSAFE_PATTERN,
+                &location,
+                &summary,
+                finding,
+            )?;
+        }
+        for finding in &auth_gaps {
+            let details = serde_json::json!({ "function": finding });
+            write_csv_finding(
+                &mut writer,
+                "auth_gaps",
+                finding_codes::AUTH_GAP,
+                finding,
+                finding,
+                &details,
+            )?;
+        }
+        for finding in &panic_issues {
+            write_csv_finding(
+                &mut writer,
+                "panic_issues",
+                finding_codes::PANIC_USAGE,
+                &finding.location,
+                &finding.issue_type,
+                finding,
+            )?;
+        }
+        for finding in &arithmetic_issues {
+            write_csv_finding(
+                &mut writer,
+                "arithmetic_issues",
+                finding_codes::ARITHMETIC_OVERFLOW,
+                &finding.location,
+                &finding.operation,
+                finding,
+            )?;
+        }
+        for finding in &custom_matches {
+            let location = format!("line {}", finding.line);
+            write_csv_finding(
+                &mut writer,
+                "custom_rules",
+                finding_codes::CUSTOM_RULE_MATCH,
+                &location,
+                &finding.rule_name,
+                finding,
+            )?;
+        }
+        for finding in &event_issues {
+            write_csv_finding(
+                &mut writer,
+                "event_issues",
+                finding_codes::EVENT_INCONSISTENCY,
+                &finding.location,
+                &finding.message,
+                finding,
+            )?;
+        }
+        for finding in &unhandled_results {
+            write_csv_finding(
+                &mut writer,
+                "unhandled_results",
+                finding_codes::UNHANDLED_RESULT,
+                &finding.location,
+                &finding.message,
+                finding,
+            )?;
+        }
+        for report in &upgrade_reports {
+            for finding in &report.findings {
+                write_csv_finding(
+                    &mut writer,
+                    "upgrade_risks",
+                    finding_codes::UPGRADE_RISK,
+                    &finding.location,
+                    &finding.message,
+                    finding,
+                )?;
+            }
+        }
+        for finding in &smt_issues {
+            write_csv_finding(
+                &mut writer,
+                "smt_issues",
+                finding_codes::SMT_INVARIANT_VIOLATION,
+                &finding.location,
+                &finding.description,
+                finding,
+            )?;
+        }
+        for finding in &vuln_matches {
+            let location = format!("{}:{}", finding.file, finding.line);
+            write_csv_finding(
+                &mut writer,
+                "vulnerability_db_matches",
+                &finding.vuln_id,
+                &location,
+                &finding.name,
+                finding,
+            )?;
+        }
+
+        writer.flush()?;
+
+        if args.profile {
+            let snap = mem_tracker.sample();
+            eprintln!(
+                "{} Memory (final): {} MB RSS (peak: {} MB)",
+                "📊".blue(),
+                snap.current_rss_kb / 1024,
+                snap.peak_rss_kb / 1024
+            );
+        }
+
+        if has_critical || has_high {
+            std::process::exit(1);
+        }
+        return Ok(());
     }
 
     if is_json {
@@ -842,6 +1006,121 @@ pub fn exec(args: AnalyzeArgs) -> anyhow::Result<()> {
     }
 
     Ok(())
+}
+
+
+fn write_csv_finding<W: Write, T: serde::Serialize + ?Sized>(
+    writer: &mut W,
+    category: &str,
+    code: &str,
+    location: &str,
+    summary: &str,
+    details: &T,
+) -> anyhow::Result<()> {
+    let details_json = serde_json::to_string(details)?;
+    write_csv_fields(
+        writer,
+        &[
+            "sanctifier-csv-v1",
+            category,
+            code,
+            location,
+            summary,
+            &details_json,
+        ],
+    )?;
+    Ok(())
+}
+
+fn write_csv_fields<W: Write>(writer: &mut W, fields: &[&str]) -> io::Result<()> {
+    for (index, field) in fields.iter().enumerate() {
+        if index > 0 {
+            writer.write_all(b",")?;
+        }
+        write_csv_field(writer, field)?;
+    }
+    writer.write_all(b"\r\n")
+}
+
+fn write_csv_field<W: Write>(writer: &mut W, field: &str) -> io::Result<()> {
+    // CSV quoting alone does not make spreadsheet cells containing formulas
+    // literal text. Findings may contain untrusted path or source metadata.
+    // Prefix formula-leading text with an apostrophe *inside* the quoted cell;
+    // the original finding remains available unmodified in details_json.
+    let first_visible = field
+        .trim_start_matches(|c: char| c.is_whitespace() || c == '\u{feff}')
+        .chars()
+        .next();
+    let text_prefix = if matches!(first_visible, Some('=' | '+' | '-' | '@')) {
+        "'"
+    } else {
+        ""
+    };
+    let needs_quotes = field
+        .bytes()
+        .any(|byte| matches!(byte, b',' | b'"' | b'\r' | b'\n'));
+
+    if !needs_quotes {
+        writer.write_all(text_prefix.as_bytes())?;
+        return writer.write_all(field.as_bytes());
+    }
+
+    writer.write_all(b"\"")?;
+    writer.write_all(text_prefix.as_bytes())?;
+    let escaped = field.replace('"', "\"\"");
+    writer.write_all(escaped.as_bytes())?;
+    writer.write_all(b"\"")
+}
+
+#[cfg(test)]
+mod csv_tests {
+    use super::write_csv_fields;
+
+    #[test]
+    fn csv_fields_escape_commas_quotes_and_newlines() {
+        let mut output = Vec::new();
+        write_csv_fields(
+            &mut output,
+            &["plain", "comma,value", "say \"hi\"", "line\nbreak"],
+        )
+        .unwrap();
+
+        assert_eq!(
+            String::from_utf8(output).unwrap(),
+            "plain,\"comma,value\",\"say \"\"hi\"\"\",\"line\nbreak\"\r\n"
+        );
+    }
+
+    #[test]
+    fn csv_formula_leading_cells_remain_text_with_valid_column_quoting() {
+        let mut output = Vec::new();
+        write_csv_fields(
+            &mut output,
+            &[
+                "=SUM(1,2)",
+                "  @function",
+                "\t+1",
+                "-2",
+                "safe",
+                r#"{"raw":"=1+1"}"#,
+            ],
+        )
+        .unwrap();
+
+        // The apostrophe is emitted inside a quoted field, not before it.
+        // JSON stays unmodified, retaining the original structured finding.
+        assert_eq!(
+            String::from_utf8(output).unwrap(),
+            concat!(
+                "\"'=SUM(1,2)\",",
+                "'  @function,",
+                "'\t+1,",
+                "'-2,",
+                "safe,",
+                "\"{\"\"raw\"\":\"\"=1+1\"\"}\"\r\n"
+            )
+        );
+    }
 }
 
 fn chrono_timestamp() -> String {

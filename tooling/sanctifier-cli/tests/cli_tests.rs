@@ -71,6 +71,35 @@ fn test_analyze_json_output() {
 }
 
 #[test]
+fn test_analyze_csv_output() {
+    let mut cmd = Command::cargo_bin("sanctifier").unwrap();
+    let fixture_path = env::current_dir()
+        .unwrap()
+        .join("tests/fixtures/vulnerable_contract.rs");
+
+    let output = cmd
+        .arg("analyze")
+        .arg(fixture_path)
+        .arg("--format")
+        .arg("csv")
+        .output()
+        .unwrap();
+
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    let mut lines = stdout.lines();
+    assert_eq!(
+        lines.next(),
+        Some("schema_version,category,code,location,summary,details_json")
+    );
+    assert!(
+        lines.any(|line| line.starts_with("sanctifier-csv-v1,")),
+        "CSV output should contain at least one finding row: {stdout}"
+    );
+    assert!(!stdout.contains("Sanctifier:"));
+    assert!(!stdout.contains("Static analysis complete."));
+}
+
+#[test]
 fn test_analyze_empty_macro_heavy() {
     let mut cmd = Command::cargo_bin("sanctifier").unwrap();
     let fixture_path = env::current_dir()
