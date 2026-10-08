@@ -63,7 +63,7 @@ pub fn exec(args: BaselineArgs) -> anyhow::Result<()> {
         println!("{} Running analysis to collect current findings…", "🔍".blue());
     }
 
-    let config = load_config(path);
+    let config = crate::config::load_config(path)?;
     let analyzer = Analyzer::new(config.clone());
     let vuln_db = VulnDatabase::load_default();
 
@@ -258,29 +258,4 @@ fn flatten_file_findings(
         let ctx = format!("{}|{}", m.vuln_id, m.name);
         flat.push(FlatFinding::new("VULN", &loc, &ctx));
     }
-}
-
-fn load_config(path: &Path) -> SanctifyConfig {
-    let mut current = if path.is_file() {
-        path.parent()
-            .map(|p| p.to_path_buf())
-            .unwrap_or_else(|| PathBuf::from("."))
-    } else {
-        path.to_path_buf()
-    };
-
-    loop {
-        let config_path = current.join(".sanctify.toml");
-        if config_path.exists() {
-            if let Ok(content) = fs::read_to_string(&config_path) {
-                if let Ok(config) = toml::from_str(&content) {
-                    return config;
-                }
-            }
-        }
-        if !current.pop() {
-            break;
-        }
-    }
-    SanctifyConfig::default()
 }

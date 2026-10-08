@@ -1,0 +1,86 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://raw.githubusercontent.com/Centurylong/sanctifier/main/docs/sanctify-config.schema.json",
+  "title": "Sanctifier configuration",
+  "description": "Schema for .sanctify.toml.",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "ignore_paths": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "default": [
+        "target",
+        ".git"
+      ],
+      "description": "Directory-name fragments ignored while walking Rust source."
+    },
+    "enabled_rules": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "default": [
+        "auth_gaps",
+        "panics",
+        "arithmetic",
+        "ledger_size",
+        "events"
+      ],
+      "description": "Rule names enabled for analysis.",
+      "minItems": 1
+    },
+    "ledger_limit": {
+      "type": "integer",
+      "minimum": 1,
+      "default": 64000,
+      "description": "Ledger-entry size limit in bytes."
+    },
+    "approaching_threshold": {
+      "type": "number",
+      "exclusiveMinimum": 0,
+      "maximum": 1,
+      "default": 0.8,
+      "description": "Fraction of ledger_limit at which an approaching-limit warning is emitted."
+    },
+    "strict_mode": {
+      "type": "boolean",
+      "default": false,
+      "description": "Enable stricter analyzer thresholds."
+    },
+    "custom_rules": {
+      "type": "array",
+      "default": [],
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "name",
+          "pattern"
+        ],
+        "properties": {
+          "name": {
+            "type": "string",
+            "minLength": 1
+          },
+          "pattern": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Rust-regex pattern applied by the custom rule."
+          },
+          "severity": {
+            "type": "string",
+            "enum": [
+              "info",
+              "warning",
+              "error"
+            ],
+            "default": "warning"
+          }
+        }
+      }
+    }
+  }
+}

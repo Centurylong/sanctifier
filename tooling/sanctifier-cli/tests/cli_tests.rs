@@ -5,6 +5,42 @@ use std::fs;
 use tempfile::tempdir;
 
 #[test]
+fn test_relative_targets_reject_invalid_ancestor_config() {
+    let temp = tempdir().unwrap();
+    let child = temp.path().join("nested");
+    fs::create_dir(&child).unwrap();
+    fs::write(
+        child.join("Cargo.toml"),
+        "[package]\nname = \"config-discovery-probe\"\nversion = \"0.1.0\"\n[dependencies]\nsoroban-sdk = \"22.0.0\"\n",
+    )
+    .unwrap();
+    let fixture = child.join("fixture.rs");
+    fs::write(&fixture, "pub fn harmless() {}\n").unwrap();
+    let config = temp.path().join(".sanctify.toml");
+    fs::write(&config, "ledger_limt = 64000\n").unwrap();
+
+    for target in [
+        std::path::Path::new("fixture.rs"),
+        std::path::Path::new("."),
+        fixture.as_path(),
+    ] {
+        let output = Command::cargo_bin("sanctifier")
+            .unwrap()
+            .current_dir(&child)
+            .arg("analyze")
+            .arg(target)
+            .args(["--format", "json"])
+            .output()
+            .unwrap();
+        assert_eq!(output.status.code(), Some(1));
+        assert!(output.stdout.is_empty(), "unexpected report for {target:?}");
+        let stderr = String::from_utf8(output.stderr).unwrap();
+        assert!(stderr.contains("unknown key `ledger_limt`"), "{stderr}");
+        assert!(stderr.contains(config.to_str().unwrap()), "{stderr}");
+    }
+}
+
+#[test]
 fn test_cli_help() {
     let mut cmd = Command::cargo_bin("sanctifier").unwrap();
     cmd.arg("--help")

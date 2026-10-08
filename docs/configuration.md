@@ -9,12 +9,14 @@ Sanctifier to an existing project, start with the
 [Migration Guide](migration.md); for command flags that interact with these
 keys, see the [CLI Reference](cli.md).
 
+The machine-readable contract is published as [`sanctify-config.schema.json`](sanctify-config.schema.json).
+
 ---
 
 ## 1. Where the file lives and how it is found
 
 You do not pass the config path on the command line. Instead, for every command
-that needs configuration (`analyze`, `verify`, `callgraph`), Sanctifier
+that needs configuration (`analyze`, `baseline`, `diff`, `fix`, `callgraph`), Sanctifier
 **searches upward** from the path you are scanning:
 
 1. Start in the directory of the scanned path (or the directory itself if you
@@ -34,9 +36,11 @@ placing its own `.sanctify.toml` closer to the source.
 > `.sanctify.toml` into the current directory. Use `--force` to overwrite an
 > existing one.
 
-A malformed file (invalid TOML, or types that do not match) is **silently
-ignored** and the built-in defaults are used. Validate your file before relying
-on it (see [Validating your configuration](#6-validating-your-configuration)).
+Once a `.sanctify.toml` is found, validation is **fail-closed**: invalid TOML,
+wrong types, unknown keys, invalid custom-rule regexes, or out-of-range values
+stop the command with a path-aware error. Sanctifier no longer substitutes
+defaults for a malformed file. See
+[Validating your configuration](#6-validating-your-configuration).
 
 ---
 
@@ -120,7 +124,7 @@ built-in default (64000)        ->  used when neither is set
 
 ### `approaching_threshold`
 
-**Type:** float between `0.0` and `1.0` · **Default:** `0.8`
+**Type:** float greater than `0.0` and at most `1.0` · **Default:** `0.8`
 
 The fraction of [`ledger_limit`](#ledger_limit) at which Sanctifier raises an
 **“approaching limit”** warning instead of a hard failure. With the defaults,
@@ -259,21 +263,34 @@ severity = "error"
 
 ## 6. Validating your configuration
 
-Because a malformed `.sanctify.toml` is ignored in favour of defaults, confirm
-your file parses and takes effect:
+The runtime loader and the published JSON Schema enforce the same public configuration contract. Once Sanctifier finds a `.sanctify.toml`, errors are reported instead of silently falling back to defaults.
 
-```bash
-# Generate a fresh, known-good file to compare against.
-sanctifier init            # writes .sanctify.toml (add --force to overwrite)
+For TOML-aware editors that support the Taplo schema directive, place this comment at the top of the file:
 
-# Run a scan and confirm your custom rules / limits show up in the output.
-sanctifier analyze . --format json | jq '.error_codes, .findings'
+```toml
+#:schema https://raw.githubusercontent.com/Centurylong/sanctifier/main/docs/sanctify-config.schema.json
 ```
 
-If a custom rule never fires or your `ledger_limit` seems ignored, check for a
-TOML syntax error (a stray unescaped `\` in a regex is the usual culprit) and
-verify there is not another `.sanctify.toml` higher up the tree shadowing the
-one you edited.
+The directive remains an ordinary TOML comment at runtime; it only gives the editor schema discovery, completion, and early diagnostics.
+
+Runtime validation rejects:
+
+- unknown top-level keys and unknown fields inside `[[custom_rules]]`;
+- TOML syntax/type errors and invalid `severity` enum values;
+- `ledger_limit = 0`;
+- an empty `enabled_rules` list;
+- `approaching_threshold <= 0` or `approaching_threshold > 1`;
+- empty custom-rule names or patterns;
+- custom-rule patterns that do not compile as Rust `regex` expressions.
+
+Example:
+
+```text
+$ sanctifier analyze .
+Error: invalid Sanctifier config ./project/.sanctify.toml: unknown key `ledger_limt`; expected one of: ignore_paths, enabled_rules, ledger_limit, approaching_threshold, strict_mode, custom_rules
+```
+
+Run `sanctifier init` to generate a known-good starter file. If an existing file fails validation, correct that file; deleting it intentionally restores built-in defaults.
 
 ---
 

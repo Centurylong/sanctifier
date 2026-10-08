@@ -6,7 +6,7 @@ use colored::*;
 use sanctifier_core::baseline::{apply_baseline, load_baseline, BaselineEntry};
 use sanctifier_core::finding_codes;
 use sanctifier_core::memory::{MemoryGuard, MemoryTracker};
-use sanctifier_core::{Analyzer, SanctifyConfig, SizeWarningLevel};
+use sanctifier_core::{Analyzer, SizeWarningLevel};
 use serde_json;
 use std::fs;
 use std::io::{self, Write};
@@ -88,7 +88,7 @@ pub fn exec(args: AnalyzeArgs) -> anyhow::Result<()> {
         io::stdout().flush().ok();
     }
 
-    let mut config = load_config(path);
+    let mut config = crate::config::load_config(path)?;
     config.ledger_limit = args.limit; // Apply CLI limit to config
     let analyzer = Analyzer::new(config);
 
@@ -851,31 +851,6 @@ fn chrono_timestamp() -> String {
         .unwrap_or_default();
     let secs = duration.as_secs();
     format!("{}", secs)
-}
-
-fn load_config(path: &Path) -> SanctifyConfig {
-    let mut current = if path.is_file() {
-        path.parent()
-            .map(|p| p.to_path_buf())
-            .unwrap_or_else(|| PathBuf::from("."))
-    } else {
-        path.to_path_buf()
-    };
-
-    loop {
-        let config_path = current.join(".sanctify.toml");
-        if config_path.exists() {
-            if let Ok(content) = fs::read_to_string(&config_path) {
-                if let Ok(config) = toml::from_str(&content) {
-                    return config;
-                }
-            }
-        }
-        if !current.pop() {
-            break;
-        }
-    }
-    SanctifyConfig::default()
 }
 
 #[allow(clippy::too_many_arguments)]

@@ -53,7 +53,7 @@ struct FixReport {
 pub fn exec(args: FixArgs) -> anyhow::Result<()> {
     let is_json = args.format == "json";
 
-    let config = load_config(&args.path);
+    let config = crate::config::load_config(&args.path)?;
     let analyzer = Analyzer::new(config.clone());
 
     let mut rs_files: Vec<PathBuf> = Vec::new();
@@ -261,30 +261,6 @@ fn collect_rs_files(dir: &Path, config: &SanctifyConfig, out: &mut Vec<PathBuf>)
             out.push(path);
         }
     }
-}
-
-fn load_config(path: &Path) -> SanctifyConfig {
-    let mut current = if path.is_file() {
-        path.parent()
-            .map(|p| p.to_path_buf())
-            .unwrap_or_else(|| PathBuf::from("."))
-    } else {
-        path.to_path_buf()
-    };
-    loop {
-        let config_path = current.join(".sanctify.toml");
-        if config_path.exists() {
-            if let Ok(content) = fs::read_to_string(&config_path) {
-                if let Ok(config) = toml::from_str(&content) {
-                    return config;
-                }
-            }
-        }
-        if !current.pop() {
-            break;
-        }
-    }
-    SanctifyConfig::default()
 }
 
 #[cfg(test)]

@@ -5,6 +5,7 @@ use std::fs;
 use std::path::{Path, PathBuf};
 
 mod branding;
+mod config;
 mod commands;
 mod score;
 pub mod vulndb;
@@ -150,7 +151,7 @@ fn main() -> anyhow::Result<()> {
             commands::license::exec(args)?;
         }
         Commands::Callgraph { path, output } => {
-            let config = load_config(&path);
+            let config = config::load_config(&path)?;
             let analyzer = Analyzer::new(config.clone());
 
             let mut rs_files: Vec<PathBuf> = Vec::new();
@@ -304,29 +305,4 @@ fn infer_contract_name(source: &str) -> Option<String> {
         }
     }
     None
-}
-
-fn load_config(path: &Path) -> SanctifyConfig {
-    let mut current = if path.is_file() {
-        path.parent()
-            .map(|p| p.to_path_buf())
-            .unwrap_or_else(|| PathBuf::from("."))
-    } else {
-        path.to_path_buf()
-    };
-
-    loop {
-        let config_path = current.join(".sanctify.toml");
-        if config_path.exists() {
-            if let Ok(content) = fs::read_to_string(&config_path) {
-                if let Ok(config) = toml::from_str(&content) {
-                    return config;
-                }
-            }
-        }
-        if !current.pop() {
-            break;
-        }
-    }
-    SanctifyConfig::default()
 }

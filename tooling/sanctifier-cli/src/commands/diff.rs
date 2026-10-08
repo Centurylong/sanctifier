@@ -1,6 +1,6 @@
 use clap::Args;
 use colored::*;
-use sanctifier_core::{Analyzer, SanctifyConfig};
+use sanctifier_core::Analyzer;
 use serde::{Deserialize, Serialize};
 use std::collections::HashSet;
 use std::fs;
@@ -182,7 +182,7 @@ fn analyze_tree(
     vuln_db_path: &Option<PathBuf>,
     _is_json: bool,
 ) -> anyhow::Result<Vec<FindingFingerprint>> {
-    let config = load_config(path);
+    let config = crate::config::load_config(path)?;
     let analyzer = Analyzer::new(config);
 
     let vuln_db = match vuln_db_path {
@@ -391,31 +391,6 @@ fn checkout_ref_to_temp(repo_path: &Path, git_ref: &str, temp_path: &Path) -> an
     }
 
     Ok(())
-}
-
-fn load_config(path: &Path) -> SanctifyConfig {
-    let mut current = if path.is_file() {
-        path.parent()
-            .map(|p| p.to_path_buf())
-            .unwrap_or_else(|| PathBuf::from("."))
-    } else {
-        path.to_path_buf()
-    };
-
-    loop {
-        let config_path = current.join(".sanctify.toml");
-        if config_path.exists() {
-            if let Ok(content) = fs::read_to_string(&config_path) {
-                if let Ok(config) = toml::from_str(&content) {
-                    return config;
-                }
-            }
-        }
-        if !current.pop() {
-            break;
-        }
-    }
-    SanctifyConfig::default()
 }
 
 fn infer_severity(code: &str) -> String {

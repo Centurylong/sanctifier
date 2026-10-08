@@ -64,6 +64,10 @@ For full installation details (apt, manual download, verification) see [docs/ins
 
 ## 🛠 Usage
 
+### Project configuration
+
+Sanctifier discovers the nearest `.sanctify.toml` from the analyzed path upward. The configuration contract, strict validation rules, and editor schema setup are documented in [`docs/configuration.md`](docs/configuration.md); the machine-readable JSON Schema is [`docs/sanctify-config.schema.json`](docs/sanctify-config.schema.json).
+
 ### Analyze a Project
 Run the analysis suite on your Soroban project:
 
