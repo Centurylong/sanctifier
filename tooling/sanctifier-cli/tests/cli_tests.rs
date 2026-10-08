@@ -14,6 +14,16 @@ fn test_cli_help() {
 }
 
 #[test]
+fn test_analyze_help_lists_watch_mode() {
+    let mut cmd = Command::cargo_bin("sanctifier").unwrap();
+    cmd.arg("analyze")
+        .arg("--help")
+        .assert()
+        .success()
+        .stdout(predicates::str::contains("--watch"));
+}
+
+#[test]
 fn test_analyze_valid_contract() {
     let mut cmd = Command::cargo_bin("sanctifier").unwrap();
     let fixture_path = env::current_dir()

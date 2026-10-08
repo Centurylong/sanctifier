@@ -46,6 +46,10 @@ pub struct AnalyzeArgs {
     /// Abort the scan if peak RSS exceeds this limit (in MB).
     #[arg(long)]
     pub max_memory: Option<u64>,
+
+    /// Re-run analysis whenever Rust source files change (debounced).
+    #[arg(long)]
+    pub watch: bool,
 }
 
 pub fn exec(args: AnalyzeArgs) -> anyhow::Result<()> {

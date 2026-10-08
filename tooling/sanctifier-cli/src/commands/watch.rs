@@ -1,6 +1,8 @@
+use crate::commands::analyze::AnalyzeArgs;
 use clap::Args;
 use colored::*;
 use notify::{recommended_watcher, EventKind, RecursiveMode, Watcher};
+use std::ffi::OsString;
 use std::io::Write;
 use std::path::{Path, PathBuf};
 use std::process::Command;
@@ -45,15 +47,39 @@ fn is_rs_event(event: &notify::Event) -> bool {
 /// Run `sanctifier watch`: re-run analysis whenever a `.rs` file under `path`
 /// changes, debounced, until interrupted with Ctrl-C.
 pub fn exec(args: WatchArgs) -> anyhow::Result<()> {
-    if !args.path.exists() {
-        anyhow::bail!("path {:?} does not exist", args.path);
+    let analyze_args = watch_child_args(&args);
+    exec_loop(args.path, args.debounce, analyze_args)
+}
+
+/// Run `sanctifier analyze --watch` through the same watcher while preserving
+/// the one-shot analyze options for each child invocation.
+pub fn exec_analyze(args: AnalyzeArgs) -> anyhow::Result<()> {
+    let path = watch_root(&args.path);
+    let analyze_args = analyze_child_args(&args);
+    exec_loop(path, 300, analyze_args)
+}
+
+fn watch_root(path: &Path) -> PathBuf {
+    if path.is_file() {
+        path.parent()
+            .filter(|parent| !parent.as_os_str().is_empty())
+            .unwrap_or_else(|| Path::new("."))
+            .to_path_buf()
+    } else {
+        path.to_path_buf()
+    }
+}
+
+fn exec_loop(path: PathBuf, debounce_ms: u64, analyze_args: Vec<OsString>) -> anyhow::Result<()> {
+    if !path.exists() {
+        anyhow::bail!("path {:?} does not exist", path);
     }
 
     let (tx, rx) = channel::<WatchEvent>();
     let mut watcher = recommended_watcher(move |res| {
         let _ = tx.send(res);
     })?;
-    watcher.watch(&args.path, RecursiveMode::Recursive)?;
+    watcher.watch(&path, RecursiveMode::Recursive)?;
 
     // Ctrl-C flips this flag; the loop polls it so shutdown is cooperative and
     // the watcher/Drop runs cleanly instead of the process being hard-killed.
@@ -65,19 +91,19 @@ pub fn exec(args: WatchArgs) -> anyhow::Result<()> {
     }
 
     // Show results immediately, before the first change.
-    run_analysis(&args);
-    print_watching(&args.path);
+    run_analysis(&analyze_args);
+    print_watching(&path);
 
     while !shutdown.load(Ordering::SeqCst) {
         // Poll so Ctrl-C is observed even while idle.
         match rx.recv_timeout(Duration::from_millis(200)) {
             Ok(Ok(event)) if is_rs_event(&event) => {
-                debounce(&rx, args.debounce, &shutdown);
+                debounce(&rx, debounce_ms, &shutdown);
                 if shutdown.load(Ordering::SeqCst) {
                     break;
                 }
-                run_analysis(&args);
-                print_watching(&args.path);
+                run_analysis(&analyze_args);
+                print_watching(&path);
             }
             Ok(_) => {} // unrelated event or a watch error — ignore
             Err(RecvTimeoutError::Timeout) => {}
@@ -85,7 +111,7 @@ pub fn exec(args: WatchArgs) -> anyhow::Result<()> {
         }
     }
 
-    println!("\n{} Watch stopped.", "✓".green());
+    eprintln!("\n{} Watch stopped.", "✓".green());
     Ok(())
 }
 
@@ -119,7 +145,7 @@ fn debounce(rx: &Receiver<WatchEvent>, debounce_ms: u64, shutdown: &AtomicBool) 
 /// Running analysis in a subprocess keeps the watcher alive: `analyze` calls
 /// `std::process::exit` on findings / invalid projects, which would otherwise
 /// terminate the whole watch session.
-fn run_analysis(args: &WatchArgs) {
+fn run_analysis(analyze_args: &[OsString]) {
     clear_screen();
 
     let exe = match std::env::current_exe() {
@@ -130,27 +156,62 @@ fn run_analysis(args: &WatchArgs) {
         }
     };
 
-    let status = Command::new(exe)
-        .arg("analyze")
-        .arg("--path")
-        .arg(&args.path)
-        .arg("--format")
-        .arg(&args.format)
-        .status();
+    let status = Command::new(exe).args(analyze_args).status();
 
     if let Err(e) = status {
         eprintln!("{} failed to run analysis: {e}", "❌".red());
     }
 }
 
+fn watch_child_args(args: &WatchArgs) -> Vec<OsString> {
+    vec![
+        OsString::from("analyze"),
+        args.path.as_os_str().to_os_string(),
+        OsString::from("--format"),
+        OsString::from(args.format.as_str()),
+    ]
+}
+
+fn analyze_child_args(args: &AnalyzeArgs) -> Vec<OsString> {
+    let mut child = vec![
+        OsString::from("analyze"),
+        args.path.as_os_str().to_os_string(),
+        OsString::from("--format"),
+        OsString::from(args.format.as_str()),
+        OsString::from("--limit"),
+        OsString::from(args.limit.to_string()),
+    ];
+
+    if let Some(vuln_db) = &args.vuln_db {
+        child.push(OsString::from("--vuln-db"));
+        child.push(vuln_db.as_os_str().to_os_string());
+    }
+    for webhook_url in &args.webhook_urls {
+        child.push(OsString::from("--webhook-url"));
+        child.push(OsString::from(webhook_url.as_str()));
+    }
+    if args.no_baseline {
+        child.push(OsString::from("--no-baseline"));
+    }
+    if args.profile {
+        child.push(OsString::from("--profile"));
+    }
+    if let Some(max_memory) = args.max_memory {
+        child.push(OsString::from("--max-memory"));
+        child.push(OsString::from(max_memory.to_string()));
+    }
+
+    child
+}
+
 fn clear_screen() {
     // ANSI: clear screen + move cursor to home.
-    print!("\x1B[2J\x1B[1;1H");
-    let _ = std::io::stdout().flush();
+    eprint!("\x1B[2J\x1B[1;1H");
+    let _ = std::io::stderr().flush();
 }
 
 fn print_watching(path: &Path) {
-    println!(
+    eprintln!(
         "\n👀 Watching {} for .rs changes — press Ctrl-C to stop.",
         path.display().to_string().cyan()
     );
@@ -188,5 +249,90 @@ mod tests {
     fn ignores_access_events() {
         let event = Event::new(EventKind::Access(AccessKind::Read)).add_path("lib.rs".into());
         assert!(!is_rs_event(&event));
+    }
+
+    #[test]
+    fn watch_child_uses_positional_analyze_path() {
+        let args = WatchArgs {
+            path: PathBuf::from("contract"),
+            debounce: 300,
+            format: "json".to_string(),
+        };
+        let rendered: Vec<String> = watch_child_args(&args)
+            .iter()
+            .map(|arg| arg.to_string_lossy().into_owned())
+            .collect();
+
+        assert_eq!(
+            rendered,
+            vec![
+                "analyze".to_string(),
+                "contract".to_string(),
+                "--format".to_string(),
+                "json".to_string(),
+            ]
+        );
+        assert!(!rendered.iter().any(|arg| arg == "--path"));
+    }
+
+    #[test]
+    fn cargo_manifest_watch_uses_parent_directory() {
+        let temp_dir = tempfile::tempdir().unwrap();
+        let manifest = temp_dir.path().join("Cargo.toml");
+        std::fs::write(&manifest, "[package]\nname = \"watch-root\"\nversion = \"0.1.0\"\n").unwrap();
+
+        assert_eq!(watch_root(&manifest), temp_dir.path());
+        assert_eq!(watch_root(temp_dir.path()), temp_dir.path());
+    }
+
+    #[test]
+    fn relative_file_watch_uses_current_directory() {
+        let manifest = Path::new("Cargo.toml");
+        assert!(manifest.is_file(), "the CLI crate manifest is present");
+        assert_eq!(watch_root(manifest), PathBuf::from("."));
+
+        let nested_file = Path::new("src/main.rs");
+        assert!(nested_file.is_file(), "the CLI source file is present");
+        assert_eq!(watch_root(nested_file), PathBuf::from("src"));
+    }
+
+    #[test]
+    fn analyze_watch_child_preserves_options_without_recursing() {
+        let args = AnalyzeArgs {
+            path: PathBuf::from("contract"),
+            format: "json".to_string(),
+            limit: 8192,
+            vuln_db: Some(PathBuf::from("vulns.json")),
+            webhook_urls: vec!["https://example.invalid/hook".to_string()],
+            no_baseline: true,
+            profile: true,
+            max_memory: Some(512),
+            watch: true,
+        };
+        let rendered: Vec<String> = analyze_child_args(&args)
+            .iter()
+            .map(|arg| arg.to_string_lossy().into_owned())
+            .collect();
+
+        assert_eq!(rendered[0], "analyze");
+        assert_eq!(rendered[1], "contract");
+        assert!(!rendered.iter().any(|arg| arg == "--watch"));
+        assert!(!rendered.iter().any(|arg| arg == "--path"));
+        for expected in [
+            "--format",
+            "json",
+            "--limit",
+            "8192",
+            "--vuln-db",
+            "vulns.json",
+            "--webhook-url",
+            "https://example.invalid/hook",
+            "--no-baseline",
+            "--profile",
+            "--max-memory",
+            "512",
+        ] {
+            assert!(rendered.iter().any(|arg| arg == expected), "missing {expected}");
+        }
     }
 }

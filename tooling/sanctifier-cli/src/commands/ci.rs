@@ -26,6 +26,7 @@ pub fn exec(args: CiArgs) -> anyhow::Result<()> {
         no_baseline: false,
         max_memory: Some(1024),
         profile: false,
+        watch: false,
     };
 
     analyze::exec(analyze_args)

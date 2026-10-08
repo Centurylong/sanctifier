@@ -104,10 +104,14 @@ fn main() -> anyhow::Result<()> {
 
     match cli.command {
         Commands::Analyze(args) => {
-            if args.format != "json" {
-                branding::print_logo();
+            if args.watch {
+                commands::watch::exec_analyze(args)?;
+            } else {
+                if args.format != "json" {
+                    branding::print_logo();
+                }
+                commands::analyze::exec(args)?;
             }
-            commands::analyze::exec(args)?;
         }
         Commands::Baseline(args) => {
             commands::baseline::exec(args)?;
