@@ -20,6 +20,7 @@ pub mod ledger_seconds;
 pub mod ledger_size;
 pub mod missing_ttl;
 pub mod nullifier_growth;
+pub mod oracle_staleness;
 pub mod panic_detection;
 pub mod proof_length_check;
 pub mod public_input_range;
@@ -259,6 +260,7 @@ impl RuleRegistry {
         registry.register(sep41_allowance_decrement::Sep41AllowanceDecrementRule::new());
         registry.register(sep41_approval_expiration::Sep41ApprovalExpirationRule::new());
         registry.register(nullifier_growth::NullifierGrowthRule::new());
+        registry.register(oracle_staleness::OracleStalenessRule::new());
         registry.register(proof_length_check::ProofLengthCheckRule::new());
         registry.register(vk_provenance::VkProvenanceRule::new());
         registry.register(public_input_range::PublicInputRangeRule::new());

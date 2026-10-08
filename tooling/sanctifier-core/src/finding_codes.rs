@@ -42,6 +42,7 @@ pub const NULLIFIER_GROWTH: &str = "SANCT_NULLIFIER_GROWTH";
 pub const PROOF_LENGTH_UNVALIDATED: &str = "SANCT_PROOF_LENGTH_UNVALIDATED";
 pub const PUBLIC_INPUT_UNVALIDATED: &str = "SANCT_PUBLIC_INPUT_UNVALIDATED";
 pub const AUTH_REPLAY: &str = "SANCT_AUTH_REPLAY";
+pub const ORACLE_STALE: &str = "SANCT_ORACLE_STALE";
 
 // ── Source-optional (compiled WASM) checks ────────────────────────────────────
 // Emitted only by `sanctifier wasm`, which analyzes a deployed module directly.
@@ -270,6 +271,11 @@ pub fn all_finding_codes() -> Vec<FindingCode> {
             category: "denial_of_service",
             description:
                 "ZK nullifier/commitment marked spent in persistent storage with no pruning, TTL extension, or bounded-size check",
+        },
+        FindingCode {
+            code: ORACLE_STALE,
+            category: "oracle_security",
+            description: "Economic use of an oracle price/value before a fail-fast timestamp freshness check",
         },
         FindingCode {
             code: PROOF_LENGTH_UNVALIDATED,
