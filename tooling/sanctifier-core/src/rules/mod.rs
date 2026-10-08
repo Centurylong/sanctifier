@@ -8,6 +8,7 @@ pub mod balance_equality;
 pub mod bls_subgroup_check;
 pub mod contracterror_enum;
 pub mod cross_contract_call_in_loop;
+pub mod dead_contracterror_variant;
 pub mod division_by_zero;
 pub mod eager_unwrap_or;
 pub mod edge_amount;
@@ -252,6 +253,7 @@ impl RuleRegistry {
         registry.register(unbounded_return::UnboundedReturnRule::new());
         registry.register(reserve_withdrawal::ReserveWithdrawalRule::new());
         registry.register(contracterror_enum::ContracterrorEnumRule::new());
+        registry.register(dead_contracterror_variant::DeadContracterrorVariantRule::new());
         registry.register(vesting_schedule::VestingScheduleRule::new());
         registry.register(cross_contract_call_in_loop::CrossContractCallInLoopRule::new());
         registry.register(unbounded_event_emission::UnboundedEventEmissionRule::new());

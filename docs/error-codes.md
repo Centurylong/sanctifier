@@ -32,6 +32,7 @@ the fix, and references.
 | `SANCT_UNBOUNDED_RETURN` | scalability | Public entrypoint returning an unbounded collection (`Vec` or `Map`) | [`unbounded_return`](detectors/unbounded_return.md) |
 | `SANCT_EAGER_UNWRAP_OR` | gas_efficiency | Eagerly-computed expensive fallback in `unwrap_or()` wastes gas | [`eager_unwrap_or`](detectors/eager_unwrap_or.md) |
 | `SANCT_CONTRACTERROR_ENUM` | logic | Public function returns error enum missing `#[contracterror]` or repr | [`contracterror_enum`](detectors/contracterror_enum.md) |
+| `SANCT_DEAD_CONTRACTERROR_VARIANT` | code_hygiene | `#[contracterror]` variant has no source-local reference (review ABI/macro uses before removal) | [`dead_contracterror_variant`](detectors/dead_contracterror_variant.md) |
 | `SANCT_PROOF_LENGTH_UNVALIDATED` | zk_verification | Proof/public-input byte array reaches a verifier call with no length check first | [`proof_length_check`](detectors/proof_length_check.md) |
 | `SANCT_VK_PROVENANCE` | cryptography | ZK verifying key accepted at runtime and stored with no auth/hash-pin guard | [`vk_provenance`](detectors/vk_provenance.md) |
 | `SANCT_PUBLIC_INPUT_UNVALIDATED` | zk_verification | Verification consumes public inputs without checking they are canonical field elements in range | [`public_input_range`](detectors/public_input_range.md) |
