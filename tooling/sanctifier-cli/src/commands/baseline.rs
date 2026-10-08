@@ -8,7 +8,10 @@
 
 use clap::Args;
 use colored::*;
-use sanctifier_core::baseline::{save_baseline, BaselineEntry, FlatFinding, BASELINE_FILE};
+use sanctifier_core::baseline::{
+    save_baseline_with_error_repr, BaselineEntry, ErrorReprBaselineEntry, FlatFinding, BASELINE_FILE,
+};
+use sanctifier_core::rules::error_repr_instability::capture_error_repr_baseline;
 use sanctifier_core::finding_codes;
 use sanctifier_core::{Analyzer, SanctifyConfig};
 use std::fs;
@@ -70,23 +73,27 @@ pub fn exec(args: BaselineArgs) -> anyhow::Result<()> {
     let flat = collect_flat_findings(path, &analyzer, &vuln_db, &config)?;
     let entries: Vec<BaselineEntry> = flat.iter().map(BaselineEntry::from_flat).collect();
     let count = entries.len();
+    let error_repr = collect_error_repr_baseline(path, &project_root, &analyzer)?;
+    let error_repr_count = error_repr.len();
 
-    save_baseline(&project_root, entries)?;
+    save_baseline_with_error_repr(&project_root, entries, error_repr)?;
 
     if args.quiet {
         println!("{}", baseline_path.display());
-    } else if count == 0 {
+    } else if count == 0 && error_repr_count == 0 {
         println!(
-            "{} No findings — wrote empty baseline to {}",
+            "{} No findings or error ABI entries — wrote empty baseline to {}",
             "✅".green(),
             BASELINE_FILE
         );
     } else {
         println!(
-            "{} Wrote {} finding{} to {}",
+            "{} Wrote {} finding{} and {} error ABI variant{} to {}",
             "✅".green(),
             count,
             if count == 1 { "" } else { "s" },
+            error_repr_count,
+            if error_repr_count == 1 { "" } else { "s" },
             BASELINE_FILE.bold()
         );
         println!(
@@ -99,6 +106,57 @@ pub fn exec(args: BaselineArgs) -> anyhow::Result<()> {
 }
 
 // ── Internal helpers ──────────────────────────────────────────────────────────
+
+fn collect_error_repr_baseline(
+    path: &Path,
+    project_root: &Path,
+    analyzer: &Analyzer,
+) -> anyhow::Result<Vec<ErrorReprBaselineEntry>> {
+    let mut entries = Vec::new();
+    collect_error_repr_path(path, project_root, analyzer, &mut entries)?;
+    Ok(entries)
+}
+
+fn collect_error_repr_path(
+    path: &Path,
+    project_root: &Path,
+    analyzer: &Analyzer,
+    entries: &mut Vec<ErrorReprBaselineEntry>,
+) -> anyhow::Result<()> {
+    if path.is_dir() {
+        for entry in fs::read_dir(path)? {
+            let child = entry?.path();
+            if child.is_dir() {
+                if analyzer
+                    .config
+                    .ignore_paths
+                    .iter()
+                    .any(|ignored| child.ends_with(ignored))
+                {
+                    continue;
+                }
+                collect_error_repr_path(&child, project_root, analyzer, entries)?;
+            } else if child.extension().and_then(|s| s.to_str()) == Some("rs") {
+                capture_error_repr_file(&child, project_root, entries)?;
+            }
+        }
+    } else if path.extension().and_then(|s| s.to_str()) == Some("rs") {
+        capture_error_repr_file(path, project_root, entries)?;
+    }
+    Ok(())
+}
+
+fn capture_error_repr_file(
+    path: &Path,
+    project_root: &Path,
+    entries: &mut Vec<ErrorReprBaselineEntry>,
+) -> anyhow::Result<()> {
+    let content = fs::read_to_string(path)?;
+    let relative = path.strip_prefix(project_root).unwrap_or(path);
+    let relative = relative.to_string_lossy().replace('\\', "/");
+    entries.extend(capture_error_repr_baseline(&content, &relative));
+    Ok(())
+}
 
 /// Collect all findings from the given path and flatten them to `FlatFinding`.
 pub(crate) fn collect_flat_findings(

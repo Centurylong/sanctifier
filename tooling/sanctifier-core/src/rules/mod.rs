@@ -12,6 +12,7 @@ pub mod division_by_zero;
 pub mod eager_unwrap_or;
 pub mod edge_amount;
 pub mod error_code_collision;
+pub mod error_repr_instability;
 pub mod excessive_clone;
 pub mod fee_rounding;
 pub mod hardcoded_addr;
@@ -229,6 +230,7 @@ impl RuleRegistry {
         // New hygiene rules
         registry.register(hardcoded_addr::HardcodedAddrRule::new());
         registry.register(error_code_collision::ErrorCodeCollisionRule::new());
+        registry.register(error_repr_instability::ErrorReprInstabilityRule::new());
         registry.register(edge_amount::EdgeAmountRule::new());
         registry.register(bls_subgroup_check::BlsSubgroupCheckRule::new());
         registry.register(wrong_auth_args::WrongAuthArgsRule::new());

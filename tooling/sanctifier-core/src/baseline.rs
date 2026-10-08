@@ -93,6 +93,16 @@ impl BaselineEntry {
     }
 }
 
+/// Stored ABI identity for one error variant.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+pub struct ErrorReprBaselineEntry {
+    /// Project-relative source path.
+    pub path: String,
+    pub enum_name: String,
+    pub variant: String,
+    pub discriminant: u32,
+}
+
 /// The root object of `.sanctify-baseline.json`.
 #[derive(Debug, Default, Serialize, Deserialize)]
 pub struct Baseline {
@@ -100,6 +110,9 @@ pub struct Baseline {
     pub created_at: String,
     pub total_suppressed: usize,
     pub entries: Vec<BaselineEntry>,
+    /// Error ABI snapshot used by the error-repr stability detector.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub error_repr: Vec<ErrorReprBaselineEntry>,
 }
 
 // ── Core logic ────────────────────────────────────────────────────────────────
@@ -137,13 +150,25 @@ pub fn load_baseline(dir: &Path) -> anyhow::Result<Option<Baseline>> {
     Ok(Some(baseline))
 }
 
-/// Write the baseline to `dir/.sanctify-baseline.json`.
+/// Write the finding-suppression baseline to `dir/.sanctify-baseline.json`.
+///
+/// This compatibility wrapper leaves the optional error ABI snapshot empty.
 pub fn save_baseline(dir: &Path, entries: Vec<BaselineEntry>) -> anyhow::Result<()> {
+    save_baseline_with_error_repr(dir, entries, Vec::new())
+}
+
+/// Write finding suppression entries plus the stored error ABI snapshot.
+pub fn save_baseline_with_error_repr(
+    dir: &Path,
+    entries: Vec<BaselineEntry>,
+    error_repr: Vec<ErrorReprBaselineEntry>,
+) -> anyhow::Result<()> {
     let baseline = Baseline {
         version: 1,
         created_at: iso8601_now(),
         total_suppressed: entries.len(),
         entries,
+        error_repr,
     };
     let json = serde_json::to_string_pretty(&baseline)?;
     fs::write(dir.join(BASELINE_FILE), json)?;
@@ -268,6 +293,7 @@ mod tests {
             created_at: String::new(),
             total_suppressed: 1,
             entries: vec![entry],
+            error_repr: vec![],
         };
 
         let (new, stale) = apply_baseline(&baseline, std::slice::from_ref(&finding));
@@ -284,6 +310,7 @@ mod tests {
             created_at: String::new(),
             total_suppressed: 1,
             entries: vec![entry],
+            error_repr: vec![],
         };
 
         let new_finding = FlatFinding::new("S002", "src/contract.rs", "withdraw");
@@ -302,6 +329,7 @@ mod tests {
             created_at: String::new(),
             total_suppressed: 1,
             entries: vec![entry],
+            error_repr: vec![],
         };
 
         // Current scan finds nothing — old baseline entry is now stale.

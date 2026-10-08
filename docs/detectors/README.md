@@ -34,6 +34,7 @@ detector page and to the relevant [Glossary](../glossary.md) term.
 | [`balance_equality`](balance_equality.md) | [`SANCT_BALANCE_EQ`](../error-codes.md) | logic | Info | Balance gated with `==`/`!=` where `>=`/`<=` was intended |
 | [`unused_variable`](unused_variable.md) | [`S015`](../error-codes.md) | code_hygiene | Info | Unused local bindings (dead code) |
 | [`error_code_collision`](error_code_collision.md) | [`S016`](../error-codes.md) | code_hygiene | Medium | Duplicate/inconsistent `#[contracterror]` discriminants |
+| [`error_repr_instability`](error_repr_instability.md) | [`SANCT_ERROR_REPR_INSTABILITY`](../error-codes.md) | api_compatibility | Error | Stored `#[repr(u32)]` error discriminant changed across versions |
 | [`fee_rounding`](fee_rounding.md) | [`S017`](../error-codes.md) | arithmetic | High | Integer-division fees that round to zero for micro-amounts |
 | [`unsigned_underflow`](unsigned_underflow.md) | [`S019`](../error-codes.md) | arithmetic | High | Unchecked `-` / `-=` on an unsigned integer that wraps past zero |
 | [`ledger_seconds`](ledger_seconds.md) | [`S021`](../error-codes.md) | time_logic | Medium | Ledger sequence number mixed with a seconds-magnitude literal |

@@ -1,0 +1,14 @@
+---
+source: tooling/sanctifier-core/tests/error_repr_instability_snapshot.rs
+expression: findings
+---
+- rule_name: SANCT_ERROR_REPR_INSTABILITY
+  severity: Error
+  message: "Error variant 'Error::Unauthorized' changed discriminant from 3 to 2"
+  location: "contracts/error.rs:Error:5"
+  suggestion: Preserve existing error discriminants for client compatibility; append new codes instead of reordering or renumbering existing variants
+- rule_name: SANCT_ERROR_REPR_INSTABILITY
+  severity: Error
+  message: "Error variant 'Error::InvalidInput' changed discriminant from 2 to 3"
+  location: "contracts/error.rs:Error:6"
+  suggestion: Preserve existing error discriminants for client compatibility; append new codes instead of reordering or renumbering existing variants

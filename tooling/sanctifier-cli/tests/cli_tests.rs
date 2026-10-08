@@ -449,3 +449,109 @@ fn test_analyze_profile_works_with_json_output() {
         stderr
     );
 }
+
+#[test]
+fn test_analyze_fails_closed_on_corrupt_error_abi_baseline() {
+    let temp_dir = tempdir().unwrap();
+    let project = temp_dir.path();
+    fs::create_dir(project.join("src")).unwrap();
+    fs::write(
+        project.join("Cargo.toml"),
+        "[package]\nname = \"abi-fixture\"\nversion = \"0.1.0\"\n[dependencies]\nsoroban-sdk = \"22\"\n",
+    ).unwrap();
+    fs::write(
+        project.join("src/error.rs"),
+        "#[contracterror]\n#[repr(u32)]\npub enum Error { A = 1, B }\n",
+    ).unwrap();
+    fs::write(project.join(".sanctify-baseline.json"), "{ invalid JSON").unwrap();
+
+    Command::cargo_bin("sanctifier")
+        .unwrap()
+        .args(["analyze", "--format", "json"])
+        .arg(project)
+        .assert()
+        .failure()
+        .stderr(predicates::str::contains("failed to load Sanctifier baseline"));
+}
+
+#[test]
+fn test_analyze_uses_stored_error_repr_baseline() {
+    let temp_dir = tempdir().unwrap();
+    let project = temp_dir.path();
+    fs::create_dir(project.join("src")).unwrap();
+    fs::write(
+        project.join("Cargo.toml"),
+        "[package]\nname = \"abi-fixture\"\nversion = \"0.1.0\"\n[dependencies]\nsoroban-sdk = \"22\"\n",
+    ).unwrap();
+    let contract = project.join("src/error.rs");
+    let old = "#[contracterror]\n#[repr(u32)]\npub enum Error { A = 1, B, C }\n";
+    fs::write(&contract, old).unwrap();
+
+    Command::cargo_bin("sanctifier")
+        .unwrap()
+        .arg("baseline")
+        .arg(project)
+        .assert()
+        .success();
+    Command::cargo_bin("sanctifier")
+        .unwrap()
+        .args(["analyze", "--format", "json"])
+        .arg(project)
+        .assert()
+        .success();
+
+    fs::write(&contract, old.replace("A = 1, B, C", "A = 1, C, B")).unwrap();
+    let output = Command::cargo_bin("sanctifier")
+        .unwrap()
+        .args(["analyze", "--format", "json"])
+        .arg(project)
+        .output()
+        .unwrap();
+    assert_eq!(output.status.code(), Some(1));
+    let report: serde_json::Value = serde_json::from_slice(&output.stdout).unwrap();
+    let findings = report["findings"]["error_repr_instability"].as_array().unwrap();
+    assert_eq!(findings.len(), 2);
+    assert!(findings.iter().all(|finding| {
+        finding["code"] == "SANCT_ERROR_REPR_INSTABILITY"
+            && finding["location"].as_str().unwrap().starts_with(contract.to_str().unwrap())
+    }));
+    assert_eq!(report["summary"]["error_repr_instability"], 2);
+    assert_eq!(report["summary"]["has_high"], true);
+
+    // A file-scoped snapshot must use the same project-relative path contract.
+    fs::remove_file(project.join(".sanctify-baseline.json")).unwrap();
+    fs::write(&contract, old).unwrap();
+    Command::cargo_bin("sanctifier")
+        .unwrap()
+        .arg("baseline")
+        .arg(&contract)
+        .assert()
+        .success();
+    fs::write(&contract, old.replace("A = 1, B, C", "A = 1, C, B")).unwrap();
+    let output = Command::cargo_bin("sanctifier")
+        .unwrap()
+        .args(["analyze", "--format", "json"])
+        .arg(&contract)
+        .output()
+        .unwrap();
+    assert_eq!(output.status.code(), Some(1));
+    let report: serde_json::Value = serde_json::from_slice(&output.stdout).unwrap();
+    assert_eq!(report["summary"]["error_repr_instability"], 2);
+
+    Command::cargo_bin("sanctifier")
+        .unwrap()
+        .arg("analyze")
+        .arg(&contract)
+        .assert()
+        .success()
+        .stdout(predicates::str::contains("SANCT_ERROR_REPR_INSTABILITY"));
+    let output = Command::cargo_bin("sanctifier")
+        .unwrap()
+        .args(["analyze", "--format", "json", "--no-baseline"])
+        .arg(&contract)
+        .output()
+        .unwrap();
+    assert!(output.status.success());
+    let report: serde_json::Value = serde_json::from_slice(&output.stdout).unwrap();
+    assert_eq!(report["summary"]["error_repr_instability"], 0);
+}

@@ -3,10 +3,13 @@ use crate::commands::webhook::{
 };
 use clap::Args;
 use colored::*;
-use sanctifier_core::baseline::{apply_baseline, load_baseline, BaselineEntry};
+use sanctifier_core::baseline::{
+    apply_baseline, load_baseline, BaselineEntry, ErrorReprBaselineEntry,
+};
 use sanctifier_core::finding_codes;
 use sanctifier_core::memory::{MemoryGuard, MemoryTracker};
-use sanctifier_core::{Analyzer, SanctifyConfig, SizeWarningLevel};
+use sanctifier_core::rules::error_repr_instability::ErrorReprInstabilityRule;
+use sanctifier_core::{Analyzer, Rule, RuleViolation, SanctifyConfig, SizeWarningLevel};
 use serde_json;
 use std::fs;
 use std::io::{self, Write};
@@ -190,6 +193,49 @@ pub fn exec(args: AnalyzeArgs) -> anyhow::Result<()> {
         );
     }
 
+    let project_root = if path.is_file() {
+        // A file-scoped scan can be nested under src/ even when the baseline
+        // was captured at the project root. Search ancestors for that exact
+        // baseline before comparing ABI identities; otherwise the previous
+        // parent-only choice silently skips the snapshot.
+        let file_dir = path.parent()
+            .map(|p| p.to_path_buf())
+            .unwrap_or_else(|| PathBuf::from("."));
+        let mut ancestor = file_dir.clone();
+        loop {
+            if ancestor.join(".sanctify-baseline.json").is_file() {
+                break ancestor;
+            }
+            if !ancestor.pop() {
+                break file_dir;
+            }
+        }
+    } else {
+        path.to_path_buf()
+    };
+
+    // A corrupt/unreadable historical error-ABI baseline must not silently
+    // disable the very drift detector this scan promises to run.
+    let stored_baseline = if args.no_baseline {
+        None
+    } else {
+        load_baseline(&project_root).map_err(|error| {
+            anyhow::anyhow!(
+                "failed to load Sanctifier baseline {}: {error}",
+                project_root.join(".sanctify-baseline.json").display()
+            )
+        })?
+    };
+    let mut error_repr_findings = match &stored_baseline {
+        Some(baseline) => collect_error_repr_findings(
+            path,
+            &project_root,
+            &analyzer,
+            &baseline.error_repr,
+        )?,
+        None => Vec::new(),
+    };
+
     // ── Inline suppression ───────────────────────────────────────────────────
     let mut inline_suppressions: std::collections::HashMap<String, Vec<(usize, String, String)>> = std::collections::HashMap::new();
 
@@ -258,6 +304,9 @@ pub fn exec(args: AnalyzeArgs) -> anyhow::Result<()> {
         rep.findings.retain(|f| !is_inline_suppressed(&f.location, finding_codes::UPGRADE_RISK));
     }
     smt_issues.retain(|s| !is_inline_suppressed(&s.location, finding_codes::SMT_INVARIANT_VIOLATION));
+    error_repr_findings.retain(|finding| {
+        !is_inline_suppressed(&finding.location, finding_codes::ERROR_REPR_INSTABILITY)
+    });
 
     unsafe_patterns.retain(|u| {
         let file_name = u.snippet.split(':').next().unwrap_or("");
@@ -283,17 +332,9 @@ pub fn exec(args: AnalyzeArgs) -> anyhow::Result<()> {
     // ── Baseline suppression ─────────────────────────────────────────────────
     // Load .sanctify-baseline.json from the project root (if it exists and
     // --no-baseline was not passed) and filter out pre-existing findings.
-    let project_root = if path.is_file() {
-        path.parent()
-            .map(|p| p.to_path_buf())
-            .unwrap_or_else(|| PathBuf::from("."))
-    } else {
-        path.to_path_buf()
-    };
-
     let (suppressed_count, stale_entries) = if !args.no_baseline {
-        match load_baseline(&project_root) {
-            Ok(Some(ref bl)) => {
+        match stored_baseline {
+            Some(ref bl) => {
                 use sanctifier_core::baseline::FlatFinding;
                 use std::collections::HashSet;
 
@@ -411,13 +452,7 @@ pub fn exec(args: AnalyzeArgs) -> anyhow::Result<()> {
 
                 (suppressed_count, stale_entries)
             }
-            Ok(None) => (0, vec![]),
-            Err(e) => {
-                if !is_json {
-                    eprintln!("{} Could not read baseline: {}", "⚠️".yellow(), e);
-                }
-                (0, vec![])
-            }
+            None => (0, vec![]),
         }
     } else {
         (0, vec![])
@@ -436,7 +471,8 @@ pub fn exec(args: AnalyzeArgs) -> anyhow::Result<()> {
             .iter()
             .map(|r| r.findings.len())
             .sum::<usize>()
-        + smt_issues.len();
+        + smt_issues.len()
+        + error_repr_findings.len();
 
     // ── Memory guard check ───────────────────────────────────────────────────
     if let Some(ref guard) = mem_guard {
@@ -459,7 +495,8 @@ pub fn exec(args: AnalyzeArgs) -> anyhow::Result<()> {
 
     let has_critical =
         !auth_gaps.is_empty() || panic_issues.iter().any(|p| p.issue_type == "panic!");
-    let has_high = !arithmetic_issues.is_empty()
+    let has_high = !error_repr_findings.is_empty()
+        || !arithmetic_issues.is_empty()
         || !panic_issues.is_empty()
         || !smt_issues.is_empty()
         || !unhandled_results.is_empty()
@@ -526,6 +563,7 @@ pub fn exec(args: AnalyzeArgs) -> anyhow::Result<()> {
             "unhandled_results": unhandled_results,
             "upgrade_reports": upgrade_reports,
             "smt_issues": smt_issues,
+            "error_repr_findings": error_repr_findings,
             "vulnerability_db_matches": vuln_matches,
             "vulnerability_db_version": vuln_db.version,
             "metadata": {
@@ -551,6 +589,7 @@ pub fn exec(args: AnalyzeArgs) -> anyhow::Result<()> {
                 "event_issues": event_issues.len(),
                 "unhandled_results": unhandled_results.len(),
                 "smt_issues": smt_issues.len(),
+                "error_repr_instability": error_repr_findings.len(),
                 "has_critical": has_critical,
                 "has_high": has_high,
             },
@@ -620,6 +659,13 @@ pub fn exec(args: AnalyzeArgs) -> anyhow::Result<()> {
                     "location": f.location,
                     "message": f.message,
                     "suggestion": f.suggestion,
+                })).collect::<Vec<_>>(),
+                "error_repr_instability": error_repr_findings.iter().map(|finding| serde_json::json!({
+                    "code": finding.rule_name,
+                    "severity": finding.severity,
+                    "location": finding.location,
+                    "message": finding.message,
+                    "suggestion": finding.suggestion,
                 })).collect::<Vec<_>>(),
                 "smt_issues": smt_issues.iter().map(|s| serde_json::json!({
                     "code": finding_codes::SMT_INVARIANT_VIOLATION,
@@ -829,6 +875,19 @@ pub fn exec(args: AnalyzeArgs) -> anyhow::Result<()> {
         }
     }
 
+    for finding in &error_repr_findings {
+        println!(
+            "\n{} [{}] {}",
+            "❌".red(),
+            finding.rule_name.bold(),
+            finding.message
+        );
+        println!("      Location: {}", finding.location);
+        if let Some(suggestion) = &finding.suggestion {
+            println!("      Suggestion: {}", suggestion);
+        }
+    }
+
     println!("\n{} Static analysis complete.", "✨".green());
 
     if args.profile {
@@ -842,6 +901,56 @@ pub fn exec(args: AnalyzeArgs) -> anyhow::Result<()> {
     }
 
     Ok(())
+}
+
+fn collect_error_repr_findings(
+    path: &Path,
+    project_root: &Path,
+    analyzer: &Analyzer,
+    baseline: &[ErrorReprBaselineEntry],
+) -> anyhow::Result<Vec<RuleViolation>> {
+    if baseline.is_empty() {
+        return Ok(Vec::new());
+    }
+    let mut findings = Vec::new();
+    if path.is_dir() {
+        for entry in fs::read_dir(path)? {
+            let child = entry?.path();
+            if child.is_dir()
+                && analyzer
+                    .config
+                    .ignore_paths
+                    .iter()
+                    .any(|ignored| child.ends_with(ignored))
+            {
+                continue;
+            }
+            findings.extend(collect_error_repr_findings(
+                &child,
+                project_root,
+                analyzer,
+                baseline,
+            )?);
+        }
+    } else if path.extension().and_then(|s| s.to_str()) == Some("rs") {
+        let content = fs::read_to_string(path)?;
+        let relative = path
+            .strip_prefix(project_root)
+            .unwrap_or(path)
+            .to_string_lossy()
+            .replace('\\', "/");
+        let rule = ErrorReprInstabilityRule::with_baseline(&relative, baseline);
+        for mut finding in rule.check(&content) {
+            // Use the scan's real path for inline suppression and report locations.
+            let context = finding
+                .location
+                .strip_prefix(relative.as_str())
+                .unwrap_or(&finding.location);
+            finding.location = format!("{}{}", path.display(), context);
+            findings.push(finding);
+        }
+    }
+    Ok(findings)
 }
 
 fn chrono_timestamp() -> String {

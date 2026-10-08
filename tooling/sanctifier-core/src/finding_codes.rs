@@ -16,6 +16,7 @@ pub const EDGE_AMOUNT: &str = "S013";
 pub const DEPRECATED_SDK: &str = "S014";
 pub const DEAD_CODE: &str = "S015";
 pub const ERROR_CODE_COLLISION: &str = "S016";
+pub const ERROR_REPR_INSTABILITY: &str = "SANCT_ERROR_REPR_INSTABILITY";
 pub const UNBOUND_AUTH: &str = "S024";
 pub const FEE_ROUNDING: &str = "S017";
 pub const UNSIGNED_UNDERFLOW: &str = "S019";
@@ -151,6 +152,11 @@ pub fn all_finding_codes() -> Vec<FindingCode> {
             code: ERROR_CODE_COLLISION,
             category: "code_hygiene",
             description: "Inconsistent or duplicate discriminants in #[contracterror] enum",
+        },
+        FindingCode {
+            code: ERROR_REPR_INSTABILITY,
+            category: "api_compatibility",
+            description: "Stored #[repr(u32)] error discriminant changed since the baseline",
         },
         FindingCode {
             code: UNBOUND_AUTH,

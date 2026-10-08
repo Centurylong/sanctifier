@@ -20,6 +20,7 @@ the fix, and references.
 | `S013` | code_hygiene | `transfer`/`mint`/`burn` missing `amount > 0` / `from != to` guards | [`edge_amount`](detectors/edge_amount.md) |
 | `S015` | code_hygiene | Unused local binding (dead code) | [`unused_variable`](detectors/unused_variable.md) |
 | `S016` | code_hygiene | Duplicate/inconsistent `#[contracterror]` discriminants | [`error_code_collision`](detectors/error_code_collision.md) |
+| `SANCT_ERROR_REPR_INSTABILITY` | api_compatibility | Stored `#[repr(u32)]` error discriminant changed since the baseline | [`error_repr_instability`](detectors/error_repr_instability.md) |
 | `S017` | arithmetic | Fee/interest integer division that rounds to zero for micro-amounts | [`fee_rounding`](detectors/fee_rounding.md) |
 | `SANCT_ARG_DOS` | denial_of_service | `Vec`/`Map` argument iterated without a length cap | [`arg_dos`](detectors/arg_dos.md) |
 | `SANCT_AUTH_ON_CALLER` | authorization | `require_auth` on one address while state owned by another is written | [`auth_on_caller`](detectors/auth_on_caller.md) |
