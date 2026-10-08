@@ -27,6 +27,7 @@ detector page and to the relevant [Glossary](../glossary.md) term.
 | [`arithmetic_overflow`](arithmetic_overflow.md) | [`S003`](../error-codes.md) | arithmetic | High | Unchecked `+` `-` `*` that can overflow or underflow |
 | [`ledger_size`](ledger_size.md) | [`S004`](../error-codes.md) | storage_limits | Medium | `contracttype` layouts approaching the ledger entry size limit |
 | [`missing_ttl`](missing_ttl.md) | [`S006`](../error-codes.md) | storage_durability | Medium | Persistent/instance storage access without a TTL extension |
+| [`ttl_extend_misconfig`](ttl_extend_misconfig.md) | [`SANCT_TTL_EXTEND_MISCONFIG`](../error-codes.md) | storage_durability | Medium | `extend_ttl` uses a threshold greater than or equal to its target TTL |
 | [`unhandled_result`](unhandled_result.md) | [`S009`](../error-codes.md) | logic | Medium | A `Result` that is silently dropped |
 | [`hardcoded_addr`](hardcoded_addr.md) | [`S012`](../error-codes.md) | code_hygiene | High | Hardcoded admin address / secret literal in an auth context |
 | [`edge_amount`](edge_amount.md) | [`S013`](../error-codes.md) | code_hygiene | Medium | `transfer`/`mint`/`burn` missing `amount > 0` / `from != to` guards |

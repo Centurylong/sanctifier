@@ -28,6 +28,7 @@ use sanctifier_core::rules::{
     sep41_allowance_decrement::Sep41AllowanceDecrementRule,
     sep41_approval_expiration::Sep41ApprovalExpirationRule, shift_overflow::ShiftOverflowRule,
     state_write_in_view::StateWriteInViewRule, tier_boundary_off_by_one::TierBoundaryOffByOneRule,
+    ttl_extend_misconfig::TtlExtendMisconfigRule,
     unbounded_event_emission::UnboundedEventEmissionRule,
     unbounded_input_length::UnboundedInputLengthRule, unbounded_storage::UnboundedStorageRule,
     unhandled_result::UnhandledResultRule, unsigned_underflow::UnsignedUnderflowRule,
@@ -293,6 +294,15 @@ fn snapshot_tier_boundary_off_by_one() {
         "tier_boundary_off_by_one",
         &TierBoundaryOffByOneRule::new(),
         include_str!("fixtures/detectors/tier_boundary_off_by_one.rs"),
+    );
+}
+
+#[test]
+fn snapshot_ttl_extend_misconfig() {
+    assert_detector_snapshot(
+        "ttl_extend_misconfig",
+        &TtlExtendMisconfigRule::new(),
+        include_str!("fixtures/detectors/ttl_extend_misconfig.rs"),
     );
 }
 

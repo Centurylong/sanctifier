@@ -1,0 +1,14 @@
+---
+source: tooling/sanctifier-core/tests/detector_snapshots.rs
+expression: findings
+---
+- rule_name: SANCT_TTL_EXTEND_MISCONFIG
+  severity: Warning
+  message: persistent.extend_ttl uses threshold 1000 >= extend_to 1000; the renewal window is misconfigured
+  location: "equal:10"
+  suggestion: Use constants with threshold < extend_to so renewal moves the entry to a later ledger
+- rule_name: SANCT_TTL_EXTEND_MISCONFIG
+  severity: Warning
+  message: instance.extend_ttl uses threshold 518400 >= extend_to 501120; the renewal window is misconfigured
+  location: "folded:16"
+  suggestion: Use constants with threshold < extend_to so renewal moves the entry to a later ledger

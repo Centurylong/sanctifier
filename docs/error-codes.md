@@ -14,6 +14,7 @@ the fix, and references.
 | `S004` | storage_limits | Ledger entry size exceeds or approaches configured limits | [`ledger_size`](detectors/ledger_size.md) |
 | `S005` | storage_keys | Potential storage key collision | — |
 | `S006` | storage_durability | Persistent/instance storage access without a TTL extension | [`missing_ttl`](detectors/missing_ttl.md) |
+| `SANCT_TTL_EXTEND_MISCONFIG` | storage_durability | `extend_ttl` threshold is greater than or equal to its target TTL | [`ttl_extend_misconfig`](detectors/ttl_extend_misconfig.md) |
 | `S007` | custom_rule | User-defined custom rule match | — |
 | `S009` | logic | A `Result` that is silently dropped | [`unhandled_result`](detectors/unhandled_result.md) |
 | `S012` | code_hygiene | Hardcoded admin address / secret literal in an auth context | [`hardcoded_addr`](detectors/hardcoded_addr.md) |

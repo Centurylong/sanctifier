@@ -30,6 +30,7 @@ pub mod sep41_approval_expiration;
 pub mod shift_overflow;
 pub mod state_write_in_view;
 pub mod tier_boundary_off_by_one;
+pub mod ttl_extend_misconfig;
 pub mod unbounded_event_emission;
 pub mod unbounded_input_length;
 pub mod unbounded_return;
@@ -249,6 +250,7 @@ impl RuleRegistry {
         registry.register(unsigned_underflow::UnsignedUnderflowRule::new());
         registry.register(ledger_seconds::LedgerSecondsRule::new());
         registry.register(tier_boundary_off_by_one::TierBoundaryOffByOneRule::new());
+        registry.register(ttl_extend_misconfig::TtlExtendMisconfigRule::new());
         registry.register(unbounded_return::UnboundedReturnRule::new());
         registry.register(reserve_withdrawal::ReserveWithdrawalRule::new());
         registry.register(contracterror_enum::ContracterrorEnumRule::new());
