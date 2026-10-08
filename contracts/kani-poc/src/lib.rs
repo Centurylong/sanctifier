@@ -28,6 +28,25 @@ pub fn initialize_pure(is_initialized: bool) -> Result<(), &'static str> {
     Ok(())
 }
 
+/// The pure state transition shared by the runtime entrypoint and Kani proofs.
+///
+/// Callers persist `initialized` only after a successful transition. Keeping the
+/// state mutation here lets Kani check two consecutive calls, rather than
+/// proving only two disconnected values of the initialization flag.
+pub fn initialize_transition(initialized: &mut bool) -> Result<(), &'static str> {
+    initialize_pure(*initialized)?;
+    *initialized = true;
+    Ok(())
+}
+
+/// An intentionally incorrect reference implementation used only to check that
+/// the counterexample proof can catch a re-initialization bug.
+#[cfg(any(kani, test))]
+fn initialize_transition_without_guard(initialized: &mut bool) -> Result<(), &'static str> {
+    *initialized = true;
+    Ok(())
+}
+
 // ── Pure logic (verified with Kani) ─────────────────────────────────────────────
 //
 // These functions operate only on i128 and have no Host/FFI dependencies.
@@ -118,13 +137,15 @@ impl TokenContract {
     /// persists the flag on success.  Kani verifies the pure guard; the Host layer
     /// here is intentionally thin and untouched by the proof.
     pub fn initialize(env: Env, _name: Symbol) {
-        let already: bool = env
+        let mut initialized: bool = env
             .storage()
             .instance()
             .get(&symbol_short!("init"))
             .unwrap_or(false);
-        initialize_pure(already).expect("already initialized");
-        env.storage().instance().set(&symbol_short!("init"), &true);
+        initialize_transition(&mut initialized).expect("already initialized");
+        env.storage()
+            .instance()
+            .set(&symbol_short!("init"), &initialized);
     }
 
     /// A function that interacts with Env (Host types).
@@ -280,6 +301,42 @@ mod verification {
 
     // ── Token initialisation proof harnesses ─────────────────────────────────
 
+    /// A real sequential transition proof over the same pure function called by
+    /// TokenContract::initialize. Starting from either boolean state, at most
+    /// one initialization succeeds; a second call must reject without changing
+    /// the stored flag. This proves the guard logic, NOT Soroban Host storage.
+    #[kani::proof]
+    fn init_at_most_once() {
+        let initial_state: bool = kani::any();
+        let mut initialized = initial_state;
+
+        let first = initialize_transition(&mut initialized);
+        if initial_state {
+            assert!(first.is_err(), "an initialized state must reject the first attempt");
+        } else {
+            assert!(first.is_ok(), "a fresh state must accept the first attempt");
+        }
+        assert!(initialized, "the initialized flag must remain set");
+
+        let second = initialize_transition(&mut initialized);
+        assert!(second.is_err(), "a second initialization cannot succeed");
+        assert!(initialized, "the second attempt cannot clear initialized state");
+    }
+
+    /// The same two-call property must find a counterexample if the state guard
+    /// disappears. Kani treats the expected assertion failure as successful
+    /// evidence that the proof is capable of rejecting the buggy implementation.
+    #[kani::proof]
+    #[kani::should_panic]
+    fn init_bug_reinitialization_counterexample() {
+        let mut initialized = false;
+        assert!(initialize_transition_without_guard(&mut initialized).is_ok());
+        assert!(
+            initialize_transition_without_guard(&mut initialized).is_err(),
+            "an unguarded second initialization must violate the property"
+        );
+    }
+
     /// **Property**: The `initialize` function can only ever be called once
     /// successfully.
     ///
@@ -351,6 +408,15 @@ mod verification {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn initialize_transition_rejects_second_call() {
+        let mut initialized = false;
+        assert!(initialize_transition(&mut initialized).is_ok());
+        assert!(initialized);
+        assert!(initialize_transition(&mut initialized).is_err());
+        assert!(initialized);
+    }
 
     /// The correct transfer conserves the two-account total (concrete witness of
     /// the property `verify_transfer_pure_conservation` proves for all inputs).
