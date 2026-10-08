@@ -28,20 +28,26 @@ pub struct VerifyArgs {
 
 /// Recursively collect every `.rs` file under `dir`, skipping paths that
 /// contain any segment in `ignore` (e.g. "target", ".git").
-pub(crate) fn collect_rs_files(dir: &Path, ignore: &[String], out: &mut Vec<PathBuf>) {
+pub(crate) fn collect_rs_files(
+    dir: &Path,
+    root: &Path,
+    config: &SanctifyConfig,
+    out: &mut Vec<PathBuf>,
+) {
     let entries = match std::fs::read_dir(dir) {
         Ok(e) => e,
         Err(_) => return,
     };
     for entry in entries.flatten() {
         let path = entry.path();
-        let name = path.file_name().and_then(|n| n.to_str()).unwrap_or("");
         if path.is_dir() {
-            if ignore.iter().any(|p| name.contains(p.as_str())) {
+            if config.directory_excluded(root, &path) {
                 continue;
             }
-            collect_rs_files(&path, ignore, out);
-        } else if path.extension().and_then(|s| s.to_str()) == Some("rs") {
+            collect_rs_files(&path, root, config, out);
+        } else if path.extension().and_then(|s| s.to_str()) == Some("rs")
+            && config.path_allowed(root, &path)
+        {
             out.push(path);
         }
     }
@@ -50,13 +56,16 @@ pub(crate) fn collect_rs_files(dir: &Path, ignore: &[String], out: &mut Vec<Path
 /// Scan `path` (file or directory) and return all invariant declarations found,
 /// alongside every `#[sanctify::assume(...)]` declaration that can bound them.
 pub(crate) fn discover_invariants(path: &Path) -> (Vec<InvariantDecl>, Vec<InvariantDecl>) {
-    let config = SanctifyConfig::default();
+    // Match analyze's nearest-config search instead of using defaults.
+    let config = super::analyze::load_config(path);
     let analyzer = Analyzer::new(config.clone());
 
     let mut rs_files: Vec<PathBuf> = Vec::new();
     if path.is_dir() {
-        collect_rs_files(path, &config.ignore_paths, &mut rs_files);
-    } else if path.extension().and_then(|s| s.to_str()) == Some("rs") {
+        collect_rs_files(path, path, &config, &mut rs_files);
+    } else if path.extension().and_then(|s| s.to_str()) == Some("rs")
+        && config.path_allowed(path.parent().unwrap_or_else(|| Path::new(".")), path)
+    {
         rs_files.push(path.to_path_buf());
     }
 

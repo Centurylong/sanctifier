@@ -47,6 +47,8 @@ All keys are optional. Omitted keys fall back to the defaults shown below.
 | Key | Type | Default | Applies to |
 |-----|------|---------|------------|
 | [`ignore_paths`](#ignore_paths) | array of strings | `["target", ".git"]` | `analyze`, `verify`, `callgraph` |
+| [`include_paths`](#include_paths) | array of glob strings | `[]` (all) | `analyze`, `verify`, `callgraph` |
+| [`exclude_paths`](#exclude_paths) | array of glob strings | `[]` (none) | `analyze`, `verify`, `callgraph` |
 | [`enabled_rules`](#enabled_rules) | array of strings | `["auth_gaps", "panics", "arithmetic", "ledger_size", "events"]` | `analyze` |
 | [`ledger_limit`](#ledger_limit) | integer (bytes) | `64000` | `analyze` |
 | [`approaching_threshold`](#approaching_threshold) | float (0.0–1.0) | `0.8` | `analyze` |
@@ -68,6 +70,31 @@ out of the scan.
 ```toml
 ignore_paths = ["target", ".git", "test_snapshots", "node_modules"]
 ```
+
+---
+
+### `include_paths` and `exclude_paths`
+
+**Type:** arrays of glob strings · **Defaults:** `[]` and `[]`
+
+Patterns match **root-relative paths** (relative to the scanned directory,
+or to the parent of an explicitly scanned file). `*` matches zero or more
+characters within one directory segment, `?` matches one character,
+and a whole `**` segment matches zero or more directory levels.
+Use `/` separators.
+
+```toml
+include_paths = ["src/**/*.rs", "contracts/*.rs"]
+exclude_paths = ["src/generated/**", "**/*_generated.rs", "contracts/test?.rs"]
+```
+
+Precedence is: existing `ignore_paths` directory pruning first, then the
+include allowlist (empty means allow all), then the exclusion veto.
+Excluded directory subtrees are pruned, while include patterns never prune
+parent directories that might contain matches. This works for both recursive
+and single-file scans in `analyze`, `verify`, and `callgraph`.
+Globs are relative to the **scan root**, not to the config file directory;
+the nearest `.sanctify.toml` is still used.
 
 ---
 
@@ -194,6 +221,9 @@ need. Every key is shown with its default.
 
 # Directory name fragments to skip while scanning (substring match).
 ignore_paths = ["target", ".git", "test_snapshots"]
+# Optional root-relative file selection; empty includes allow everything.
+include_paths = []
+exclude_paths = []
 
 # Detector families you intend to run (see the configuration reference for the
 # current behaviour note — built-in detectors run regardless today).
@@ -229,7 +259,9 @@ From highest to lowest priority:
 1. **Command-line flags** for the current run (only `analyze --limit` overrides a
    config key today).
 2. **The nearest `.sanctify.toml`** found by walking up from the scanned path.
-3. **Built-in defaults** (the values in the [key reference](#2-key-reference)).
+3. **Path filtering** after configuration resolution: `ignore_paths`,
+   then `include_paths`, then winning `exclude_paths`.
+4. **Built-in defaults** (the values in the [key reference](#2-key-reference)).
 
 ---
 

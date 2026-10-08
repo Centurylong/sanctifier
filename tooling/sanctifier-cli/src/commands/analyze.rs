@@ -145,6 +145,7 @@ pub fn exec(args: AnalyzeArgs) -> anyhow::Result<()> {
     if path.is_dir() {
         walk_dir(
             path,
+            path,
             &analyzer,
             &vuln_db,
             &mut collisions,
@@ -160,7 +161,11 @@ pub fn exec(args: AnalyzeArgs) -> anyhow::Result<()> {
             &mut upgrade_reports,
             &mut smt_issues,
         )?;
-    } else if path.extension().and_then(|s| s.to_str()) == Some("rs") {
+    } else if path.extension().and_then(|s| s.to_str()) == Some("rs")
+        && analyzer
+            .config
+            .path_allowed(path.parent().unwrap_or_else(|| Path::new(".")), path)
+    {
         if let Ok(content) = fs::read_to_string(path) {
             let file_name = path.display().to_string();
             collisions.extend(analyzer.scan_storage_collisions(&content));
@@ -853,7 +858,7 @@ fn chrono_timestamp() -> String {
     format!("{}", secs)
 }
 
-fn load_config(path: &Path) -> SanctifyConfig {
+pub(crate) fn load_config(path: &Path) -> SanctifyConfig {
     let mut current = if path.is_file() {
         path.parent()
             .map(|p| p.to_path_buf())
@@ -881,6 +886,7 @@ fn load_config(path: &Path) -> SanctifyConfig {
 #[allow(clippy::too_many_arguments)]
 fn walk_dir(
     dir: &Path,
+    root: &Path,
     analyzer: &Analyzer,
     vuln_db: &VulnDatabase,
     collisions: &mut Vec<sanctifier_core::StorageCollisionIssue>,
@@ -900,18 +906,14 @@ fn walk_dir(
         let entry = entry?;
         let path = entry.path();
         if path.is_dir() {
-            // Skip ignore_paths
-            let is_ignored = analyzer
-                .config
-                .ignore_paths
-                .iter()
-                .any(|p| path.ends_with(p));
-            if is_ignored {
+            // One shared filter covers ignore fragments and excluded glob subtrees.
+            if analyzer.config.directory_excluded(root, &path) {
                 continue;
             }
 
             walk_dir(
                 &path,
+                root,
                 analyzer,
                 vuln_db,
                 collisions,
@@ -927,7 +929,9 @@ fn walk_dir(
                 upgrade_reports,
                 smt_issues,
             )?;
-        } else if path.extension().and_then(|s| s.to_str()) == Some("rs") {
+        } else if path.extension().and_then(|s| s.to_str()) == Some("rs")
+            && analyzer.config.path_allowed(root, &path)
+        {
             if let Ok(content) = fs::read_to_string(&path) {
                 let file_name = path.display().to_string();
 

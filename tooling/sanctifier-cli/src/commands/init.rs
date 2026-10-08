@@ -17,6 +17,8 @@ impl ConfigGenerator {
     pub fn generate_default_config() -> SanctifyConfig {
         SanctifyConfig {
             ignore_paths: vec!["target".to_string(), ".git".to_string()],
+            include_paths: vec![],
+            exclude_paths: vec![],
             enabled_rules: vec![
                 "auth_gaps".to_string(),
                 "panics".to_string(),
@@ -122,6 +124,8 @@ mod tests {
 
         // Verify ignore_paths
         assert_eq!(config.ignore_paths, vec!["target", ".git"]);
+        assert!(config.include_paths.is_empty());
+        assert!(config.exclude_paths.is_empty());
 
         // Verify enabled_rules
         assert_eq!(

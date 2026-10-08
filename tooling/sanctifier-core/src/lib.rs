@@ -276,6 +276,12 @@ pub struct CustomRuleMatch {
 pub struct SanctifyConfig {
     #[serde(default = "default_ignore_paths")]
     pub ignore_paths: Vec<String>,
+    /// Root-relative file globs; empty means include all.
+    #[serde(default)]
+    pub include_paths: Vec<String>,
+    /// Root-relative file and directory globs; exclusions win.
+    #[serde(default)]
+    pub exclude_paths: Vec<String>,
     #[serde(default = "default_enabled_rules")]
     pub enabled_rules: Vec<String>,
     #[serde(default = "default_ledger_limit")]
@@ -314,12 +320,182 @@ impl Default for SanctifyConfig {
     fn default() -> Self {
         Self {
             ignore_paths: default_ignore_paths(),
+            include_paths: vec![],
+            exclude_paths: vec![],
             enabled_rules: default_enabled_rules(),
             ledger_limit: default_ledger_limit(),
             approaching_threshold: default_approaching_threshold(),
             strict_mode: false,
             custom_rules: vec![],
         }
+    }
+}
+
+// Segment-based matching prevents "*" and "?" from crossing directories.
+// A complete "**" segment matches zero or more path segments.
+fn glob_segment_matches(pattern: &str, segment: &str) -> bool {
+    let chars: Vec<char> = segment.chars().collect();
+    let mut matched = vec![false; chars.len() + 1];
+    matched[0] = true;
+    for token in pattern.chars() {
+        let mut next = vec![false; chars.len() + 1];
+        match token {
+            '*' => {
+                next[0] = matched[0];
+                for i in 1..=chars.len() {
+                    next[i] = matched[i] || next[i - 1];
+                }
+            }
+            '?' => {
+                for i in 1..=chars.len() {
+                    next[i] = matched[i - 1];
+                }
+            }
+            literal => {
+                for i in 1..=chars.len() {
+                    next[i] = matched[i - 1] && chars[i - 1] == literal;
+                }
+            }
+        }
+        matched = next;
+    }
+    matched[chars.len()]
+}
+
+fn glob_path_matches(pattern: &str, relative_path: &str) -> bool {
+    let normalized = pattern.trim_start_matches("./").replace('\\', "/");
+    let pattern_parts: Vec<&str> = normalized.split('/').filter(|s| !s.is_empty()).collect();
+    let path_parts: Vec<&str> = relative_path.split('/').filter(|s| !s.is_empty()).collect();
+    if pattern_parts.is_empty() || path_parts.is_empty() {
+        return false;
+    }
+    let mut matched = vec![false; path_parts.len() + 1];
+    matched[0] = true;
+    for segment in pattern_parts {
+        let mut next = vec![false; path_parts.len() + 1];
+        if segment == "**" {
+            next[0] = matched[0];
+            for i in 1..=path_parts.len() {
+                next[i] = matched[i] || next[i - 1];
+            }
+        } else {
+            for i in 1..=path_parts.len() {
+                next[i] = matched[i - 1] && glob_segment_matches(segment, path_parts[i - 1]);
+            }
+        }
+        matched = next;
+    }
+    matched[path_parts.len()]
+}
+
+fn root_relative_path(root: &std::path::Path, path: &std::path::Path) -> Option<String> {
+    let relative = path.strip_prefix(root).ok()?;
+    Some(
+        relative
+            .components()
+            .map(|part| part.as_os_str().to_string_lossy().into_owned())
+            .collect::<Vec<_>>()
+            .join("/"),
+    )
+}
+
+impl SanctifyConfig {
+    // Legacy ignore_paths are directory-name fragments, and may also name a
+    // relative directory suffix. The final file name is not a directory.
+    // Use the same rule for recursive walks and explicit-file scans.
+    fn ignored_directory(&self, relative: &str, is_file: bool) -> bool {
+        let mut segments: Vec<&str> = relative.split('/').filter(|part| !part.is_empty()).collect();
+        if is_file {
+            segments.pop();
+        }
+        let dir_path = segments.join("/");
+        self.ignore_paths.iter().any(|fragment| {
+            let fragment = fragment.replace('\\', "/");
+            !fragment.is_empty()
+                && (segments.iter().any(|segment| segment.contains(fragment.as_str()))
+                    || (!dir_path.is_empty() && dir_path.ends_with(fragment.as_str())))
+        })
+    }
+
+    /// Include all files when no include globs are configured. Any exclusion wins.
+    pub fn path_allowed(&self, root: &std::path::Path, path: &std::path::Path) -> bool {
+        let Some(relative) = root_relative_path(root, path) else {
+            return false;
+        };
+        !self.ignored_directory(&relative, true)
+            && (self.include_paths.is_empty()
+                || self
+                    .include_paths
+                    .iter()
+                    .any(|pattern| glob_path_matches(pattern, &relative)))
+            && !self
+                .exclude_paths
+                .iter()
+                .any(|pattern| glob_path_matches(pattern, &relative))
+    }
+
+    /// Only exclusion globs can prune a directory, never include globs.
+    pub fn directory_excluded(&self, root: &std::path::Path, dir: &std::path::Path) -> bool {
+        root_relative_path(root, dir)
+            .map(|relative| {
+                self.ignored_directory(&relative, false)
+                    || self
+                        .exclude_paths
+                        .iter()
+                        .any(|pattern| glob_path_matches(pattern, &relative))
+            })
+            .unwrap_or(false)
+    }
+}
+
+#[cfg(test)]
+mod path_glob_tests {
+    use super::*;
+    use std::path::Path;
+
+    #[test]
+    fn star_question_and_globstar_respect_path_segments() {
+        assert!(glob_path_matches("src/*.rs", "src/lib.rs"));
+        assert!(!glob_path_matches("src/*.rs", "src/nested/lib.rs"));
+        assert!(glob_path_matches("src/**/mod?.rs", "src/mod1.rs"));
+        assert!(glob_path_matches("src/**/mod?.rs", "src/a/b/mod2.rs"));
+        assert!(!glob_path_matches("src/**/mod?.rs", "src/a/b/mod23.rs"));
+        assert!(glob_path_matches("**/*.rs", "lib.rs"));
+        assert!(glob_path_matches("**/*.rs", "src/nested/lib.rs"));
+    }
+
+    #[test]
+    fn legacy_ignore_fragments_apply_to_nested_and_explicit_files() {
+        let root = Path::new("/project");
+        let mut config = SanctifyConfig::default();
+        config.include_paths = vec!["**/*.rs".into()];
+        config.ignore_paths = vec!["target".into(), "generated".into(), "vendor/code".into()];
+
+        assert!(!config.path_allowed(root, &root.join("src/target/lib.rs")));
+        assert!(!config.path_allowed(root, &root.join("src/generated-code/lib.rs")));
+        assert!(!config.path_allowed(root, &root.join("src/vendor/code/lib.rs")));
+        assert!(config.directory_excluded(root, &root.join("src/target")));
+        assert!(config.directory_excluded(root, &root.join("src/generated-code")));
+        assert!(config.directory_excluded(root, &root.join("src/vendor/code")));
+        // Filename fragments are not directory fragments.
+        assert!(config.path_allowed(root, &root.join("src/app/generated.rs")));
+        assert!(config.path_allowed(root, &root.join("src/app/main.rs")));
+    }
+
+    #[test]
+    fn root_relative_includes_and_excludes_take_precedence() {
+        let root = Path::new("/project");
+        let mut config = SanctifyConfig::default();
+        assert!(config.path_allowed(root, &root.join("src/lib.rs")));
+        config.include_paths = vec!["src/**/*.rs".into()];
+        config.exclude_paths = vec!["src/generated/**".into()];
+        assert!(config.path_allowed(root, &root.join("src/lib.rs")));
+        assert!(config.path_allowed(root, &root.join("src/nested/lib.rs")));
+        assert!(!config.path_allowed(root, &root.join("other.rs")));
+        assert!(!config.path_allowed(root, &root.join("src/generated/schema.rs")));
+        assert!(config.directory_excluded(root, &root.join("src/generated")));
+        assert!(!config.directory_excluded(root, &root.join("src")));
+        assert!(!config.path_allowed(root, Path::new("/elsewhere/src/lib.rs")));
     }
 }
 
