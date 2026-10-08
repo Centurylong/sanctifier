@@ -9,12 +9,12 @@
 //   - Lines of code (LOC)
 //   - Number of extern crate / use dependencies (file-level)
 
-use syn::{visit::Visit, File, ImplItem, ImplItemFn, ItemFn, ItemUse, ItemExternCrate};
+use syn::{visit::Visit, File, ImplItemFn, ItemExternCrate, ItemFn, ItemUse};
 
 // ---------------------------------------------------------------------------
 // Thresholds (warn if exceeded)
 // ---------------------------------------------------------------------------
-const THRESHOLD_CYCLOMATIC: u32 = 10;
+pub const THRESHOLD_CYCLOMATIC: u32 = 10;
 const THRESHOLD_PARAMS: usize   = 5;
 const THRESHOLD_NESTING: u32    = 4;
 const THRESHOLD_LOC: usize      = 50;
@@ -68,6 +68,10 @@ impl FnComplexityVisitor {
 }
 
 impl<'ast> Visit<'ast> for FnComplexityVisitor {
+    fn visit_item_fn(&mut self, _: &'ast ItemFn) {
+        // Nested functions have independent control flow.
+    }
+
     fn visit_expr_if(&mut self, node: &'ast syn::ExprIf) {
         self.cyclomatic += 1;
         self.enter();
@@ -108,7 +112,7 @@ impl<'ast> Visit<'ast> for FnComplexityVisitor {
     // &&, || add logical branches
     fn visit_expr_binary(&mut self, node: &'ast syn::ExprBinary) {
         use syn::BinOp::*;
-        if matches!(node.op, And(_) | Or(_)) {
+        if matches!(&node.op, And(_) | Or(_)) {
             self.cyclomatic += 1;
         }
         syn::visit::visit_expr_binary(self, node);
@@ -122,11 +126,12 @@ impl<'ast> Visit<'ast> for FnComplexityVisitor {
 struct FileVisitor {
     pub functions: Vec<FunctionMetrics>,
     pub dependency_count: usize,
+    include_private: bool,
 }
 
 impl FileVisitor {
-    fn new() -> Self {
-        Self { functions: Vec::new(), dependency_count: 0 }
+    fn new(include_private: bool) -> Self {
+        Self { functions: Vec::new(), dependency_count: 0, include_private }
     }
 
     fn analyze_fn(&self, name: &str, sig: &syn::Signature, block: &syn::Block, span_str: &str) -> FunctionMetrics {
@@ -182,8 +187,9 @@ impl<'ast> Visit<'ast> for FileVisitor {
     }
 
     fn visit_item_fn(&mut self, node: &'ast ItemFn) {
-        // Only public functions
-        if matches!(node.vis, syn::Visibility::Public(_)) {
+        // Public-only metrics stay unchanged; the hotspot detector opts in
+        // to private helpers, which are often the most branch-heavy code.
+        if self.include_private || matches!(&node.vis, syn::Visibility::Public(_)) {
             let span_str = quote::quote!(#node).to_string();
             let m = self.analyze_fn(&node.sig.ident.to_string(), &node.sig, &node.block, &span_str);
             self.functions.push(m);
@@ -204,9 +210,22 @@ impl<'ast> Visit<'ast> for FileVisitor {
 // ---------------------------------------------------------------------------
 
 pub fn analyze_complexity(ast: &File, contract_path: &str) -> ContractMetrics {
-    let mut visitor = FileVisitor::new();
+    let mut visitor = FileVisitor::new(false);
     visitor.visit_file(ast);
 
+    ContractMetrics {
+        contract_path: contract_path.to_string(),
+        dependency_count: visitor.dependency_count,
+        functions: visitor.functions,
+    }
+}
+
+/// Analyze all free functions, including private helpers, for hotspot rules.
+/// The standalone complexity report continues to measure only public free
+/// functions, preserving its established scope.
+pub fn analyze_all_function_complexity(ast: &File, contract_path: &str) -> ContractMetrics {
+    let mut visitor = FileVisitor::new(true);
+    visitor.visit_file(ast);
     ContractMetrics {
         contract_path: contract_path.to_string(),
         dependency_count: visitor.dependency_count,

@@ -15,6 +15,7 @@
 use sanctifier_core::rules::auth_gap::VisibilityLeakRule;
 use sanctifier_core::rules::auth_on_caller::AuthOnCallerRule;
 use sanctifier_core::rules::auth_replay::AuthReplayRule;
+use sanctifier_core::rules::cyclomatic_complexity::CyclomaticComplexityRule;
 use sanctifier_core::rules::{
     allowance_race::AllowanceRaceRule, arg_dos::ArgDosRule,
     arithmetic_overflow::ArithmeticOverflowRule, auth_gap::AuthGapRule,
@@ -516,6 +517,15 @@ fn snapshot_cross_contract_call_in_loop() {
         "cross_contract_call_in_loop",
         &CrossContractCallInLoopRule::new(),
         include_str!("fixtures/detectors/cross_contract_call_in_loop.rs"),
+    );
+}
+
+#[test]
+fn snapshot_cyclomatic_complexity() {
+    assert_detector_snapshot(
+        "cyclomatic_complexity",
+        &CyclomaticComplexityRule::new(),
+        include_str!("fixtures/detectors/cyclomatic_complexity.rs"),
     );
 }
 

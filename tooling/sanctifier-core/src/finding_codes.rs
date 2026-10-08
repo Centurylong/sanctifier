@@ -21,6 +21,7 @@ pub const FEE_ROUNDING: &str = "S017";
 pub const UNSIGNED_UNDERFLOW: &str = "S019";
 pub const LEDGER_SECONDS: &str = "S021";
 pub const EXCESSIVE_CLONE: &str = "S020";
+pub const CYCLOMATIC_COMPLEXITY: &str = "SANCT_CYCLOMATIC_COMPLEXITY";
 pub const ARG_DOS: &str = "SANCT_ARG_DOS";
 pub const BALANCE_EQUALITY: &str = "SANCT_BALANCE_EQ";
 pub const BLS_SUBGROUP_UNCHECKED: &str = "SANCT_BLS_SUBGROUP_UNCHECKED";
@@ -180,6 +181,12 @@ pub fn all_finding_codes() -> Vec<FindingCode> {
             category: "gas_efficiency",
             description:
                 "Gas-wasting clone of the Soroban Env handle where a reference (&env) would suffice",
+        },
+        FindingCode {
+            code: CYCLOMATIC_COMPLEXITY,
+            category: "maintainability",
+            description:
+                "Function cyclomatic complexity exceeds the configured detector threshold",
         },
         FindingCode {
             code: ARG_DOS,

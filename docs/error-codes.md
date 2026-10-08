@@ -21,6 +21,7 @@ the fix, and references.
 | `S015` | code_hygiene | Unused local binding (dead code) | [`unused_variable`](detectors/unused_variable.md) |
 | `S016` | code_hygiene | Duplicate/inconsistent `#[contracterror]` discriminants | [`error_code_collision`](detectors/error_code_collision.md) |
 | `S017` | arithmetic | Fee/interest integer division that rounds to zero for micro-amounts | [`fee_rounding`](detectors/fee_rounding.md) |
+| `SANCT_CYCLOMATIC_COMPLEXITY` | maintainability | Function cyclomatic complexity exceeds the configured detector threshold | [`cyclomatic_complexity`](detectors/cyclomatic_complexity.md) |
 | `SANCT_ARG_DOS` | denial_of_service | `Vec`/`Map` argument iterated without a length cap | [`arg_dos`](detectors/arg_dos.md) |
 | `SANCT_AUTH_ON_CALLER` | authorization | `require_auth` on one address while state owned by another is written | [`auth_on_caller`](detectors/auth_on_caller.md) |
 | `SANCT_AUTH_REPLAY` | authentication | Custom-account `__check_auth` with no nonce or expiry check, allowing signature replay | [`auth_replay`](detectors/auth_replay.md) |
