@@ -18,6 +18,8 @@
     "ledger_size": "S004",
     "unhandled_result": "S009",
     "hardcoded_addr": "S012",
+    "hardcoded_decimals": "SANCT_HARDCODED_DECIMALS",
+    "SANCT_HARDCODED_DECIMALS": "SANCT_HARDCODED_DECIMALS",
     "edge_amount": "S013",
     "balance_equality": "SANCT_BALANCE_EQ",
     "SANCT_BALANCE_EQ": "SANCT_BALANCE_EQ",

@@ -29,6 +29,7 @@ detector page and to the relevant [Glossary](../glossary.md) term.
 | [`missing_ttl`](missing_ttl.md) | [`S006`](../error-codes.md) | storage_durability | Medium | Persistent/instance storage access without a TTL extension |
 | [`unhandled_result`](unhandled_result.md) | [`S009`](../error-codes.md) | logic | Medium | A `Result` that is silently dropped |
 | [`hardcoded_addr`](hardcoded_addr.md) | [`S012`](../error-codes.md) | code_hygiene | High | Hardcoded admin address / secret literal in an auth context |
+| [`hardcoded_decimals`](hardcoded_decimals.md) | [`SANCT_HARDCODED_DECIMALS`](../error-codes.md) | arithmetic | Warning | Fixed token decimal counts or powers-of-ten used as asset precision |
 | [`edge_amount`](edge_amount.md) | [`S013`](../error-codes.md) | code_hygiene | Medium | `transfer`/`mint`/`burn` missing `amount > 0` / `from != to` guards |
 | [`bls_subgroup_check`](bls_subgroup_check.md) | [`SANCT_BLS_SUBGROUP_UNCHECKED`](../error-codes.md) | cryptography | Error | BLS12-381 proof point reaches a pairing call with no subgroup or curve membership check |
 | [`balance_equality`](balance_equality.md) | [`SANCT_BALANCE_EQ`](../error-codes.md) | logic | Info | Balance gated with `==`/`!=` where `>=`/`<=` was intended |

@@ -1,0 +1,19 @@
+---
+source: tooling/sanctifier-core/tests/hardcoded_decimals_snapshot.rs
+expression: findings
+---
+- rule_name: SANCT_HARDCODED_DECIMALS
+  severity: Warning
+  message: "Hardcoded precision `TOKEN_DECIMALS = 7` assumes a fixed asset decimal configuration"
+  location: "<module>:7"
+  suggestion: "Read the asset's decimals at runtime and derive the scale from that value instead of assuming a fixed precision"
+- rule_name: SANCT_HARDCODED_DECIMALS
+  severity: Warning
+  message: "Token amount conversion uses hardcoded decimal scale `10000000`, assuming every asset has the same precision"
+  location: "display_balance:20"
+  suggestion: "Read the asset's decimals at runtime and derive the scale from that value instead of assuming a fixed precision"
+- rule_name: SANCT_HARDCODED_DECIMALS
+  severity: Warning
+  message: "Token amount conversion uses hardcoded decimal scale `10000000`, assuming every asset has the same precision"
+  location: "generate_units:25"
+  suggestion: "Read the asset's decimals at runtime and derive the scale from that value instead of assuming a fixed precision"

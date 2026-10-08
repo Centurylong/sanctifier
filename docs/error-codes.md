@@ -17,6 +17,7 @@ the fix, and references.
 | `S007` | custom_rule | User-defined custom rule match | — |
 | `S009` | logic | A `Result` that is silently dropped | [`unhandled_result`](detectors/unhandled_result.md) |
 | `S012` | code_hygiene | Hardcoded admin address / secret literal in an auth context | [`hardcoded_addr`](detectors/hardcoded_addr.md) |
+| `SANCT_HARDCODED_DECIMALS` | arithmetic | Hardcoded token decimal count or scale assumes a fixed asset precision | [`hardcoded_decimals`](detectors/hardcoded_decimals.md) |
 | `S013` | code_hygiene | `transfer`/`mint`/`burn` missing `amount > 0` / `from != to` guards | [`edge_amount`](detectors/edge_amount.md) |
 | `S015` | code_hygiene | Unused local binding (dead code) | [`unused_variable`](detectors/unused_variable.md) |
 | `S016` | code_hygiene | Duplicate/inconsistent `#[contracterror]` discriminants | [`error_code_collision`](detectors/error_code_collision.md) |

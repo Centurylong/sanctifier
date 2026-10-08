@@ -15,6 +15,7 @@ pub mod error_code_collision;
 pub mod excessive_clone;
 pub mod fee_rounding;
 pub mod hardcoded_addr;
+pub mod hardcoded_decimals;
 pub mod init_hardcoded_admin;
 pub mod ledger_seconds;
 pub mod ledger_size;
@@ -228,6 +229,7 @@ impl RuleRegistry {
         registry.register(unused_variable::UnusedVariableRule::new());
         // New hygiene rules
         registry.register(hardcoded_addr::HardcodedAddrRule::new());
+        registry.register(hardcoded_decimals::HardcodedDecimalsRule::new());
         registry.register(error_code_collision::ErrorCodeCollisionRule::new());
         registry.register(edge_amount::EdgeAmountRule::new());
         registry.register(bls_subgroup_check::BlsSubgroupCheckRule::new());

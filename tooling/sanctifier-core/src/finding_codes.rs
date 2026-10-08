@@ -12,6 +12,7 @@ pub const UNHANDLED_RESULT: &str = "S009";
 pub const UPGRADE_RISK: &str = "S010";
 pub const SMT_INVARIANT_VIOLATION: &str = "S011";
 pub const HARDCODED_ADDR: &str = "S012";
+pub const HARDCODED_DECIMALS: &str = "SANCT_HARDCODED_DECIMALS";
 pub const EDGE_AMOUNT: &str = "S013";
 pub const DEPRECATED_SDK: &str = "S014";
 pub const DEAD_CODE: &str = "S015";
@@ -118,6 +119,11 @@ pub fn all_finding_codes() -> Vec<FindingCode> {
             code: HARDCODED_ADDR,
             category: "code_hygiene",
             description: "Hardcoded admin address or secret literal used in authentication context",
+        },
+        FindingCode {
+            code: HARDCODED_DECIMALS,
+            category: "arithmetic",
+            description: "Hardcoded token decimal count or scale assumes a fixed asset precision",
         },
         FindingCode {
             code: EDGE_AMOUNT,
