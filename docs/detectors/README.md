@@ -46,6 +46,7 @@ detector page and to the relevant [Glossary](../glossary.md) term.
 | [`view_panic`](view_panic.md) | [`SANCT_VIEW_PANIC`](../error-codes.md) | panic_handling | Medium | View/getter entrypoint contains a reachable panic |
 | [`allowance_race`](allowance_race.md) | [`SANCT_ALLOWANCE_RACE`](../error-codes.md) | authorization | Medium | `approve` overwrites the allowance unconditionally (approve TOCTOU) |
 | [`state_write_in_view`](state_write_in_view.md) | [`SANCT_STATE_WRITE_IN_VIEW`](../error-codes.md) | code_hygiene | Warning | Getter/view-named function performs a storage write |
+| [`stale_state_postcall`](stale_state_postcall.md) | [`SANCT_STALE_STATE_POSTCALL`](../error-codes.md) | reentrancy | Warning | Cached storage value used in a decision after a cross-contract call |
 | [`division_by_zero`](division_by_zero.md) | [`S018`](../error-codes.md) | arithmetic | Medium | `/` or `%` by a non-constant value not proven non-zero |
 | [`shift_overflow`](shift_overflow.md) | [`SANCT_SHIFT_OVERFLOW`](../error-codes.md) | arithmetic | Warning/Error | Bit shift by an amount that may be `>=` the operand's bit width |
 | [`tier_boundary_off_by_one`](tier_boundary_off_by_one.md) | [`S022`](../error-codes.md) | logic | Info | `if`/`else if` tier/rank ladder mixes strict and inclusive comparisons on the same variable |

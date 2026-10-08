@@ -29,6 +29,7 @@ pub mod sep41_allowance_decrement;
 pub mod sep41_approval_expiration;
 pub mod shift_overflow;
 pub mod state_write_in_view;
+pub mod stale_state_postcall;
 pub mod tier_boundary_off_by_one;
 pub mod unbounded_event_emission;
 pub mod unbounded_input_length;
@@ -244,6 +245,7 @@ impl RuleRegistry {
         registry.register(view_panic::ViewPanicRule::new());
         registry.register(allowance_race::AllowanceRaceRule::new());
         registry.register(state_write_in_view::StateWriteInViewRule::new());
+        registry.register(stale_state_postcall::StaleStatePostcallRule::new());
         registry.register(division_by_zero::DivisionByZeroRule::new());
         registry.register(eager_unwrap_or::EagerUnwrapOrRule::new());
         registry.register(unsigned_underflow::UnsignedUnderflowRule::new());

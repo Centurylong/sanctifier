@@ -31,6 +31,7 @@ pub const UNBOUNDED_STORAGE: &str = "SANCT_UNBOUNDED_STORAGE";
 pub const SANCT_VIEW_PANIC: &str = "SANCT_VIEW_PANIC";
 pub const ALLOWANCE_RACE: &str = "SANCT_ALLOWANCE_RACE";
 pub const STATE_WRITE_IN_VIEW: &str = "SANCT_STATE_WRITE_IN_VIEW";
+pub const STALE_STATE_POSTCALL: &str = "SANCT_STALE_STATE_POSTCALL";
 pub const DIVISION_BY_ZERO: &str = "S018";
 pub const TIER_BOUNDARY_OFF_BY_ONE: &str = "S022";
 pub const MISSING_RESERVE_AUTH: &str = "S023";
@@ -227,6 +228,11 @@ pub fn all_finding_codes() -> Vec<FindingCode> {
             category: "code_hygiene",
             description:
                 "Getter/view-style function performs a storage write; callers expect it to be read-only",
+        },
+        FindingCode {
+            code: STALE_STATE_POSTCALL,
+            category: "reentrancy",
+            description: "Cached contract storage value drives a decision after an external invocation without a fresh read",
         },
         FindingCode {
             code: DIVISION_BY_ZERO,
