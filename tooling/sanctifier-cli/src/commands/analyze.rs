@@ -169,8 +169,12 @@ pub fn exec(args: AnalyzeArgs) -> anyhow::Result<()> {
             auth_gaps.extend(analyzer.scan_auth_gaps(&content));
             panic_issues.extend(analyzer.scan_panics(&content));
             arithmetic_issues.extend(analyzer.scan_arithmetic_overflow(&content));
-            custom_matches
-                .extend(analyzer.analyze_custom_rules(&content, &analyzer.config.custom_rules));
+            let mut custom =
+                analyzer.analyze_custom_rules(&content, &analyzer.config.custom_rules);
+            for m in &mut custom {
+                m.snippet = format!("{}:{}: {}", file_name, m.line, m.snippet);
+            }
+            custom_matches.extend(custom);
             vuln_matches.extend(vuln_db.scan(&content, &file_name));
             event_issues.extend(analyzer.scan_events(&content));
             unhandled_results.extend(analyzer.scan_unhandled_results(&content));
@@ -291,6 +295,23 @@ pub fn exec(args: AnalyzeArgs) -> anyhow::Result<()> {
         path.to_path_buf()
     };
 
+    // Match the baseline snapshot contract. Directory and single-file scans both
+    // prefix custom snippets with `file:line: `; retain the raw source snippet as
+    // semantic context so separate matches from one rule do not collapse together.
+    let custom_fallback_file = path.display().to_string();
+    let custom_flat_finding = |m: &sanctifier_core::CustomRuleMatch| {
+        let marker = format!(":{}: ", m.line);
+        if let Some((file_name, source_snippet)) = m.snippet.split_once(marker.as_str()) {
+            super::baseline::custom_rule_flat_finding(m, file_name, source_snippet)
+        } else {
+            super::baseline::custom_rule_flat_finding(
+                m,
+                &custom_fallback_file,
+                &m.snippet,
+            )
+        }
+    };
+
     let (suppressed_count, stale_entries) = if !args.no_baseline {
         match load_baseline(&project_root) {
             Ok(Some(ref bl)) => {
@@ -342,6 +363,9 @@ pub fn exec(args: AnalyzeArgs) -> anyhow::Result<()> {
                     let ctx = format!("{}|{}", s.function_name, s.description);
                     current_flat.push(FlatFinding::new(finding_codes::SMT_INVARIANT_VIOLATION, &s.location, &ctx));
                 }
+
+                current_flat.extend(custom_matches.iter().map(&custom_flat_finding));
+                current_flat.extend(vuln_matches.iter().map(super::baseline::vuln_flat_finding));
 
                 let (new_flat, stale) = apply_baseline(bl, &current_flat);
                 let new_fps: HashSet<String> = new_flat.iter().map(|f| f.fingerprint()).collect();
@@ -409,6 +433,13 @@ pub fn exec(args: AnalyzeArgs) -> anyhow::Result<()> {
                     !suppressed_fps.contains(&fp)
                 });
 
+                custom_matches.retain(|m| {
+                    !suppressed_fps.contains(&custom_flat_finding(m).fingerprint())
+                });
+                vuln_matches.retain(|m| {
+                    !suppressed_fps.contains(&super::baseline::vuln_flat_finding(m).fingerprint())
+                });
+
                 (suppressed_count, stale_entries)
             }
             Ok(None) => (0, vec![]),
@@ -430,6 +461,7 @@ pub fn exec(args: AnalyzeArgs) -> anyhow::Result<()> {
         + panic_issues.len()
         + arithmetic_issues.len()
         + custom_matches.len()
+        + vuln_matches.len()
         + event_issues.len()
         + unhandled_results.len()
         + upgrade_reports
@@ -458,8 +490,16 @@ pub fn exec(args: AnalyzeArgs) -> anyhow::Result<()> {
     }
 
     let has_critical =
-        !auth_gaps.is_empty() || panic_issues.iter().any(|p| p.issue_type == "panic!");
-    let has_high = !arithmetic_issues.is_empty()
+        !auth_gaps.is_empty()
+        || panic_issues.iter().any(|p| p.issue_type == "panic!")
+        || vuln_matches.iter().any(|m| m.severity.eq_ignore_ascii_case("critical"));
+    let has_high = custom_matches
+        .iter()
+        .any(|m| matches!(&m.severity, sanctifier_core::RuleSeverity::Error))
+        || vuln_matches.iter().any(|m| {
+            m.severity.eq_ignore_ascii_case("critical") || m.severity.eq_ignore_ascii_case("high")
+        })
+        || !arithmetic_issues.is_empty()
         || !panic_issues.is_empty()
         || !smt_issues.is_empty()
         || !unhandled_results.is_empty()

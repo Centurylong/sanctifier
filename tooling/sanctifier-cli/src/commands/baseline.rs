@@ -14,7 +14,7 @@ use sanctifier_core::{Analyzer, SanctifyConfig};
 use std::fs;
 use std::path::{Path, PathBuf};
 
-use crate::vulndb::VulnDatabase;
+use crate::vulndb::{VulnDatabase, VulnMatch};
 
 #[derive(Args, Debug)]
 pub struct BaselineArgs {
@@ -252,12 +252,35 @@ fn flatten_file_findings(
         ));
     }
 
+    // S007 — Custom rules use rule + matched source as stable semantic context.
+    // The source snippet distinguishes separate matches of one rule in a file,
+    // while FlatFinding normalization keeps line shifts out of the fingerprint.
+    for m in analyzer.analyze_custom_rules(content, &analyzer.config.custom_rules) {
+        flat.push(custom_rule_flat_finding(&m, file_name, &m.snippet));
+    }
+
     // VulnDB matches
     for m in vuln_db.scan(content, file_name) {
-        let loc = format!("{file_name}:{}", m.line);
-        let ctx = format!("{}|{}", m.vuln_id, m.name);
-        flat.push(FlatFinding::new("VULN", &loc, &ctx));
+        flat.push(vuln_flat_finding(&m));
     }
+}
+
+/// Shared fingerprint contract for baseline snapshots and analyzer suppression.
+pub(crate) fn custom_rule_flat_finding(
+    m: &sanctifier_core::CustomRuleMatch,
+    file_name: &str,
+    source_snippet: &str,
+) -> FlatFinding {
+    let loc = format!("{file_name}:{}", m.line);
+    let ctx = format!("{}|{}", m.rule_name, source_snippet);
+    FlatFinding::new(finding_codes::CUSTOM_RULE_MATCH, &loc, &ctx)
+}
+
+/// Preserve the existing VulnDB baseline fingerprint when applying a baseline.
+pub(crate) fn vuln_flat_finding(m: &VulnMatch) -> FlatFinding {
+    let loc = format!("{}:{}", m.file, m.line);
+    let ctx = format!("{}|{}", m.vuln_id, m.name);
+    FlatFinding::new("VULN", &loc, &ctx)
 }
 
 fn load_config(path: &Path) -> SanctifyConfig {
@@ -283,4 +306,42 @@ fn load_config(path: &Path) -> SanctifyConfig {
         }
     }
     SanctifyConfig::default()
+}
+
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn custom_rule_fingerprint_distinguishes_matches_but_ignores_line_shifts() {
+        let first = sanctifier_core::CustomRuleMatch {
+            rule_name: "same-rule".to_string(),
+            line: 4,
+            snippet: "first_match();".to_string(),
+            severity: sanctifier_core::RuleSeverity::Warning,
+        };
+        let shifted = sanctifier_core::CustomRuleMatch {
+            rule_name: first.rule_name.clone(),
+            line: 40,
+            snippet: first.snippet.clone(),
+            severity: first.severity.clone(),
+        };
+        let second = sanctifier_core::CustomRuleMatch {
+            rule_name: first.rule_name.clone(),
+            line: 8,
+            snippet: "second_match();".to_string(),
+            severity: first.severity.clone(),
+        };
+
+        let first_fp =
+            custom_rule_flat_finding(&first, "src/lib.rs", &first.snippet).fingerprint();
+        let shifted_fp =
+            custom_rule_flat_finding(&shifted, "src/lib.rs", &shifted.snippet).fingerprint();
+        let second_fp =
+            custom_rule_flat_finding(&second, "src/lib.rs", &second.snippet).fingerprint();
+
+        assert_eq!(first_fp, shifted_fp);
+        assert_ne!(first_fp, second_fp);
+    }
 }

@@ -116,13 +116,28 @@ Check for and download the latest Sanctifier binary:
 sanctifier update
 ```
 
-### Generate a README Security Badge
-Create an SVG badge and markdown snippet from a JSON scan report:
+### Generate README Security Badges
+Create an SVG badge and markdown snippet from a JSON scan report. The default badge keeps the existing overall status view:
 
 ```bash
 sanctifier analyze . --format json > sanctifier-report.json
 sanctifier badge --report sanctifier-report.json --svg-output badges/sanctifier-security.svg --markdown-output badges/sanctifier-security.md
 ```
+
+Select richer views with `--variant`:
+
+```bash
+# Critical/high/medium/low severity counts
+sanctifier badge --variant severity --report sanctifier-report.json --svg-output badges/sanctifier-severity.svg
+
+# A/B/C/D/F grade from the worst severity present (clean/low/medium/high/critical)
+sanctifier badge --variant grade --report sanctifier-report.json --svg-output badges/sanctifier-grade.svg
+
+# New vs. fixed findings relative to .sanctify-baseline.json
+sanctifier badge --variant trend --report sanctifier-report.json --svg-output badges/sanctifier-trend.svg
+```
+
+The trend view reads the report's baseline result: `+` is the current unsuppressed finding count and `-` is the number of stale baseline entries (findings no longer present). Generate the report with baseline handling enabled for a meaningful trend badge.
 
 ## 🤝 Contributing
 We welcome contributions from the Stellar community! Please see our [Contributing Guide](CONTRIBUTING.md) for details.

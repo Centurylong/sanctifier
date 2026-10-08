@@ -184,6 +184,10 @@ Generate a dynamic Sanctifier status badge
 * `--markdown-output <MARKDOWN_OUTPUT>` — Where to write generated markdown snippet
 * `--badge-url <BADGE_URL>` — Public URL for the SVG (used by markdown output). Falls back to local SVG path
 
+* `--variant <VARIANT>` — Badge content to render: status, severity, grade, or trend
+
+  Default value: `status`
+
 
 
 ## `sanctifier diff`
