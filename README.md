@@ -6,6 +6,14 @@
 
 **Sanctifier** is a comprehensive security and formal verification suite built specifically for [Stellar Soroban](https://soroban.stellar.org/) smart contracts. In the high-stakes environment of DeFi and decentralized applications, "code is law" only holds true if the code is secure. Sanctifier ensures your contracts are not just compiled, but *sanctified*—rigorously tested, formally verified, and runtime-guarded against vulnerabilities.
 
+## Browser playground
+
+Try local WASM-powered Soroban analysis with no server-side source upload,
+including bounded source permalinks for sharing findings. See the
+[browser playground build, deployment and privacy guide](docs/web-playground.md).
+The static deployable bundle is generated from the existing `sanctifier-wasm`
+crate; no release binary or hosted deployment is assumed.
+
 ## 📂 Project Structure
 
 ```text

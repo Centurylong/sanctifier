@@ -1,6 +1,7 @@
 // Loads the wasm package directly from ../js/index.js, which is the same entry
 // point npm consumers get — so if the demo works, the published package works.
 import { analyzeReport, init, version } from "../js/index.js";
+import { decodeShareHash, makeShareUrl } from "./permalink.js";
 
 // Lowercase to match what the engine emits; capitalized only for display.
 const SEVERITIES = ["critical", "high", "medium", "low", "info"];
@@ -11,6 +12,10 @@ const el = {
   source: document.getElementById("source"),
   analyze: document.getElementById("analyze"),
   sample: document.getElementById("load-sample"),
+  share: document.getElementById("share"),
+  sharePanel: document.getElementById("share-panel"),
+  shareUrl: document.getElementById("share-url"),
+  shareFeedback: document.getElementById("share-feedback"),
   summary: document.getElementById("summary"),
   results: document.getElementById("results"),
   timing: document.getElementById("timing"),
@@ -158,6 +163,59 @@ function run() {
   }
 }
 
+// The actual source stays entirely client-side. Only an explicit share click
+// creates a URL containing source; do not send it to a paste service.
+function shareSource() {
+  try {
+    const url = makeShareUrl(el.source.value, window.location.href);
+    el.shareUrl.value = url;
+    el.sharePanel.hidden = false;
+    el.shareFeedback.textContent = "Share link ready. Anyone with this link can read its embedded source.";
+    // Clipboard is not available on insecure HTTP origins. The visible input
+    // remains usable for manual copying in either case.
+    if (navigator.clipboard?.writeText && window.isSecureContext) {
+      navigator.clipboard.writeText(url).then(
+        () => { el.shareFeedback.textContent = "Link copied. The recipient can see its source."; },
+        () => { el.shareFeedback.textContent = "Select and copy the link manually."; },
+      );
+    } else {
+      el.shareFeedback.textContent = "Select and copy the link manually.";
+    }
+  } catch (error) {
+    el.sharePanel.hidden = true;
+    el.shareFeedback.textContent = error.message;
+  }
+}
+
+function restoreLink() {
+  try {
+    const decoded = decodeShareHash(window.location.hash);
+    if (decoded === null) return false;
+    el.source.value = decoded;
+    el.shareUrl.value = window.location.href;
+    el.sharePanel.hidden = false;
+    el.shareFeedback.textContent = "Source loaded from the share link; review it before analyzing.";
+    return true;
+  } catch (error) {
+    el.sharePanel.hidden = true;
+    el.shareFeedback.textContent = error.message;
+    return false;
+  }
+}
+
+el.share.addEventListener("click", shareSource);
+el.shareUrl.addEventListener("click", () => el.shareUrl.select());
+el.source.addEventListener("input", () => {
+  // A URL created before this edit no longer represents the visible source.
+  el.sharePanel.hidden = true;
+  el.shareFeedback.textContent = "";
+});
+let engineReady = false;
+const restoredOnLoad = restoreLink();
+window.addEventListener("hashchange", () => {
+  if (restoreLink() && engineReady) run();
+});
+
 el.sample.addEventListener("click", () => {
   el.source.value = SAMPLE;
   el.source.focus();
@@ -176,8 +234,10 @@ el.source.addEventListener("keydown", (event) => {
 
 init()
   .then(() => {
+    engineReady = true;
     el.analyze.disabled = false;
     setStatus(`Analysis engine ready (v${version()}). Nothing you paste leaves this tab.`, "ready");
+    if (restoredOnLoad) run();
   })
   .catch((err) => {
     setStatus(

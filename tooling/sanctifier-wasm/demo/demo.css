@@ -169,3 +169,24 @@ footer a { color: var(--accent); }
 @media (prefers-reduced-motion: reduce) {
   * { transition: none !important; animation: none !important; }
 }
+
+
+/* Shared sources are encoded in the fragment: show the URL and disclosure
+   plainly, including on HTTP origins where clipboard APIs are unavailable. */
+.source-actions { display: flex; gap: 10px; flex-wrap: wrap; }
+.source-actions button { margin-top: 12px; }
+.share-feedback { min-height: 1.4em; color: var(--muted); font-size: 0.82rem; }
+.share-panel label { display: block; margin: 8px 0; font-size: 0.82rem; }
+.share-panel input {
+  width: 100%;
+  padding: 9px;
+  background: var(--bg);
+  color: var(--ink);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  font: 12px ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+.share-panel input:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}

@@ -28,7 +28,15 @@
           placeholder="Paste a Soroban contract here…"
           aria-describedby="status"
         ></textarea>
-        <button type="button" id="analyze" disabled>Analyze</button>
+        <div class="source-actions">
+          <button type="button" id="analyze" disabled>Analyze</button>
+          <button type="button" id="share">Share source link</button>
+        </div>
+        <p id="share-feedback" class="share-feedback" role="status" aria-live="polite"></p>
+        <div id="share-panel" class="share-panel" hidden>
+          <label for="share-url">Shareable link (source is included in this URL)</label>
+          <input id="share-url" type="url" readonly aria-describedby="share-feedback" />
+        </div>
       </section>
 
       <section class="pane">
