@@ -42,6 +42,7 @@ pub const NULLIFIER_GROWTH: &str = "SANCT_NULLIFIER_GROWTH";
 pub const PROOF_LENGTH_UNVALIDATED: &str = "SANCT_PROOF_LENGTH_UNVALIDATED";
 pub const PUBLIC_INPUT_UNVALIDATED: &str = "SANCT_PUBLIC_INPUT_UNVALIDATED";
 pub const AUTH_REPLAY: &str = "SANCT_AUTH_REPLAY";
+pub const WEAK_RANDOM: &str = "SANCT_WEAK_RANDOM";
 
 // ── Source-optional (compiled WASM) checks ────────────────────────────────────
 // Emitted only by `sanctifier wasm`, which analyzes a deployed module directly.
@@ -282,6 +283,12 @@ pub fn all_finding_codes() -> Vec<FindingCode> {
             category: "zk_verification",
             description:
                 "Proof verification consumes public inputs without checking they are canonical field elements in range",
+        },
+        FindingCode {
+            code: WEAK_RANDOM,
+            category: "cryptography",
+            description:
+                "Predictable ledger timestamp/sequence-derived value used to select a participant or outcome",
         },
         FindingCode {
             code: WASM_NOT_SOROBAN,

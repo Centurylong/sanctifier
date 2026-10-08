@@ -17,6 +17,7 @@ pub mod fee_rounding;
 pub mod hardcoded_addr;
 pub mod init_hardcoded_admin;
 pub mod ledger_seconds;
+pub mod weak_random;
 pub mod ledger_size;
 pub mod missing_ttl;
 pub mod nullifier_growth;
@@ -248,6 +249,7 @@ impl RuleRegistry {
         registry.register(eager_unwrap_or::EagerUnwrapOrRule::new());
         registry.register(unsigned_underflow::UnsignedUnderflowRule::new());
         registry.register(ledger_seconds::LedgerSecondsRule::new());
+        registry.register(weak_random::WeakRandomRule::new());
         registry.register(tier_boundary_off_by_one::TierBoundaryOffByOneRule::new());
         registry.register(unbounded_return::UnboundedReturnRule::new());
         registry.register(reserve_withdrawal::ReserveWithdrawalRule::new());

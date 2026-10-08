@@ -15,6 +15,7 @@
 use sanctifier_core::rules::auth_gap::VisibilityLeakRule;
 use sanctifier_core::rules::auth_on_caller::AuthOnCallerRule;
 use sanctifier_core::rules::auth_replay::AuthReplayRule;
+use sanctifier_core::rules::weak_random::WeakRandomRule;
 use sanctifier_core::rules::{
     allowance_race::AllowanceRaceRule, arg_dos::ArgDosRule,
     arithmetic_overflow::ArithmeticOverflowRule, auth_gap::AuthGapRule,
@@ -194,6 +195,15 @@ fn snapshot_ledger_seconds() {
         "ledger_seconds",
         &LedgerSecondsRule::new(),
         include_str!("fixtures/detectors/ledger_seconds.rs"),
+    );
+}
+
+#[test]
+fn snapshot_weak_random() {
+    assert_detector_snapshot(
+        "weak_random",
+        &WeakRandomRule::new(),
+        include_str!("fixtures/detectors/weak_random.rs"),
     );
 }
 

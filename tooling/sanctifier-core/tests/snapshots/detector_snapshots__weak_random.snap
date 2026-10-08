@@ -1,0 +1,14 @@
+---
+source: tooling/sanctifier-core/tests/detector_snapshots.rs
+expression: findings
+---
+- rule_name: SANCT_WEAK_RANDOM
+  severity: Error
+  message: "SANCT_WEAK_RANDOM: ledger timestamp/sequence-derived value is used as a selection index; ledger metadata is predictable and not a secure randomness source"
+  location: "choose_winner:15"
+  suggestion: "Use commit-reveal or a verifiable randomness source (VRF/oracle), and derive the selection index from that unpredictable value instead of ledger timestamp/sequence."
+- rule_name: SANCT_WEAK_RANDOM
+  severity: Error
+  message: "SANCT_WEAK_RANDOM: ledger timestamp/sequence-derived value is used as a selection index; ledger metadata is predictable and not a secure randomness source"
+  location: "choose_backup:21"
+  suggestion: "Use commit-reveal or a verifiable randomness source (VRF/oracle), and derive the selection index from that unpredictable value instead of ledger timestamp/sequence."
