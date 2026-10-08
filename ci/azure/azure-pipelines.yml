@@ -1,0 +1,56 @@
+# Copy this file to azure-pipelines.yml in a Soroban repository.
+# Change sanctifierScanPath to the crate or workspace containing the contracts.
+# Uses the checked-in adapter at ci/azure/sanctifier_to_sarif.py.
+trigger:
+  - main
+
+pr:
+  - main
+
+pool:
+  vmImage: ubuntu-22.04
+
+variables:
+  sanctifierScanPath: '.'
+
+steps:
+  - checkout: self
+
+  - bash: |
+      set -euo pipefail
+      sudo apt-get update
+      sudo apt-get install -y clang libclang-dev libz3-dev libdbus-1-dev pkg-config
+      rustup toolchain install 1.85.0 --profile minimal
+
+      # sanctifier-cli owns a nested Cargo workspace, excluded from the root.
+      # A git-package install cannot reliably find that nested package.
+      sanctifier_src="$(Agent.TempDirectory)/sanctifier-source"
+      git clone --depth 1 https://github.com/Centurylong/sanctifier.git "$sanctifier_src"
+      cargo +1.85.0 install --locked --path "$sanctifier_src/tooling/sanctifier-cli"
+    displayName: Install Sanctifier and system dependencies
+
+  - bash: |
+      set -euo pipefail
+      cd "$(Build.SourcesDirectory)"
+      report_dir="$(Build.ArtifactStagingDirectory)/sanctifier"
+      mkdir -p "$report_dir"
+
+      # Keep the analyzer's real nonzero exit status while still converting
+      # and publishing findings from a completed scan.
+      set +e
+      sanctifier analyze "$(sanctifierScanPath)" --format json > "$report_dir/findings.json"
+      scan_status=$?
+      set -e
+
+      python3 ci/azure/sanctifier_to_sarif.py \
+        "$report_dir/findings.json" "$report_dir/results.sarif"
+      exit "$scan_status"
+    displayName: Scan contract and generate SARIF
+
+  - task: PublishPipelineArtifact@1
+    displayName: Publish Sanctifier JSON and SARIF
+    condition: succeededOrFailed()
+    inputs:
+      targetPath: '$(Build.ArtifactStagingDirectory)/sanctifier'
+      artifact: sanctifier-analysis
+      publishLocation: pipeline
