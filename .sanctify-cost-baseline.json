@@ -1,0 +1,68 @@
+{
+  "schema_version": 1,
+  "sources": [
+    "contracts/sep41-token-invariants/src/lib.rs"
+  ],
+  "functions": {
+    "contracts/sep41-token-invariants/src/lib.rs::Sep41Token::admin": {
+      "estimated_instructions": 1125,
+      "estimated_memory_bytes": 32
+    },
+    "contracts/sep41-token-invariants/src/lib.rs::Sep41Token::allowance": {
+      "estimated_instructions": 1125,
+      "estimated_memory_bytes": 32
+    },
+    "contracts/sep41-token-invariants/src/lib.rs::Sep41Token::approve": {
+      "estimated_instructions": 1672,
+      "estimated_memory_bytes": 40
+    },
+    "contracts/sep41-token-invariants/src/lib.rs::Sep41Token::balance": {
+      "estimated_instructions": 1125,
+      "estimated_memory_bytes": 32
+    },
+    "contracts/sep41-token-invariants/src/lib.rs::Sep41Token::burn": {
+      "estimated_instructions": 5975,
+      "estimated_memory_bytes": 112
+    },
+    "contracts/sep41-token-invariants/src/lib.rs::Sep41Token::burn_from": {
+      "estimated_instructions": 7087,
+      "estimated_memory_bytes": 104
+    },
+    "contracts/sep41-token-invariants/src/lib.rs::Sep41Token::decimals": {
+      "estimated_instructions": 1125,
+      "estimated_memory_bytes": 32
+    },
+    "contracts/sep41-token-invariants/src/lib.rs::Sep41Token::initialize": {
+      "estimated_instructions": 7400,
+      "estimated_memory_bytes": 32
+    },
+    "contracts/sep41-token-invariants/src/lib.rs::Sep41Token::mint": {
+      "estimated_instructions": 5975,
+      "estimated_memory_bytes": 112
+    },
+    "contracts/sep41-token-invariants/src/lib.rs::Sep41Token::name": {
+      "estimated_instructions": 1125,
+      "estimated_memory_bytes": 32
+    },
+    "contracts/sep41-token-invariants/src/lib.rs::Sep41Token::set_admin": {
+      "estimated_instructions": 2677,
+      "estimated_memory_bytes": 64
+    },
+    "contracts/sep41-token-invariants/src/lib.rs::Sep41Token::symbol": {
+      "estimated_instructions": 1125,
+      "estimated_memory_bytes": 32
+    },
+    "contracts/sep41-token-invariants/src/lib.rs::Sep41Token::total_supply": {
+      "estimated_instructions": 1125,
+      "estimated_memory_bytes": 32
+    },
+    "contracts/sep41-token-invariants/src/lib.rs::Sep41Token::transfer": {
+      "estimated_instructions": 4851,
+      "estimated_memory_bytes": 72
+    },
+    "contracts/sep41-token-invariants/src/lib.rs::Sep41Token::transfer_from": {
+      "estimated_instructions": 7028,
+      "estimated_memory_bytes": 88
+    }
+  }
+}

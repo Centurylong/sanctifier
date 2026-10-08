@@ -1,0 +1,17 @@
+name: Cost regression
+
+on:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  cost-regression:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - name: Compare committed cost baseline
+        run: cargo run --locked --manifest-path tooling/sanctifier-cost-gate/Cargo.toml -- check .sanctify-cost-baseline.json 5
