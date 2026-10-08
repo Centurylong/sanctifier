@@ -42,6 +42,7 @@ pub const NULLIFIER_GROWTH: &str = "SANCT_NULLIFIER_GROWTH";
 pub const PROOF_LENGTH_UNVALIDATED: &str = "SANCT_PROOF_LENGTH_UNVALIDATED";
 pub const PUBLIC_INPUT_UNVALIDATED: &str = "SANCT_PUBLIC_INPUT_UNVALIDATED";
 pub const AUTH_REPLAY: &str = "SANCT_AUTH_REPLAY";
+pub const MISSING_REENTRANCY_GUARD: &str = "SANCT_MISSING_REENTRANCY_GUARD";
 
 // ── Source-optional (compiled WASM) checks ────────────────────────────────────
 // Emitted only by `sanctifier wasm`, which analyzes a deployed module directly.
@@ -282,6 +283,11 @@ pub fn all_finding_codes() -> Vec<FindingCode> {
             category: "zk_verification",
             description:
                 "Proof verification consumes public inputs without checking they are canonical field elements in range",
+        },
+        FindingCode {
+            code: MISSING_REENTRANCY_GUARD,
+            category: "reentrancy",
+            description: "External call in a value-moving public entrypoint without an active guard",
         },
         FindingCode {
             code: WASM_NOT_SOROBAN,

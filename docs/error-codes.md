@@ -24,6 +24,7 @@ the fix, and references.
 | `SANCT_ARG_DOS` | denial_of_service | `Vec`/`Map` argument iterated without a length cap | [`arg_dos`](detectors/arg_dos.md) |
 | `SANCT_AUTH_ON_CALLER` | authorization | `require_auth` on one address while state owned by another is written | [`auth_on_caller`](detectors/auth_on_caller.md) |
 | `SANCT_AUTH_REPLAY` | authentication | Custom-account `__check_auth` with no nonce or expiry check, allowing signature replay | [`auth_replay`](detectors/auth_replay.md) |
+| `SANCT_MISSING_REENTRANCY_GUARD` | reentrancy | Value-moving entrypoint calls an external contract without SanctifiedGuard | [`missing_reentrancy_guard`](detectors/missing_reentrancy_guard.md) |
 | `SANCT_BLS_SUBGROUP_UNCHECKED` | cryptography | BLS12-381 proof point reaches a pairing call with no subgroup or curve membership check | [`bls_subgroup_check`](detectors/bls_subgroup_check.md) |
 | `SANCT_UNWRAP` | panic_handling | `unwrap` / `expect` / risky `unwrap_or_default` inside `#[contractimpl]` entrypoints; replace with typed errors or explicit domain defaults | [`sanct_unwrap`](detectors/sanct_unwrap.md) |
 | `SANCT_VISIBILITY` | authentication | Helper-shaped state mutator exposed through `#[contractimpl]` without authorization | [`sanct_visibility`](detectors/sanct_visibility.md) |

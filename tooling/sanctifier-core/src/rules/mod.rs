@@ -8,6 +8,7 @@ pub mod balance_equality;
 pub mod bls_subgroup_check;
 pub mod contracterror_enum;
 pub mod cross_contract_call_in_loop;
+pub mod missing_reentrancy_guard;
 pub mod division_by_zero;
 pub mod eager_unwrap_or;
 pub mod edge_amount;
@@ -254,6 +255,7 @@ impl RuleRegistry {
         registry.register(contracterror_enum::ContracterrorEnumRule::new());
         registry.register(vesting_schedule::VestingScheduleRule::new());
         registry.register(cross_contract_call_in_loop::CrossContractCallInLoopRule::new());
+        registry.register(missing_reentrancy_guard::MissingReentrancyGuardRule::new());
         registry.register(unbounded_event_emission::UnboundedEventEmissionRule::new());
         registry.register(unbounded_input_length::UnboundedInputLengthRule::new());
         registry.register(sep41_allowance_decrement::Sep41AllowanceDecrementRule::new());
