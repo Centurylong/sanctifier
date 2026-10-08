@@ -1,0 +1,19 @@
+---
+source: tooling/sanctifier-core/tests/detector_snapshots.rs
+expression: findings
+---
+- rule_name: SANCT_CEI
+  severity: Error
+  message: "SANCT_CEI: withdraw invokes external transfer on line 28 before set writes state on line 29; a callback may re-enter while internal state is stale"
+  location: "withdraw:28"
+  suggestion: "Validate and authorize, commit the internal storage update before invoking untrusted contracts/token clients, and apply a reentrancy guard where necessary"
+- rule_name: SANCT_CEI
+  severity: Error
+  message: "SANCT_CEI: deposit invokes external transfer_from on line 37 before set writes state on line 43; a callback may re-enter while internal state is stale"
+  location: "deposit:37"
+  suggestion: "Validate and authorize, commit the internal storage update before invoking untrusted contracts/token clients, and apply a reentrancy guard where necessary"
+- rule_name: SANCT_CEI
+  severity: Error
+  message: "SANCT_CEI: call_hook invokes external invoke_contract on line 48 before set writes state on line 49; a callback may re-enter while internal state is stale"
+  location: "call_hook:48"
+  suggestion: "Validate and authorize, commit the internal storage update before invoking untrusted contracts/token clients, and apply a reentrancy guard where necessary"

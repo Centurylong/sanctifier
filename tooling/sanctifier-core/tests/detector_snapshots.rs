@@ -18,7 +18,8 @@ use sanctifier_core::rules::auth_replay::AuthReplayRule;
 use sanctifier_core::rules::{
     allowance_race::AllowanceRaceRule, arg_dos::ArgDosRule,
     arithmetic_overflow::ArithmeticOverflowRule, auth_gap::AuthGapRule,
-    balance_equality::BalanceEqualityRule, contracterror_enum::ContracterrorEnumRule,
+    balance_equality::BalanceEqualityRule, cei_violation::CeiViolationRule,
+    contracterror_enum::ContracterrorEnumRule,
     cross_contract_call_in_loop::CrossContractCallInLoopRule, division_by_zero::DivisionByZeroRule,
     edge_amount::EdgeAmountRule, error_code_collision::ErrorCodeCollisionRule,
     excessive_clone::ExcessiveCloneRule, fee_rounding::FeeRoundingRule,
@@ -516,6 +517,15 @@ fn snapshot_cross_contract_call_in_loop() {
         "cross_contract_call_in_loop",
         &CrossContractCallInLoopRule::new(),
         include_str!("fixtures/detectors/cross_contract_call_in_loop.rs"),
+    );
+}
+
+#[test]
+fn snapshot_cei_violation() {
+    assert_detector_snapshot(
+        "cei_violation",
+        &CeiViolationRule::new(),
+        include_str!("fixtures/detectors/cei_violation.rs"),
     );
 }
 

@@ -22,6 +22,7 @@ the fix, and references.
 | `S016` | code_hygiene | Duplicate/inconsistent `#[contracterror]` discriminants | [`error_code_collision`](detectors/error_code_collision.md) |
 | `S017` | arithmetic | Fee/interest integer division that rounds to zero for micro-amounts | [`fee_rounding`](detectors/fee_rounding.md) |
 | `SANCT_ARG_DOS` | denial_of_service | `Vec`/`Map` argument iterated without a length cap | [`arg_dos`](detectors/arg_dos.md) |
+| `SANCT_CEI` | reentrancy | Cross-contract / token-SAC callback before a later state write on the same syntactic path | [`cei_violation`](detectors/cei_violation.md) |
 | `SANCT_AUTH_ON_CALLER` | authorization | `require_auth` on one address while state owned by another is written | [`auth_on_caller`](detectors/auth_on_caller.md) |
 | `SANCT_AUTH_REPLAY` | authentication | Custom-account `__check_auth` with no nonce or expiry check, allowing signature replay | [`auth_replay`](detectors/auth_replay.md) |
 | `SANCT_BLS_SUBGROUP_UNCHECKED` | cryptography | BLS12-381 proof point reaches a pairing call with no subgroup or curve membership check | [`bls_subgroup_check`](detectors/bls_subgroup_check.md) |

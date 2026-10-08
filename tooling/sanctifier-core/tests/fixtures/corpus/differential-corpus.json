@@ -62,6 +62,8 @@
     "vesting_schedule": "SANCT_VESTING_RANGE",
     "cross_contract_call_in_loop": "SANCT_CROSS_CONTRACT_CALL_IN_LOOP",
     "SANCT_CROSS_CONTRACT_CALL_IN_LOOP": "SANCT_CROSS_CONTRACT_CALL_IN_LOOP",
+    "cei_violation": "SANCT_CEI",
+    "SANCT_CEI": "SANCT_CEI",
     "unbounded_event_emission": "SANCT_UNBOUNDED_EVENT_EMISSION",
     "SANCT_UNBOUNDED_EVENT_EMISSION": "SANCT_UNBOUNDED_EVENT_EMISSION",
     "unbounded_input_length": "SANCT_UNBOUNDED_INPUT",
