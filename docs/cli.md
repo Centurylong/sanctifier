@@ -118,6 +118,9 @@ Snapshot current findings into .sanctify-baseline.json (use --update to refresh)
 
 * `--update` — Overwrite an existing `.sanctify-baseline.json` (refresh after intentional changes)
 * `-q`, `--quiet` — Quiet — only print the path of the written file (useful in CI)
+* `--trend` — Render added/fixed/persistent findings against the stored baseline instead of updating it
+* `--format <FORMAT>` — Trend report output format: markdown or html
+* `-o`, `--output <OUTPUT>` — Write the trend report to a file instead of stdout
 
 
 

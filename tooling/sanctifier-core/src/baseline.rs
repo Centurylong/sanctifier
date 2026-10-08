@@ -38,7 +38,7 @@
 use regex::Regex;
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
-use std::collections::HashSet;
+use std::collections::{BTreeMap, HashSet};
 use std::fs;
 use std::path::Path;
 
@@ -100,6 +100,203 @@ pub struct Baseline {
     pub created_at: String,
     pub total_suppressed: usize,
     pub entries: Vec<BaselineEntry>,
+}
+
+/// One finding in a baseline trend report.
+///
+/// The stable fingerprint remains the identity, while the other fields keep
+/// the report useful to humans without re-running analysis.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+pub struct TrendFinding {
+    pub fingerprint: String,
+    pub code: String,
+    pub path: String,
+    pub context: String,
+}
+
+impl TrendFinding {
+    fn from_flat(finding: &FlatFinding) -> Self {
+        Self {
+            fingerprint: finding.fingerprint(),
+            code: finding.code.clone(),
+            path: finding.path.clone(),
+            context: finding.context.clone(),
+        }
+    }
+
+    fn from_entry(entry: &BaselineEntry) -> Self {
+        Self {
+            fingerprint: entry.fingerprint.clone(),
+            code: entry.code.clone(),
+            path: entry.path.clone(),
+            context: entry.context.clone(),
+        }
+    }
+}
+
+/// Deterministic comparison of current findings against a stored baseline.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+pub struct BaselineTrend {
+    pub added: Vec<TrendFinding>,
+    pub fixed: Vec<TrendFinding>,
+    pub persistent: Vec<TrendFinding>,
+}
+
+impl BaselineTrend {
+    /// Compare the current scan to the stored baseline using the same stable
+    /// fingerprints that baseline suppression already relies on.
+    pub fn compare(baseline: &Baseline, current: &[FlatFinding]) -> Self {
+        let baseline_by_fp: BTreeMap<String, TrendFinding> = baseline
+            .entries
+            .iter()
+            .map(|entry| {
+                (
+                    entry.fingerprint.clone(),
+                    TrendFinding::from_entry(entry),
+                )
+            })
+            .collect();
+        let current_by_fp: BTreeMap<String, TrendFinding> = current
+            .iter()
+            .map(|finding| {
+                let trend = TrendFinding::from_flat(finding);
+                (trend.fingerprint.clone(), trend)
+            })
+            .collect();
+
+        let mut added: Vec<TrendFinding> = current_by_fp
+            .iter()
+            .filter(|(fingerprint, _)| !baseline_by_fp.contains_key(*fingerprint))
+            .map(|(_, finding)| finding.clone())
+            .collect();
+        let mut fixed: Vec<TrendFinding> = baseline_by_fp
+            .iter()
+            .filter(|(fingerprint, _)| !current_by_fp.contains_key(*fingerprint))
+            .map(|(_, finding)| finding.clone())
+            .collect();
+        let mut persistent: Vec<TrendFinding> = current_by_fp
+            .iter()
+            .filter(|(fingerprint, _)| baseline_by_fp.contains_key(*fingerprint))
+            .map(|(_, finding)| finding.clone())
+            .collect();
+
+        sort_trend_findings(&mut added);
+        sort_trend_findings(&mut fixed);
+        sort_trend_findings(&mut persistent);
+
+        Self {
+            added,
+            fixed,
+            persistent,
+        }
+    }
+
+    /// Render the trend as deterministic Markdown.
+    pub fn render_markdown(&self) -> String {
+        let mut out = String::new();
+        out.push_str("# Sanctifier Baseline Trend\n\n");
+        out.push_str("| Status | Count |\n| --- | ---: |\n");
+        out.push_str(&format!("| Added | {} |\n", self.added.len()));
+        out.push_str(&format!("| Fixed | {} |\n", self.fixed.len()));
+        out.push_str(&format!("| Persistent | {} |\n\n", self.persistent.len()));
+
+        render_markdown_findings(&mut out, "Added", &self.added);
+        render_markdown_findings(&mut out, "Fixed", &self.fixed);
+        render_markdown_findings(&mut out, "Persistent", &self.persistent);
+        out
+    }
+
+    /// Render the trend as deterministic, standalone HTML.
+    pub fn render_html(&self) -> String {
+        let mut out = String::new();
+        out.push_str("<!doctype html>\n<html lang=\"en\">\n<head>\n");
+        out.push_str("<meta charset=\"utf-8\">\n<title>Sanctifier Baseline Trend</title>\n");
+        out.push_str("</head>\n<body>\n<main>\n<h1>Sanctifier Baseline Trend</h1>\n");
+        out.push_str("<table><thead><tr><th>Status</th><th>Count</th></tr></thead><tbody>\n");
+        out.push_str(&format!("<tr><td>Added</td><td>{}</td></tr>\n", self.added.len()));
+        out.push_str(&format!("<tr><td>Fixed</td><td>{}</td></tr>\n", self.fixed.len()));
+        out.push_str(&format!(
+            "<tr><td>Persistent</td><td>{}</td></tr>\n",
+            self.persistent.len()
+        ));
+        out.push_str("</tbody></table>\n");
+
+        render_html_findings(&mut out, "Added", &self.added);
+        render_html_findings(&mut out, "Fixed", &self.fixed);
+        render_html_findings(&mut out, "Persistent", &self.persistent);
+        out.push_str("</main>\n</body>\n</html>\n");
+        out
+    }
+}
+
+fn sort_trend_findings(findings: &mut [TrendFinding]) {
+    findings.sort_by(|a, b| {
+        a.code
+            .cmp(&b.code)
+            .then_with(|| a.path.cmp(&b.path))
+            .then_with(|| a.context.cmp(&b.context))
+            .then_with(|| a.fingerprint.cmp(&b.fingerprint))
+    });
+}
+
+fn render_markdown_findings(out: &mut String, heading: &str, findings: &[TrendFinding]) {
+    out.push_str(&format!("## {heading}\n\n"));
+    if findings.is_empty() {
+        out.push_str("_None._\n\n");
+        return;
+    }
+
+    out.push_str("| Code | Path | Context |\n| --- | --- | --- |\n");
+    for finding in findings {
+        out.push_str(&format!(
+            "| {} | {} | {} |\n",
+            escape_markdown_cell(&finding.code),
+            escape_markdown_cell(&finding.path),
+            escape_markdown_cell(&finding.context),
+        ));
+    }
+    out.push('\n');
+}
+
+fn render_html_findings(out: &mut String, heading: &str, findings: &[TrendFinding]) {
+    out.push_str(&format!("<section><h2>{}</h2>\n", escape_html(heading)));
+    if findings.is_empty() {
+        out.push_str("<p>None.</p></section>\n");
+        return;
+    }
+
+    out.push_str("<table><thead><tr><th>Code</th><th>Path</th><th>Context</th></tr></thead><tbody>\n");
+    for finding in findings {
+        out.push_str(&format!(
+            "<tr><td>{}</td><td>{}</td><td>{}</td></tr>\n",
+            escape_html(&finding.code),
+            escape_html(&finding.path),
+            escape_html(&finding.context),
+        ));
+    }
+    out.push_str("</tbody></table></section>\n");
+}
+
+fn escape_markdown_cell(value: &str) -> String {
+    // Markdown tables may be rendered with inline HTML enabled. Treat finding
+    // path/context as untrusted text, not as executable HTML tags/entities.
+    value
+        .replace('&', "&amp;")
+        .replace('<', "&lt;")
+        .replace('>', "&gt;")
+        .replace('\\', "\\\\")
+        .replace('|', "\\|")
+        .replace('\n', "<br>")
+        .replace('\r', "")
+}
+
+fn escape_html(value: &str) -> String {
+    value
+        .replace('&', "&amp;")
+        .replace('<', "&lt;")
+        .replace('>', "&gt;")
+        .replace('"', "&quot;")
+        .replace('\'', "&#39;")
 }
 
 // ── Core logic ────────────────────────────────────────────────────────────────
@@ -308,5 +505,52 @@ mod tests {
         let (new, stale) = apply_baseline(&baseline, &[]);
         assert!(new.is_empty());
         assert_eq!(stale.len(), 1);
+    }
+
+    #[test]
+    fn trend_categorizes_added_fixed_and_persistent_findings() {
+        let fixed = FlatFinding::new("S001", "src/fixed.rs:10", "old");
+        let persistent = FlatFinding::new("S002", "src/same.rs:20", "same");
+        let added = FlatFinding::new("S003", "src/new.rs:30", "new");
+        let baseline = Baseline {
+            version: 1,
+            created_at: String::new(),
+            total_suppressed: 2,
+            entries: vec![
+                BaselineEntry::from_flat(&persistent),
+                BaselineEntry::from_flat(&fixed),
+            ],
+        };
+
+        let trend = BaselineTrend::compare(&baseline, &[added.clone(), persistent.clone()]);
+
+        assert_eq!(trend.added.len(), 1);
+        assert_eq!(trend.added[0].fingerprint, added.fingerprint());
+        assert_eq!(trend.fixed.len(), 1);
+        assert_eq!(trend.fixed[0].fingerprint, fixed.fingerprint());
+        assert_eq!(trend.persistent.len(), 1);
+        assert_eq!(trend.persistent[0].fingerprint, persistent.fingerprint());
+    }
+
+    #[test]
+    fn trend_renderers_are_deterministic_and_escape_content() {
+        let unsafe_finding = FlatFinding::new("S099", "src/<demo>.rs:1", "left|right & <tag>");
+        let baseline = Baseline {
+            version: 1,
+            created_at: String::new(),
+            total_suppressed: 0,
+            entries: vec![],
+        };
+        let trend = BaselineTrend::compare(&baseline, &[unsafe_finding]);
+
+        let markdown = trend.render_markdown();
+        assert!(markdown.contains("| Added | 1 |"));
+        assert!(markdown.contains("left\\|right &amp; &lt;tag&gt;"));
+        assert!(markdown.contains("src/&lt;demo&gt;.rs:1"));
+
+        let html = trend.render_html();
+        assert!(html.contains("<tr><td>Added</td><td>1</td></tr>"));
+        assert!(html.contains("src/&lt;demo&gt;.rs"));
+        assert!(html.contains("left|right &amp; &lt;tag&gt;"));
     }
 }

@@ -292,6 +292,114 @@ fn test_baseline_update_flag_overwrites() {
     assert_ne!(created_at_1, created_at_2, "baseline should be refreshed");
 }
 
+
+#[test]
+fn test_baseline_trend_renders_markdown_and_html() {
+    let temp_dir = tempdir().unwrap();
+    let contract = temp_dir.path().join("contract.rs");
+    let fixture = env::current_dir()
+        .unwrap()
+        .join("tests/fixtures/vulnerable_contract.rs");
+    fs::copy(&fixture, &contract).unwrap();
+
+    Command::cargo_bin("sanctifier")
+        .unwrap()
+        .arg("baseline")
+        .arg(contract.to_str().unwrap())
+        .assert()
+        .success();
+
+    fs::write(&contract, "fn safe_function() {}\n").unwrap();
+
+    Command::cargo_bin("sanctifier")
+        .unwrap()
+        .arg("baseline")
+        .arg("--trend")
+        .arg(contract.to_str().unwrap())
+        .assert()
+        .success()
+        .stdout(predicates::str::contains("# Sanctifier Baseline Trend"))
+        .stdout(predicates::str::contains("| Fixed |"));
+
+    Command::cargo_bin("sanctifier")
+        .unwrap()
+        .arg("baseline")
+        .arg("--trend")
+        .arg("--format")
+        .arg("html")
+        .arg(contract.to_str().unwrap())
+        .assert()
+        .success()
+        .stdout(predicates::str::contains("<h1>Sanctifier Baseline Trend</h1>"))
+        .stdout(predicates::str::contains("<h2>Fixed</h2>"));
+}
+
+#[test]
+fn test_baseline_trend_refuses_to_overwrite_stored_baseline() {
+    let temp_dir = tempdir().unwrap();
+    let contract = temp_dir.path().join("contract.rs");
+    let fixture = env::current_dir()
+        .unwrap()
+        .join("tests/fixtures/vulnerable_contract.rs");
+    fs::copy(&fixture, &contract).unwrap();
+
+    Command::cargo_bin("sanctifier")
+        .unwrap()
+        .arg("baseline")
+        .arg(contract.to_str().unwrap())
+        .assert()
+        .success();
+
+    let baseline_path = temp_dir.path().join(".sanctify-baseline.json");
+    let before = fs::read_to_string(&baseline_path).unwrap();
+    fs::write(&contract, "fn safe_function() {}\n").unwrap();
+
+    Command::cargo_bin("sanctifier")
+        .unwrap()
+        .current_dir(temp_dir.path())
+        .arg("baseline")
+        .arg("--trend")
+        .arg("--output")
+        .arg(".sanctify-baseline.json")
+        .arg("contract.rs")
+        .assert()
+        .failure()
+        .stderr(predicates::str::contains(
+            "--output cannot overwrite the stored .sanctify-baseline.json",
+        ));
+
+    assert_eq!(fs::read_to_string(&baseline_path).unwrap(), before);
+
+    // A hard link resolves to a different pathname but shares the exact
+    // baseline inode. Trend output must not truncate either name.
+    #[cfg(unix)]
+    {
+        let alias_path = temp_dir.path().join("baseline-alias.json");
+        fs::hard_link(&baseline_path, &alias_path).unwrap();
+        assert_ne!(
+            fs::canonicalize(&alias_path).unwrap(),
+            fs::canonicalize(&baseline_path).unwrap()
+        );
+
+        Command::cargo_bin("sanctifier")
+            .unwrap()
+            .current_dir(temp_dir.path())
+            .arg("baseline")
+            .arg("--trend")
+            .arg("--output")
+            .arg("baseline-alias.json")
+            .arg("contract.rs")
+            .assert()
+            .failure()
+            .stderr(predicates::str::contains(
+                "--output cannot overwrite the stored .sanctify-baseline.json",
+            ));
+
+        assert_eq!(fs::read_to_string(&baseline_path).unwrap(), before);
+        assert_eq!(fs::read_to_string(&alias_path).unwrap(), before);
+    }
+}
+
 #[test]
 fn test_analyze_suppresses_baselined_findings() {
     let temp_dir = tempdir().unwrap();
