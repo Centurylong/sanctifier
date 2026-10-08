@@ -140,3 +140,11 @@ Worked examples that reproduce a real Soroban bug class, catch it with Sanctifie
 
 ## 📄 License
 MIT
+## CircleCI URL orb
+
+The [CircleCI integration guide](docs/circleci-orb.md) explains how to use
+[the reusable CircleCI orb](integrations/circleci/sanctifier-orb.yml) in a
+Soroban project. It installs the Sanctifier CLI, uploads the JSON scan report
+as a CircleCI artifact, and propagates any scan failure after artifact upload.
+An [example consumer configuration](integrations/circleci/example.config.yml)
+is included. CircleCI organization URL-orb allow-listing is required.

@@ -1,0 +1,15 @@
+# Copy into .circleci/config.yml in a Soroban consumer repository.
+# URL-orb sources must be allow-listed in CircleCI organization settings.
+# This example uses the public development branch before the upstream PR merges.
+version: 2.1
+
+orbs:
+  sanctifier: https://raw.githubusercontent.com/woahwhattheheck/sanctifier/refs/heads/gf708-circleci-url-orb-20261008/integrations/circleci/sanctifier-orb.yml
+
+workflows:
+  security:
+    jobs:
+      - sanctifier/scan:
+          path: contracts/amm-pool
+          artifacts_dir: artifacts/sanctifier
+          git_revision: 9f6f9e4302f1982e044ab6d308782bfd9fb03255

@@ -1,0 +1,85 @@
+version: 2.1
+description: Run Sanctifier for Soroban contracts and upload the JSON findings report.
+display:
+  home_url: https://github.com/Centurylong/sanctifier
+  source_url: https://github.com/Centurylong/sanctifier
+
+commands:
+  analyze:
+    description: Install Sanctifier, analyze a Soroban contract and retain the findings report.
+    parameters:
+      path:
+        type: string
+        default: "."
+      artifacts_dir:
+        type: string
+        default: artifacts/sanctifier
+      git_revision:
+        type: string
+        default: ""
+        description: Optional immutable Sanctifier source commit SHA.
+    steps:
+      - run:
+          name: Install Sanctifier build dependencies
+          command: |
+            # The default CLI links against system Z3 and DBus.
+            sudo apt-get update -qq
+            sudo apt-get install -y --no-install-recommends clang pkg-config libz3-dev libdbus-1-dev
+      - run:
+          name: Install Sanctifier
+          environment:
+            SANCTIFIER_GIT_REVISION: << parameters.git_revision >>
+          command: |
+            set -eu
+            # sanctifier-cli is its own nested Cargo workspace; installing a
+            # package from the repository root does not discover this binary.
+            source_dir=$(mktemp -d)
+            if [ -n "$SANCTIFIER_GIT_REVISION" ]; then
+              git clone https://github.com/Centurylong/sanctifier.git "$source_dir"
+              git -C "$source_dir" checkout --detach "$SANCTIFIER_GIT_REVISION"
+            else
+              git clone --depth 1 https://github.com/Centurylong/sanctifier.git "$source_dir"
+            fi
+            cargo install --locked --path "$source_dir/tooling/sanctifier-cli"
+      - run:
+          name: Run Sanctifier analysis
+          environment:
+            SCAN_PATH: << parameters.path >>
+            REPORT_DIR: << parameters.artifacts_dir >>
+          command: |
+            mkdir -p "$REPORT_DIR"
+            scan_status=0
+            sanctifier analyze "$SCAN_PATH" --format json > "$REPORT_DIR/report.json" || scan_status=$?
+            echo "$scan_status" > "$REPORT_DIR/exit-code"
+      - store_artifacts:
+          path: << parameters.artifacts_dir >>
+          destination: sanctifier
+      - run:
+          name: Enforce scan result
+          environment:
+            REPORT_DIR: << parameters.artifacts_dir >>
+          command: |
+            scan_status=$(cat "$REPORT_DIR/exit-code")
+            exit "$scan_status"
+
+jobs:
+  scan:
+    description: Scan a Soroban contract and publish the security report.
+    docker:
+      - image: cimg/rust:1.85
+    parameters:
+      path:
+        type: string
+        default: "."
+      artifacts_dir:
+        type: string
+        default: artifacts/sanctifier
+      git_revision:
+        type: string
+        default: ""
+    steps:
+      - checkout
+      - analyze:
+          path: << parameters.path >>
+          artifacts_dir: << parameters.artifacts_dir >>
+          git_revision: << parameters.git_revision >>
