@@ -15,7 +15,7 @@ ark-std       = { version = "0.4", features = ["std"] }
 ark-serialize = { version = "0.4", features = ["derive"] }
 ark-snark     = "0.4"
 ark-crypto-primitives = { version = "0.4", features = ["r1cs", "sponge"] }
-sha2       = "0.10"
+sha2       = "0.11"
 hex        = "0.4"
 anyhow     = "1.0"
 serde      = { version = "1.0", features = ["derive"] }
