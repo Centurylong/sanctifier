@@ -3,8 +3,6 @@
 *.swp
 .DS_Store
 
-.env.local
-.env
 node_modulessanc/
 
 # JS/TS packages
@@ -25,3 +23,4 @@ data/reports/*.json
 # cargo-mutants scratch/report output (see scripts/run-mutation-tests.sh)
 mutants.out/
 mutants.out.old/
+config.bat
