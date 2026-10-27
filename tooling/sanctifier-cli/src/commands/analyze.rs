@@ -6,7 +6,9 @@ use colored::*;
 use sanctifier_core::baseline::{apply_baseline, load_baseline, BaselineEntry};
 use sanctifier_core::finding_codes;
 use sanctifier_core::memory::{MemoryGuard, MemoryTracker};
-use sanctifier_core::{Analyzer, SanctifyConfig, SizeWarningLevel};
+use sanctifier_core::{
+    Analyzer, FailOnLevel, RuleSeverity, SanctifyConfig, SeveritySummary, SizeWarningLevel,
+};
 use serde_json;
 use std::fs;
 use std::io::{self, Write};
@@ -46,6 +48,10 @@ pub struct AnalyzeArgs {
     /// Abort the scan if peak RSS exceeds this limit (in MB).
     #[arg(long)]
     pub max_memory: Option<u64>,
+
+    /// Exit with non-zero status when findings at or above this severity exist (critical, high, medium, low, none)
+    #[arg(long, value_name = "LEVEL")]
+    pub fail_on: Option<FailOnLevel>,
 }
 
 pub fn exec(args: AnalyzeArgs) -> anyhow::Result<()> {
@@ -457,15 +463,79 @@ pub fn exec(args: AnalyzeArgs) -> anyhow::Result<()> {
         );
     }
 
-    let has_critical =
-        !auth_gaps.is_empty() || panic_issues.iter().any(|p| p.issue_type == "panic!");
-    let has_high = !arithmetic_issues.is_empty()
-        || !panic_issues.is_empty()
-        || !smt_issues.is_empty()
-        || !unhandled_results.is_empty()
-        || size_warnings
+    let critical_count = auth_gaps.len()
+        + panic_issues
             .iter()
-            .any(|w| w.level == SizeWarningLevel::ExceedsLimit);
+            .filter(|p| p.issue_type == "panic!")
+            .count()
+        + vuln_matches
+            .iter()
+            .filter(|m| m.severity.eq_ignore_ascii_case("critical"))
+            .count();
+    let high_count = arithmetic_issues.len()
+        + panic_issues
+            .iter()
+            .filter(|p| p.issue_type != "panic!")
+            .count()
+        + smt_issues.len()
+        + unhandled_results.len()
+        + size_warnings
+            .iter()
+            .filter(|w| w.level == SizeWarningLevel::ExceedsLimit)
+            .count()
+        + custom_matches
+            .iter()
+            .filter(|m| m.severity == RuleSeverity::Error)
+            .count()
+        + vuln_matches
+            .iter()
+            .filter(|m| m.severity.eq_ignore_ascii_case("high"))
+            .count();
+    let medium_count = collisions.len()
+        + unsafe_patterns.len()
+        + size_warnings
+            .iter()
+            .filter(|w| w.level == SizeWarningLevel::ApproachingLimit)
+            .count()
+        + upgrade_reports
+            .iter()
+            .map(|r| r.findings.len())
+            .sum::<usize>()
+        + custom_matches
+            .iter()
+            .filter(|m| m.severity == RuleSeverity::Warning)
+            .count()
+        + vuln_matches
+            .iter()
+            .filter(|m| m.severity.eq_ignore_ascii_case("medium"))
+            .count();
+    let low_count = event_issues.len()
+        + custom_matches
+            .iter()
+            .filter(|m| m.severity == RuleSeverity::Info)
+            .count()
+        + vuln_matches
+            .iter()
+            .filter(|m| {
+                !matches!(
+                    m.severity.to_ascii_lowercase().as_str(),
+                    "critical" | "high" | "medium"
+                )
+            })
+            .count();
+
+    let configured_fail_on = args.fail_on.or(analyzer.config.fail_on);
+    let effective_fail_on = configured_fail_on.unwrap_or(FailOnLevel::High);
+    let severity_summary = SeveritySummary::from_counts(
+        critical_count,
+        high_count,
+        medium_count,
+        low_count,
+        effective_fail_on,
+    );
+
+    let has_critical = critical_count > 0;
+    let has_high = high_count > 0 || panic_issues.iter().any(|p| p.issue_type == "panic!");
     let timestamp = chrono_timestamp();
 
     let webhook_payload = ScanWebhookPayload {
@@ -553,7 +623,16 @@ pub fn exec(args: AnalyzeArgs) -> anyhow::Result<()> {
                 "smt_issues": smt_issues.len(),
                 "has_critical": has_critical,
                 "has_high": has_high,
+                "by_severity": {
+                    "critical": severity_summary.critical,
+                    "high": severity_summary.high,
+                    "medium": severity_summary.medium,
+                    "low": severity_summary.low,
+                },
+                "fail_on": severity_summary.fail_on,
+                "should_fail": severity_summary.should_fail,
             },
+            "severity_summary": severity_summary,
             "findings": {
                 "storage_collisions": collisions.iter().map(|c| serde_json::json!({
                     "code": finding_codes::STORAGE_COLLISION,
@@ -642,7 +721,7 @@ pub fn exec(args: AnalyzeArgs) -> anyhow::Result<()> {
             );
         }
 
-        if has_critical || has_high {
+        if severity_summary.should_fail {
             std::process::exit(1);
         }
         return Ok(());
@@ -829,7 +908,16 @@ pub fn exec(args: AnalyzeArgs) -> anyhow::Result<()> {
         }
     }
 
-    println!("\n{} Static analysis complete.", "✨".green());
+    println!(
+        "\n📊 Severity Summary: {} critical, {} high, {} medium, {} low (total: {}, fail-on: {})",
+        severity_summary.critical,
+        severity_summary.high,
+        severity_summary.medium,
+        severity_summary.low,
+        severity_summary.total,
+        severity_summary.fail_on
+    );
+    println!("{} Static analysis complete.", "✨".green());
 
     if args.profile {
         let snap = mem_tracker.sample();
@@ -839,6 +927,10 @@ pub fn exec(args: AnalyzeArgs) -> anyhow::Result<()> {
             snap.current_rss_kb / 1024,
             snap.peak_rss_kb / 1024
         );
+    }
+
+    if configured_fail_on.is_some() && severity_summary.should_fail {
+        std::process::exit(1);
     }
 
     Ok(())

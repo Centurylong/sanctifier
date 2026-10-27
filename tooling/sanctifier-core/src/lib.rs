@@ -254,6 +254,94 @@ pub enum RuleSeverity {
     Error,
 }
 
+/// Exit-policy threshold level for gating CI / CLI exits by finding severity.
+#[derive(Debug, Serialize, Deserialize, Clone, Copy, PartialEq, Eq, Default)]
+#[serde(rename_all = "lowercase")]
+pub enum FailOnLevel {
+    Critical,
+    #[default]
+    High,
+    Medium,
+    Low,
+    None,
+}
+
+impl FailOnLevel {
+    pub fn as_str(&self) -> &'static str {
+        match self {
+            Self::Critical => "critical",
+            Self::High => "high",
+            Self::Medium => "medium",
+            Self::Low => "low",
+            Self::None => "none",
+        }
+    }
+}
+
+impl std::fmt::Display for FailOnLevel {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.as_str())
+    }
+}
+
+impl std::str::FromStr for FailOnLevel {
+    type Err = String;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s.trim().to_ascii_lowercase().as_str() {
+            "critical" => Ok(Self::Critical),
+            "high" => Ok(Self::High),
+            "medium" => Ok(Self::Medium),
+            "low" => Ok(Self::Low),
+            "none" => Ok(Self::None),
+            other => Err(format!(
+                "invalid fail-on level '{}'; expected one of: critical, high, medium, low, none",
+                other
+            )),
+        }
+    }
+}
+
+/// Aggregated count of findings grouped by severity tier and evaluated exit policy.
+#[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq, Default)]
+pub struct SeveritySummary {
+    pub critical: usize,
+    pub high: usize,
+    pub medium: usize,
+    pub low: usize,
+    pub total: usize,
+    pub fail_on: FailOnLevel,
+    pub should_fail: bool,
+}
+
+impl SeveritySummary {
+    pub fn from_counts(
+        critical: usize,
+        high: usize,
+        medium: usize,
+        low: usize,
+        fail_on: FailOnLevel,
+    ) -> Self {
+        let total = critical + high + medium + low;
+        let should_fail = match fail_on {
+            FailOnLevel::Critical => critical > 0,
+            FailOnLevel::High => critical > 0 || high > 0,
+            FailOnLevel::Medium => critical > 0 || high > 0 || medium > 0,
+            FailOnLevel::Low => total > 0,
+            FailOnLevel::None => false,
+        };
+        Self {
+            critical,
+            high,
+            medium,
+            low,
+            total,
+            fail_on,
+            should_fail,
+        }
+    }
+}
+
 /// User-defined regex-based rule. Defined in .sanctify.toml under [[custom_rules]].
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct CustomRule {
@@ -286,6 +374,8 @@ pub struct SanctifyConfig {
     pub strict_mode: bool,
     #[serde(default)]
     pub custom_rules: Vec<CustomRule>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub fail_on: Option<FailOnLevel>,
 }
 
 fn default_ignore_paths() -> Vec<String> {
@@ -319,6 +409,7 @@ impl Default for SanctifyConfig {
             approaching_threshold: default_approaching_threshold(),
             strict_mode: false,
             custom_rules: vec![],
+            fail_on: None,
         }
     }
 }
@@ -2599,5 +2690,36 @@ mod tests {
 
         let collisions = analyzer.scan_storage_collisions(source);
         assert!(collisions.is_empty());
+    }
+
+    #[test]
+    fn test_fail_on_level_parsing_and_severity_summary() {
+        use std::str::FromStr;
+
+        assert_eq!(
+            FailOnLevel::from_str("critical").unwrap(),
+            FailOnLevel::Critical
+        );
+        assert_eq!(FailOnLevel::from_str("HIGH").unwrap(), FailOnLevel::High);
+        assert_eq!(
+            FailOnLevel::from_str("Medium").unwrap(),
+            FailOnLevel::Medium
+        );
+        assert_eq!(FailOnLevel::from_str("low").unwrap(), FailOnLevel::Low);
+        assert_eq!(FailOnLevel::from_str("none").unwrap(), FailOnLevel::None);
+        assert!(FailOnLevel::from_str("invalid").is_err());
+
+        let summary_crit = SeveritySummary::from_counts(0, 1, 2, 3, FailOnLevel::Critical);
+        assert_eq!(summary_crit.total, 6);
+        assert!(!summary_crit.should_fail);
+
+        let summary_high = SeveritySummary::from_counts(0, 1, 2, 3, FailOnLevel::High);
+        assert!(summary_high.should_fail);
+
+        let summary_med = SeveritySummary::from_counts(0, 0, 1, 3, FailOnLevel::Medium);
+        assert!(summary_med.should_fail);
+
+        let summary_none = SeveritySummary::from_counts(2, 2, 2, 2, FailOnLevel::None);
+        assert!(!summary_none.should_fail);
     }
 }
