@@ -5,6 +5,7 @@ pub mod counterexample_render;
 pub mod finding_codes;
 pub mod gas_estimator;
 pub mod gas_report;
+pub mod init_wizard;
 pub mod invariant;
 pub mod invariant_library;
 pub mod macro_expand;
