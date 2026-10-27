@@ -38,6 +38,7 @@ impl ConfigGenerator {
                 },
             ],
             approaching_threshold: 0.8,
+            fail_on: None,
         }
     }
 }

@@ -449,3 +449,61 @@ fn test_analyze_profile_works_with_json_output() {
         stderr
     );
 }
+
+#[test]
+fn test_analyze_fail_on_level_gates_exit_code_and_reports_severity_summary() {
+    let fixture_path = env::current_dir()
+        .unwrap()
+        .join("tests/fixtures/vulnerable_contract.rs");
+
+    // --fail-on high should fail on vulnerable_contract.rs
+    Command::cargo_bin("sanctifier")
+        .unwrap()
+        .arg("analyze")
+        .arg(&fixture_path)
+        .arg("--fail-on")
+        .arg("high")
+        .assert()
+        .failure()
+        .stdout(predicates::str::contains("Severity Summary:"));
+
+    // --fail-on none should succeed even when critical/high findings exist (in both text and json modes)
+    let output = Command::cargo_bin("sanctifier")
+        .unwrap()
+        .arg("analyze")
+        .arg(&fixture_path)
+        .arg("--format")
+        .arg("json")
+        .arg("--fail-on")
+        .arg("none")
+        .output()
+        .unwrap();
+
+    assert!(output.status.success(), "--fail-on none must exit 0");
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    let json: serde_json::Value = serde_json::from_str(&stdout).unwrap();
+    assert_eq!(json["summary"]["fail_on"], "none");
+    assert_eq!(json["summary"]["should_fail"], false);
+    assert!(json["summary"]["by_severity"]["critical"].as_u64().unwrap_or(0) > 0);
+    assert_eq!(json["severity_summary"]["fail_on"], "none");
+    assert_eq!(json["severity_summary"]["should_fail"], false);
+}
+
+#[test]
+fn test_analyze_respects_fail_on_from_sanctify_toml() {
+    let temp_dir = tempdir().unwrap();
+    let contract = temp_dir.path().join("contract.rs");
+    let fixture = env::current_dir()
+        .unwrap()
+        .join("tests/fixtures/vulnerable_contract.rs");
+    fs::copy(&fixture, &contract).unwrap();
+    fs::write(temp_dir.path().join(".sanctify.toml"), "fail_on = \"high\"\n").unwrap();
+
+    Command::cargo_bin("sanctifier")
+        .unwrap()
+        .arg("analyze")
+        .arg(&contract)
+        .assert()
+        .failure()
+        .stdout(predicates::str::contains("fail-on: high"));
+}
