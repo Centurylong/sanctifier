@@ -13,6 +13,7 @@ pub mod parse_cache;
 pub mod patcher;
 pub mod priority;
 pub mod public_input_consistency;
+pub mod report_schema;
 pub mod rule_scaffold;
 pub mod rules;
 #[cfg(feature = "smt")]
@@ -26,6 +27,10 @@ use syn::spanned::Spanned;
 use syn::visit::{self, Visit};
 use syn::{parse_str, Fields, File, Item, Meta, Type};
 
+pub use report_schema::{
+    report_json_schema_v1, validate_report_json_v1, REPORT_SCHEMA_ID, REPORT_SCHEMA_V1_JSON,
+    REPORT_SCHEMA_VERSION,
+};
 pub use rules::{Rule, RuleRegistry, RuleViolation, Severity};
 
 // Redundant imports removed

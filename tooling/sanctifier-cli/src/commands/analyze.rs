@@ -6,7 +6,10 @@ use colored::*;
 use sanctifier_core::baseline::{apply_baseline, load_baseline, BaselineEntry};
 use sanctifier_core::finding_codes;
 use sanctifier_core::memory::{MemoryGuard, MemoryTracker};
-use sanctifier_core::{Analyzer, SanctifyConfig, SizeWarningLevel};
+use sanctifier_core::{
+    Analyzer, SanctifyConfig, SizeWarningLevel, REPORT_SCHEMA_ID, REPORT_SCHEMA_V1_JSON,
+    REPORT_SCHEMA_VERSION,
+};
 use serde_json;
 use std::fs;
 use std::io::{self, Write};
@@ -46,9 +49,18 @@ pub struct AnalyzeArgs {
     /// Abort the scan if peak RSS exceeds this limit (in MB).
     #[arg(long)]
     pub max_memory: Option<u64>,
+
+    /// Print the versioned JSON Schema for `sanctifier analyze --format json` and exit.
+    #[arg(long)]
+    pub print_schema: bool,
 }
 
 pub fn exec(args: AnalyzeArgs) -> anyhow::Result<()> {
+    if args.print_schema {
+        print!("{}", REPORT_SCHEMA_V1_JSON);
+        return Ok(());
+    }
+
     let path = &args.path;
     let format = &args.format;
     let _limit = args.limit;
@@ -515,6 +527,8 @@ pub fn exec(args: AnalyzeArgs) -> anyhow::Result<()> {
             .map(|e| serde_json::json!({ "fingerprint": e.fingerprint, "code": e.code, "path": e.path, "context": e.context }))
             .collect();
         let report = serde_json::json!({
+            "$schema": REPORT_SCHEMA_ID,
+            "schema_version": REPORT_SCHEMA_VERSION,
             "storage_collisions": collisions,
             "ledger_size_warnings": size_warnings,
             "unsafe_patterns": unsafe_patterns,
@@ -533,6 +547,7 @@ pub fn exec(args: AnalyzeArgs) -> anyhow::Result<()> {
                 "timestamp": timestamp,
                 "project_path": path.display().to_string(),
                 "format": "sanctifier-ci-v1",
+                "schema_version": REPORT_SCHEMA_VERSION,
             },
             "baseline": {
                 "suppressed_count": suppressed_count,

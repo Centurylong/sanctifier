@@ -449,3 +449,40 @@ fn test_analyze_profile_works_with_json_output() {
         stderr
     );
 }
+
+#[test]
+fn test_analyze_json_output_conforms_to_published_v1_schema() {
+    use sanctifier_core::{
+        validate_report_json_v1, REPORT_SCHEMA_ID, REPORT_SCHEMA_V1_JSON, REPORT_SCHEMA_VERSION,
+    };
+
+    let print_output = Command::cargo_bin("sanctifier")
+        .unwrap()
+        .arg("analyze")
+        .arg("--print-schema")
+        .output()
+        .unwrap();
+    assert!(print_output.status.success());
+    let printed_schema_str = String::from_utf8_lossy(&print_output.stdout);
+    assert_eq!(printed_schema_str, REPORT_SCHEMA_V1_JSON);
+
+    let fixture_path = env::current_dir()
+        .unwrap()
+        .join("tests/fixtures/valid_contract.rs");
+    let output = Command::cargo_bin("sanctifier")
+        .unwrap()
+        .arg("analyze")
+        .arg(fixture_path)
+        .arg("--format")
+        .arg("json")
+        .output()
+        .unwrap();
+    assert!(output.status.success());
+
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    let report: serde_json::Value = serde_json::from_str(&stdout).unwrap();
+    assert_eq!(report["$schema"], REPORT_SCHEMA_ID);
+    assert_eq!(report["schema_version"], REPORT_SCHEMA_VERSION);
+    assert_eq!(report["metadata"]["schema_version"], REPORT_SCHEMA_VERSION);
+    validate_report_json_v1(&report).expect("valid_contract report must conform to v1 JSON schema");
+}
