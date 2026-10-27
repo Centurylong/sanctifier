@@ -1,0 +1,178 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sanctifier.dev/schemas/sanctifier-report.v1.schema.json",
+  "title": "Sanctifier Analysis Report (v1)",
+  "description": "Versioned JSON output schema for `sanctifier analyze --format json` and `sanctifier ci --format json`.",
+  "type": "object",
+  "required": [
+    "$schema",
+    "schema_version",
+    "storage_collisions",
+    "ledger_size_warnings",
+    "unsafe_patterns",
+    "auth_gaps",
+    "panic_issues",
+    "arithmetic_issues",
+    "custom_rules",
+    "event_issues",
+    "unhandled_results",
+    "upgrade_reports",
+    "smt_issues",
+    "vulnerability_db_matches",
+    "vulnerability_db_version",
+    "metadata",
+    "baseline",
+    "error_codes",
+    "summary",
+    "findings"
+  ],
+  "properties": {
+    "$schema": {
+      "type": "string",
+      "const": "https://sanctifier.dev/schemas/sanctifier-report.v1.schema.json"
+    },
+    "schema_version": {
+      "type": "string",
+      "const": "1.0.0"
+    },
+    "storage_collisions": {
+      "type": "array",
+      "items": { "type": "object" }
+    },
+    "ledger_size_warnings": {
+      "type": "array",
+      "items": { "type": "object" }
+    },
+    "unsafe_patterns": {
+      "type": "array",
+      "items": { "type": "object" }
+    },
+    "auth_gaps": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "panic_issues": {
+      "type": "array",
+      "items": { "type": "object" }
+    },
+    "arithmetic_issues": {
+      "type": "array",
+      "items": { "type": "object" }
+    },
+    "custom_rules": {
+      "type": "array",
+      "items": { "type": "object" }
+    },
+    "event_issues": {
+      "type": "array",
+      "items": { "type": "object" }
+    },
+    "unhandled_results": {
+      "type": "array",
+      "items": { "type": "object" }
+    },
+    "upgrade_reports": {
+      "type": "array",
+      "items": { "type": "object" }
+    },
+    "smt_issues": {
+      "type": "array",
+      "items": { "type": "object" }
+    },
+    "vulnerability_db_matches": {
+      "type": "array",
+      "items": { "type": "object" }
+    },
+    "vulnerability_db_version": {
+      "type": "string"
+    },
+    "metadata": {
+      "type": "object",
+      "required": ["version", "timestamp", "project_path", "format", "schema_version"],
+      "properties": {
+        "version": { "type": "string" },
+        "timestamp": { "type": "string" },
+        "project_path": { "type": "string" },
+        "format": { "type": "string", "const": "sanctifier-ci-v1" },
+        "schema_version": { "type": "string", "const": "1.0.0" }
+      }
+    },
+    "baseline": {
+      "type": "object",
+      "required": ["suppressed_count", "stale_entries"],
+      "properties": {
+        "suppressed_count": { "type": "integer", "minimum": 0 },
+        "stale_entries": {
+          "type": "array",
+          "items": { "type": "object" }
+        }
+      }
+    },
+    "error_codes": {
+      "type": "array",
+      "items": { "type": "object" }
+    },
+    "summary": {
+      "type": "object",
+      "required": [
+        "total_findings",
+        "storage_collisions",
+        "auth_gaps",
+        "panic_issues",
+        "arithmetic_issues",
+        "size_warnings",
+        "unsafe_patterns",
+        "custom_rule_matches",
+        "event_issues",
+        "unhandled_results",
+        "smt_issues",
+        "has_critical",
+        "has_high"
+      ],
+      "properties": {
+        "total_findings": { "type": "integer", "minimum": 0 },
+        "storage_collisions": { "type": "integer", "minimum": 0 },
+        "auth_gaps": { "type": "integer", "minimum": 0 },
+        "panic_issues": { "type": "integer", "minimum": 0 },
+        "arithmetic_issues": { "type": "integer", "minimum": 0 },
+        "size_warnings": { "type": "integer", "minimum": 0 },
+        "unsafe_patterns": { "type": "integer", "minimum": 0 },
+        "custom_rule_matches": { "type": "integer", "minimum": 0 },
+        "event_issues": { "type": "integer", "minimum": 0 },
+        "unhandled_results": { "type": "integer", "minimum": 0 },
+        "smt_issues": { "type": "integer", "minimum": 0 },
+        "has_critical": { "type": "boolean" },
+        "has_high": { "type": "boolean" }
+      }
+    },
+    "findings": {
+      "type": "object",
+      "required": [
+        "storage_collisions",
+        "ledger_size_warnings",
+        "unsafe_patterns",
+        "auth_gaps",
+        "panic_issues",
+        "arithmetic_issues",
+        "custom_rules",
+        "event_issues",
+        "unhandled_results",
+        "upgrade_risks",
+        "smt_issues"
+      ],
+      "properties": {
+        "storage_collisions": { "type": "array", "items": { "type": "object" } },
+        "ledger_size_warnings": { "type": "array", "items": { "type": "object" } },
+        "unsafe_patterns": { "type": "array", "items": { "type": "object" } },
+        "auth_gaps": { "type": "array", "items": { "type": "object" } },
+        "panic_issues": { "type": "array", "items": { "type": "object" } },
+        "arithmetic_issues": { "type": "array", "items": { "type": "object" } },
+        "custom_rules": { "type": "array", "items": { "type": "object" } },
+        "event_issues": { "type": "array", "items": { "type": "object" } },
+        "unhandled_results": { "type": "array", "items": { "type": "object" } },
+        "upgrade_risks": { "type": "array", "items": { "type": "object" } },
+        "smt_issues": { "type": "array", "items": { "type": "object" } }
+      }
+    }
+  }
+}
