@@ -6,6 +6,10 @@ use colored::*;
 use sanctifier_core::baseline::{apply_baseline, load_baseline, BaselineEntry};
 use sanctifier_core::finding_codes;
 use sanctifier_core::memory::{MemoryGuard, MemoryTracker};
+use sanctifier_core::suppression_audit::{
+    audit_source_suppressions, build_suppression_audit_report, SuppressionAuditEntry,
+    SuppressionAuditReport, SuppressionStatus,
+};
 use sanctifier_core::{Analyzer, SanctifyConfig, SizeWarningLevel};
 use serde_json;
 use std::fs;
@@ -46,6 +50,10 @@ pub struct AnalyzeArgs {
     /// Abort the scan if peak RSS exceeds this limit (in MB).
     #[arg(long)]
     pub max_memory: Option<u64>,
+
+    /// Report all inline suppressions with their justifications and flag missing or weak justifications.
+    #[arg(long)]
+    pub audit_suppressions: bool,
 }
 
 pub fn exec(args: AnalyzeArgs) -> anyhow::Result<()> {
@@ -191,6 +199,7 @@ pub fn exec(args: AnalyzeArgs) -> anyhow::Result<()> {
     }
 
     // ── Inline suppression ───────────────────────────────────────────────────
+    let suppression_report = collect_suppression_audit(path, &analyzer.config.ignore_paths);
     let mut inline_suppressions: std::collections::HashMap<String, Vec<(usize, String, String)>> = std::collections::HashMap::new();
 
     let mut get_suppressions = |file_path: &str| -> Vec<(usize, String, String)> {
@@ -199,20 +208,35 @@ pub fn exec(args: AnalyzeArgs) -> anyhow::Result<()> {
         }
         let mut supps = Vec::new();
         if let Ok(content) = fs::read_to_string(file_path) {
-            for (i, line) in content.lines().enumerate() {
-                if let Some(idx) = line.find("// sanctifier-ignore:") {
-                    let rest = line[idx + "// sanctifier-ignore:".len()..].trim();
-                    if let Some((code, justification)) = rest.split_once('-') {
-                        let justification = justification.trim();
-                        if justification.is_empty() {
-                            if !is_json {
-                                eprintln!("{} Warning: Inline suppression missing justification at {}:{}", "⚠️".yellow(), file_path, i + 1);
-                            }
-                        } else {
-                            supps.push((i + 1, code.trim().to_string(), justification.to_string()));
+            for entry in audit_source_suppressions(file_path, &content) {
+                match entry.status {
+                    SuppressionStatus::Valid => {
+                        supps.push((
+                            entry.line,
+                            entry.rule_code,
+                            entry.justification.unwrap_or_default(),
+                        ));
+                    }
+                    SuppressionStatus::WeakJustification => {
+                        if !is_json {
+                            eprintln!(
+                                "{} Warning: Inline suppression has weak justification at {}:{} ({})",
+                                "⚠️".yellow(),
+                                file_path,
+                                entry.line,
+                                entry.flag_reason.as_deref().unwrap_or("weak justification")
+                            );
                         }
-                    } else if !is_json {
-                        eprintln!("{} Warning: Inline suppression missing justification at {}:{}", "⚠️".yellow(), file_path, i + 1);
+                    }
+                    SuppressionStatus::MissingJustification | SuppressionStatus::MissingRuleCode => {
+                        if !is_json {
+                            eprintln!(
+                                "{} Warning: Inline suppression missing justification at {}:{}",
+                                "⚠️".yellow(),
+                                file_path,
+                                entry.line
+                            );
+                        }
                     }
                 }
             }
@@ -538,6 +562,7 @@ pub fn exec(args: AnalyzeArgs) -> anyhow::Result<()> {
                 "suppressed_count": suppressed_count,
                 "stale_entries": stale_json,
             },
+            "suppression_audit": suppression_report,
             "error_codes": finding_codes::all_finding_codes(),
             "summary": {
                 "total_findings": total_findings,
@@ -642,7 +667,10 @@ pub fn exec(args: AnalyzeArgs) -> anyhow::Result<()> {
             );
         }
 
-        if has_critical || has_high {
+        if has_critical
+            || has_high
+            || (args.audit_suppressions && suppression_report.has_flagged_entries())
+        {
             std::process::exit(1);
         }
         return Ok(());
@@ -831,6 +859,10 @@ pub fn exec(args: AnalyzeArgs) -> anyhow::Result<()> {
 
     println!("\n{} Static analysis complete.", "✨".green());
 
+    if args.audit_suppressions {
+        print_suppression_audit_report(&suppression_report);
+    }
+
     if args.profile {
         let snap = mem_tracker.sample();
         eprintln!(
@@ -841,7 +873,89 @@ pub fn exec(args: AnalyzeArgs) -> anyhow::Result<()> {
         );
     }
 
+    if args.audit_suppressions && suppression_report.has_flagged_entries() {
+        std::process::exit(1);
+    }
+
     Ok(())
+}
+
+fn collect_suppression_audit(path: &Path, ignore_paths: &[String]) -> SuppressionAuditReport {
+    let mut entries: Vec<SuppressionAuditEntry> = Vec::new();
+    collect_suppression_entries_recursive(path, ignore_paths, &mut entries);
+    build_suppression_audit_report(entries)
+}
+
+fn collect_suppression_entries_recursive(
+    path: &Path,
+    ignore_paths: &[String],
+    entries: &mut Vec<SuppressionAuditEntry>,
+) {
+    if path.is_dir() {
+        let Ok(read_dir) = fs::read_dir(path) else {
+            return;
+        };
+        for entry in read_dir.flatten() {
+            let child = entry.path();
+            if child.is_dir() {
+                if ignore_paths.iter().any(|p| child.ends_with(p)) {
+                    continue;
+                }
+                collect_suppression_entries_recursive(&child, ignore_paths, entries);
+            } else if child.extension().and_then(|s| s.to_str()) == Some("rs") {
+                if let Ok(content) = fs::read_to_string(&child) {
+                    let file_name = child.display().to_string();
+                    entries.extend(audit_source_suppressions(&file_name, &content));
+                }
+            }
+        }
+    } else if path.extension().and_then(|s| s.to_str()) == Some("rs") {
+        if let Ok(content) = fs::read_to_string(path) {
+            let file_name = path.display().to_string();
+            entries.extend(audit_source_suppressions(&file_name, &content));
+        }
+    }
+}
+
+fn print_suppression_audit_report(report: &SuppressionAuditReport) {
+    println!(
+        "\n{} Inline Suppression Audit ({} total: {} valid, {} missing justification, {} weak justification)",
+        "📋".blue(),
+        report.total_suppressions,
+        report.valid_count,
+        report.missing_justification_count,
+        report.weak_justification_count
+    );
+    for entry in &report.entries {
+        let status_label = match entry.status {
+            SuppressionStatus::Valid => "VALID".green(),
+            SuppressionStatus::WeakJustification => "WEAK".yellow(),
+            SuppressionStatus::MissingJustification => "MISSING_JUSTIFICATION".red(),
+            SuppressionStatus::MissingRuleCode => "MISSING_RULE_CODE".red(),
+        };
+        let author = entry
+            .author
+            .as_deref()
+            .map(|a| format!(" (by @{a})"))
+            .unwrap_or_default();
+        let justification = entry.justification.as_deref().unwrap_or("<none>");
+        println!(
+            "   [{}] {}:{} rule={}{} — {}",
+            status_label,
+            entry.file,
+            entry.line,
+            if entry.rule_code.is_empty() {
+                "<missing>"
+            } else {
+                &entry.rule_code
+            },
+            author,
+            justification
+        );
+        if let Some(reason) = &entry.flag_reason {
+            println!("      Flagged: {}", reason);
+        }
+    }
 }
 
 fn chrono_timestamp() -> String {

@@ -18,6 +18,7 @@ pub mod rules;
 #[cfg(feature = "smt")]
 pub mod smt;
 mod storage_collision;
+pub mod suppression_audit;
 pub mod symbolic;
 pub mod triage;
 pub mod wasm;

@@ -449,3 +449,33 @@ fn test_analyze_profile_works_with_json_output() {
         stderr
     );
 }
+
+#[test]
+fn test_analyze_audit_suppressions_reports_and_flags_weak_or_missing_justifications() {
+    let temp_dir = tempdir().unwrap();
+    let src = temp_dir.path().join("suppressed_contract.rs");
+    fs::write(
+        &src,
+        r#"
+#[contractimpl]
+impl Token {
+    // sanctifier-ignore: S001 - (@alice) Admin check is enforced by the upstream factory contract
+    pub fn set_config(env: Env, val: u32) {
+        // sanctifier-ignore: S002 - todo
+        let _ = val + 1;
+    }
+}
+"#,
+    )
+    .unwrap();
+
+    let mut cmd = Command::cargo_bin("sanctifier").unwrap();
+    cmd.arg("analyze")
+        .arg(&src)
+        .arg("--audit-suppressions")
+        .assert()
+        .failure()
+        .stdout(predicates::str::contains("Inline Suppression Audit"))
+        .stdout(predicates::str::contains("rule=S001 (by @alice)"))
+        .stdout(predicates::str::contains("rule=S002"));
+}
