@@ -10,9 +10,28 @@ pub fn transfer_pure(from: i128, to: i128, amount: i128) -> Result<(i128, i128),
     if amount <= 0 {
         return Err("amount must be positive");
     }
+    if from < amount {
+        return Err("insufficient balance");
+    }
     let new_from = from.checked_sub(amount).ok_or("insufficient balance")?;
     let new_to = to.checked_add(amount).ok_or("receiver overflow")?;
     Ok((new_from, new_to))
+}
+
+/// Apply an authorized transfer between two balances.
+/// Returns `(new_from, new_to)` or an error if the caller is not the owner,
+/// or if the transfer is invalid.
+pub fn transfer_authorized_pure<T: PartialEq>(
+    from: i128,
+    to: i128,
+    amount: i128,
+    caller: T,
+    owner: T,
+) -> Result<(i128, i128), &'static str> {
+    if caller != owner {
+        return Err("unauthorized transfer");
+    }
+    transfer_pure(from, to, amount)
 }
 
 /// Mint `amount` tokens into `balance`.
@@ -27,6 +46,9 @@ pub fn mint_pure(balance: i128, amount: i128) -> Result<i128, &'static str> {
 pub fn burn_pure(balance: i128, amount: i128) -> Result<i128, &'static str> {
     if amount <= 0 {
         return Err("burn amount must be positive");
+    }
+    if balance < amount {
+        return Err("insufficient balance to burn");
     }
     balance
         .checked_sub(amount)

@@ -3,8 +3,14 @@ name: Formal Verification (Kani)
 on:
   pull_request:
     branches: [main]
+    paths:
+      - 'contracts/**'
+      - '.github/workflows/fv-kani.yml'
   push:
     branches: [main]
+    paths:
+      - 'contracts/**'
+      - '.github/workflows/fv-kani.yml'
 
 permissions:
   contents: read
@@ -59,8 +65,10 @@ jobs:
       - name: Run Kani harnesses (per-harness time budget)
         id: kani
         continue-on-error: true
+        shell: bash
         run: |
           set +e
+          touch kani-results.log
           {
             echo "## 🔬 Kani formal verification"
             echo ""
@@ -68,33 +76,45 @@ jobs:
             echo ""
             echo "| Package | Result |"
             echo "| ------- | ------ |"
-          } >> "$GITHUB_STEP_SUMMARY"
+          } | tee kani-summary.md >> "$GITHUB_STEP_SUMMARY"
 
           overall=0
           for pkg in $KANI_PACKAGES; do
             echo "::group::cargo kani -p ${pkg}"
+            echo -e "\n=== KANI VERIFICATION: ${pkg} ===" >> kani-results.log
             # `--harness-timeout` budgets each harness; the outer `timeout` is a
             # belt-and-suspenders wall-clock cap on the whole package run.
             timeout 900 cargo kani \
               -p "${pkg}" \
               --harness-timeout "${HARNESS_TIMEOUT}" \
-              --output-format terse
-            rc=$?
+              --output-format terse 2>&1 | tee -a kani-results.log
+            rc=${PIPESTATUS[0]}
             echo "::endgroup::"
             if [ "${rc}" -eq 0 ]; then
-              echo "| \`${pkg}\` | ✅ pass |" >> "$GITHUB_STEP_SUMMARY"
+              echo "| \`${pkg}\` | ✅ pass |" | tee -a kani-summary.md >> "$GITHUB_STEP_SUMMARY"
             else
-              echo "| \`${pkg}\` | ⚠️ fail/timeout (exit ${rc}) |" >> "$GITHUB_STEP_SUMMARY"
+              echo "| \`${pkg}\` | ⚠️ fail/timeout (exit ${rc}) |" | tee -a kani-summary.md >> "$GITHUB_STEP_SUMMARY"
               overall=1
             fi
           done
 
-          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "" | tee -a kani-summary.md >> "$GITHUB_STEP_SUMMARY"
           if [ "${overall}" -eq 0 ]; then
-            echo "All Kani harnesses verified ✅" >> "$GITHUB_STEP_SUMMARY"
+            echo "All Kani harnesses verified ✅" | tee -a kani-summary.md >> "$GITHUB_STEP_SUMMARY"
           else
-            echo "> Some harnesses did not verify. This job is **non-blocking** for now (#348)." >> "$GITHUB_STEP_SUMMARY"
+            echo "> Some harnesses did not verify. This job is **non-blocking** for now (#348)." | tee -a kani-summary.md >> "$GITHUB_STEP_SUMMARY"
           fi
 
           # Non-blocking: report results without failing the build.
           exit 0
+
+      - name: Upload Kani Verification Results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: kani-proof-results
+          path: |
+            kani-results.log
+            kani-summary.md
+          retention-days: 90
+

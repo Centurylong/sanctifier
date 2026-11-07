@@ -286,3 +286,31 @@ fn verify_swap_monotonic() {
         assert!(out2 > out1);
     }
 }
+
+/// Verify AMM price invariant: spot price and swap execution price are strictly positive
+/// for all non-empty pools and valid swap amounts (price never becomes negative).
+#[kani::proof]
+fn verify_amm_price_never_negative() {
+    let reserve_in: u128 = any();
+    let reserve_out: u128 = any();
+    let amount_in: u128 = any();
+    let fee_bps: u128 = any();
+
+    assume(reserve_in > 0 && reserve_in <= u64::MAX as u128);
+    assume(reserve_out > 0 && reserve_out <= u64::MAX as u128);
+    assume(amount_in > 0 && amount_in <= u32::MAX as u128);
+    assume(fee_bps < 10000);
+
+    // 1. Spot price invariant: reserve_out / reserve_in is strictly positive
+    assert!(reserve_out > 0 && reserve_in > 0);
+    let spot_price_scaled = (reserve_out * 1_000_000) / reserve_in;
+    assert!(spot_price_scaled > 0, "Spot price must be strictly positive");
+
+    // 2. Execution price invariant: swap output per unit input is non-negative
+    if let Ok(amount_out) = AmmPool::calculate_swap_output(reserve_in, reserve_out, amount_in, fee_bps) {
+        assert!(amount_out > 0, "Swap output must be positive");
+        let exec_price_scaled = (amount_out * 1_000_000) / amount_in;
+        assert!(exec_price_scaled > 0, "Execution price must never be negative or zero");
+    }
+}
+
