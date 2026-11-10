@@ -44,7 +44,7 @@
     "access": "public"
   },
   "scripts": {
-    "build": "./scripts/build-npm.sh",
+    "build": "node init && ./scripts/build-npm.sh",
     "test": "node --test test/*.test.mjs",
     "demo": "python3 -m http.server 8080 --directory ."
   }

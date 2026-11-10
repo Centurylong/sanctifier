@@ -75,4 +75,21 @@ mod tests {
         // amount = 0 is rejected by transfer_pure, so conservation returns true
         assert!(supply_is_conserved_after_transfer(100, 100, 0));
     }
+
+    // ── transfer_authorized_pure ──────────────────────────────────────────────
+
+    #[test]
+    fn transfer_authorized_succeeds_when_caller_is_owner() {
+        let (from, to) = transfer_authorized_pure(1_000, 0, 200, 1u32, 1u32).unwrap();
+        assert_eq!(from, 800);
+        assert_eq!(to, 200);
+    }
+
+    #[test]
+    fn transfer_authorized_rejects_unauthorized_caller() {
+        let result = transfer_authorized_pure(1_000, 0, 200, 2u32, 1u32);
+        assert!(result.is_err());
+        assert_eq!(result.unwrap_err(), "unauthorized transfer");
+    }
 }
+
