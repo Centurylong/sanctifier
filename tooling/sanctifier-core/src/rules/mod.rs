@@ -41,6 +41,8 @@ pub mod vesting_schedule;
 pub mod view_panic;
 pub mod vk_provenance;
 pub mod wrong_auth_args;
+pub mod missing_contractmeta;
+pub mod missing_migrate_auth;
 
 use serde::Serialize;
 use std::any::Any;
