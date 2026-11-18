@@ -33,6 +33,7 @@ New to Sanctifier and adding it to an existing project? Read in this order:
 - **[Getting Started (detailed)](getting-started.md)** — example output and
   finding-by-finding explanations.
 - **[Detector Cookbook](detector-cookbook.md)** — three worked examples of custom detectors (trivial, medium, and data-flow).
+- **[Community Rule Registry](community-rule-registry.md)** — curated registry of community-contributed rules and contribution/review guidelines.
 - **[soroban-sdk Compatibility](soroban-sdk-compatibility.md)** — the supported
   soroban-sdk versions, the CI compatibility matrix, and version-specific
   handling (including the toolchain pin).
